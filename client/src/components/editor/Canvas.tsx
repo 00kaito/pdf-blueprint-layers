@@ -4,11 +4,35 @@ import { pdfjs, Document, Page } from 'react-pdf';
 import { Rnd } from 'react-rnd';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  Square, 
+  Circle, 
+  Triangle, 
+  Star, 
+  Heart, 
+  Hexagon, 
+  ArrowRight 
+} from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set worker URL dynamically to match version
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+const IconRenderer = ({ iconType, color }: { iconType: string, color?: string }) => {
+  const props = { className: "w-full h-full", style: { color } };
+  
+  switch (iconType) {
+    case 'circle': return <Circle {...props} />;
+    case 'triangle': return <Triangle {...props} />;
+    case 'star': return <Star {...props} />;
+    case 'heart': return <Heart {...props} />;
+    case 'hexagon': return <Hexagon {...props} />;
+    case 'arrow-right': return <ArrowRight {...props} />;
+    case 'square':
+    default: return <Square {...props} />;
+  }
+};
 
 export const Canvas = () => {
   const { state, dispatch } = useEditor();
@@ -193,6 +217,13 @@ export const Canvas = () => {
                  e.stopPropagation();
                  dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
               }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (obj.type === 'text') {
+                   dispatch({ type: 'SET_TOOL', payload: 'text' });
+                   dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+                }
+              }}
               className={cn(
                 "group z-20",
                 state.selectedObjectId === obj.id ? "ring-1 ring-primary ring-offset-1" : "",
@@ -217,6 +248,10 @@ export const Canvas = () => {
                 </div>
               ) : obj.type === 'image' ? (
                  <img src={obj.content} alt="uploaded" className="w-full h-full object-contain pointer-events-none" />
+              ) : obj.type === 'icon' ? (
+                 <div className="w-full h-full p-1">
+                   <IconRenderer iconType={obj.content || 'square'} color={obj.color} />
+                 </div>
               ) : (
                  <div className="w-full h-full bg-red-500 rounded-md shadow-sm" style={{ backgroundColor: obj.color }} />
               )}

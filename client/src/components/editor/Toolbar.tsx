@@ -13,7 +13,13 @@ import {
   Square,
   Layers,
   Upload,
-  FolderOpen
+  FolderOpen,
+  Star,
+  Heart,
+  Circle,
+  Triangle,
+  Hexagon,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -31,6 +37,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { v4 as uuidv4 } from 'uuid';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
@@ -58,7 +69,7 @@ export const Toolbar = () => {
     dispatch({ type: 'SET_TOOL', payload: 'select' });
   };
 
-  const handleAddIcon = () => {
+  const handleAddIcon = (iconType: string) => {
     if (!state.activeLayerId) return;
     dispatch({
       type: 'ADD_OBJECT',
@@ -70,7 +81,8 @@ export const Toolbar = () => {
         width: 50,
         height: 50,
         layerId: state.activeLayerId,
-        color: '#ef4444'
+        color: '#ef4444',
+        content: iconType // store icon name in content
       }
     });
     dispatch({ type: 'SET_TOOL', payload: 'select' });
@@ -166,12 +178,19 @@ export const Toolbar = () => {
        const layer = state.layers.find(l => l.id === obj.layerId);
        if (!layer?.visible) continue;
 
+       // Fix Y coordinate flip and origin difference
+       // PDF coordinate system starts at bottom-left
+       // HTML/Canvas starts at top-left
+       // We need to invert Y and adjust for object height
+       // Additionally, react-rnd / HTML might have some offsets.
+       // The 'y' from state is relative to the top of the canvas div.
+       
        const pdfY = height - obj.y - obj.height; 
 
        if (obj.type === 'text' && obj.content) {
           page.drawText(obj.content, {
             x: obj.x,
-            y: height - obj.y - (obj.fontSize || 16), // Approximation
+            y: height - obj.y - (obj.fontSize || 16), 
             size: obj.fontSize || 16,
             font: helveticaFont,
             color: rgb(0, 0, 0),
@@ -188,7 +207,7 @@ export const Toolbar = () => {
             if (image) {
               page.drawImage(image, {
                 x: obj.x,
-                y: height - obj.y - obj.height,
+                y: pdfY,
                 width: obj.width,
                 height: obj.height,
               });
@@ -196,39 +215,49 @@ export const Toolbar = () => {
           } catch (e) {
             console.error("Failed to embed image", e);
           }
-       } else if (obj.type === 'icon' || (obj.type as any) === 'shape') {
-          // Simple red rectangle for icons/shapes placeholder
+       } else if (obj.type === 'icon') {
+          // Draw a placeholder shape for icons
+          // In a real app we'd need to draw the SVG path of the icon
           page.drawRectangle({
             x: obj.x,
-            y: height - obj.y - obj.height,
+            y: pdfY,
             width: obj.width,
             height: obj.height,
             color: rgb(0.937, 0.266, 0.266), // #ef4444
           });
        } else if (obj.type === 'path' && obj.pathData) {
-          // Simplified path handling - actually quite complex in pdf-lib without svg parser.
-          // For now, we skip complex paths or just draw a warning/placeholder if critical.
-          // Drawing SVG paths directly is not natively supported in pdf-lib high-level API easily.
-          // We would need to parse 'M x y L x y' commands.
+          // SVG Path drawing
+          // PDF-lib doesn't support raw SVG path strings 'd="M..."' directly.
+          // We must parse the commands manually or use a helper.
+          // For this mockup, we'll implement a very simple parser for Move and Line commands
+          // which is what our simple drawing tool produces.
           
-          // Quick hack for simple lines:
           const commands = obj.pathData.split(' ');
-          if (commands.length > 3) {
-             // Very basic line drawing attempt
-             // M x1 y1 L x2 y2 ...
-             // This is fragile and purely demonstrative for "simple drawing"
-             // Proper SVG to PDF needs a library like svg-to-pdfkit or similar wrapper.
+          // Format is: M x y L x y L x y ...
+          
+          if (commands.length >= 3) {
+             const pathBuilder = [];
              
-             // Let's just draw dots for vertices to show *something* happens
-             /* 
-             for(let i=0; i<commands.length; i++) {
-               if(commands[i] === 'M' || commands[i] === 'L') {
-                 const x = parseFloat(commands[i+1]);
-                 const y = parseFloat(commands[i+2]);
-                 page.drawCircle({ x, y: height - y, size: 2, color: rgb(0,0,0) });
-               }
+             // Move to start
+             if (commands[0] === 'M') {
+                 const startX = parseFloat(commands[1]);
+                 const startY = parseFloat(commands[2]);
+                 page.moveTo(startX, height - startY);
              }
-             */
+             
+             for (let i = 3; i < commands.length; i+=3) {
+                 if (commands[i] === 'L') {
+                     const x = parseFloat(commands[i+1]);
+                     const y = parseFloat(commands[i+2]);
+                     page.drawLine({
+                         start: { x: page.getX(), y: page.getY() }, // Current pos
+                         end: { x: x, y: height - y },
+                         thickness: 2,
+                         color: rgb(0, 0, 0),
+                     });
+                     page.moveTo(x, height - y); // Update current pos
+                 }
+             }
           }
        }
     }
@@ -297,14 +326,24 @@ export const Toolbar = () => {
             <TooltipContent>Add Image</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={handleAddIcon}>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon">
                 <Square className="w-4 h-4" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>Add Shape</TooltipContent>
-          </Tooltip>
+            </PopoverTrigger>
+            <PopoverContent className="w-64">
+              <div className="grid grid-cols-4 gap-2">
+                <Button variant="outline" size="icon" onClick={() => handleAddIcon('square')}><Square className="w-4 h-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => handleAddIcon('circle')}><Circle className="w-4 h-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => handleAddIcon('triangle')}><Triangle className="w-4 h-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => handleAddIcon('star')}><Star className="w-4 h-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => handleAddIcon('heart')}><Heart className="w-4 h-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => handleAddIcon('hexagon')}><Hexagon className="w-4 h-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => handleAddIcon('arrow-right')}><ArrowRight className="w-4 h-4" /></Button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <Tooltip>
             <TooltipTrigger asChild>
