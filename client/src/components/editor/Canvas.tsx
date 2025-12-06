@@ -166,6 +166,7 @@ export const Canvas = () => {
               key={obj.id}
               size={{ width: obj.width, height: obj.height }}
               position={{ x: obj.x, y: obj.y }}
+              scale={state.scale}
               onDragStop={(e: any, d) => {
                 dispatch({
                   type: 'UPDATE_OBJECT',

@@ -11,7 +11,9 @@ import {
   ZoomOut,
   Trash2,
   Square,
-  Layers
+  Layers,
+  Upload,
+  FolderOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -99,6 +101,31 @@ export const Toolbar = () => {
     e.target.value = '';
   };
 
+  const handleProjectUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (json.layers && json.objects) {
+          dispatch({
+            type: 'IMPORT_PROJECT',
+            payload: {
+              layers: json.layers,
+              objects: json.objects
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse project file', error);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const handleDelete = () => {
     if (state.selectedObjectId) {
       dispatch({ type: 'DELETE_OBJECT', payload: state.selectedObjectId });
@@ -144,11 +171,65 @@ export const Toolbar = () => {
        if (obj.type === 'text' && obj.content) {
           page.drawText(obj.content, {
             x: obj.x,
-            y: height - obj.y - (obj.fontSize || 16),
+            y: height - obj.y - (obj.fontSize || 16), // Approximation
             size: obj.fontSize || 16,
             font: helveticaFont,
             color: rgb(0, 0, 0),
           });
+       } else if (obj.type === 'image' && obj.content) {
+          try {
+            let image;
+            if (obj.content.startsWith('data:image/png')) {
+              image = await pdfDoc.embedPng(obj.content);
+            } else if (obj.content.startsWith('data:image/jpeg')) {
+              image = await pdfDoc.embedJpg(obj.content);
+            }
+
+            if (image) {
+              page.drawImage(image, {
+                x: obj.x,
+                y: height - obj.y - obj.height,
+                width: obj.width,
+                height: obj.height,
+              });
+            }
+          } catch (e) {
+            console.error("Failed to embed image", e);
+          }
+       } else if (obj.type === 'icon' || (obj.type as any) === 'shape') {
+          // Simple red rectangle for icons/shapes placeholder
+          page.drawRectangle({
+            x: obj.x,
+            y: height - obj.y - obj.height,
+            width: obj.width,
+            height: obj.height,
+            color: rgb(0.937, 0.266, 0.266), // #ef4444
+          });
+       } else if (obj.type === 'path' && obj.pathData) {
+          // Simplified path handling - actually quite complex in pdf-lib without svg parser.
+          // For now, we skip complex paths or just draw a warning/placeholder if critical.
+          // Drawing SVG paths directly is not natively supported in pdf-lib high-level API easily.
+          // We would need to parse 'M x y L x y' commands.
+          
+          // Quick hack for simple lines:
+          const commands = obj.pathData.split(' ');
+          if (commands.length > 3) {
+             // Very basic line drawing attempt
+             // M x1 y1 L x2 y2 ...
+             // This is fragile and purely demonstrative for "simple drawing"
+             // Proper SVG to PDF needs a library like svg-to-pdfkit or similar wrapper.
+             
+             // Let's just draw dots for vertices to show *something* happens
+             /* 
+             for(let i=0; i<commands.length; i++) {
+               if(commands[i] === 'M' || commands[i] === 'L') {
+                 const x = parseFloat(commands[i+1]);
+                 const y = parseFloat(commands[i+2]);
+                 page.drawCircle({ x, y: height - y, size: 2, color: rgb(0,0,0) });
+               }
+             }
+             */
+          }
        }
     }
 
@@ -164,6 +245,16 @@ export const Toolbar = () => {
       className="hidden"
       id="image-upload"
       onChange={handleImageUpload}
+    />
+  );
+
+  const ProjectInput = () => (
+    <input
+      type="file"
+      accept=".json"
+      className="hidden"
+      id="project-upload"
+      onChange={handleProjectUpload}
     />
   );
 
@@ -264,7 +355,15 @@ export const Toolbar = () => {
 
         <Button variant="outline" size="sm" onClick={handleExportProject}>
           <Save className="w-4 h-4 mr-2" />
-          Save Project
+          Save
+        </Button>
+
+        <Button variant="outline" size="sm" asChild>
+          <label htmlFor="project-upload" className="cursor-pointer">
+            <FolderOpen className="w-4 h-4 mr-2" />
+            Open
+            <ProjectInput />
+          </label>
         </Button>
         
         <Button size="sm" onClick={handleFlattenAndDownload}>
