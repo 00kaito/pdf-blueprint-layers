@@ -217,7 +217,7 @@ export const Canvas = () => {
                  e.stopPropagation();
                  dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
               }}
-              onDoubleClick={(e) => {
+              onDoubleClick={(e: any) => {
                 e.stopPropagation();
                 if (obj.type === 'text') {
                    dispatch({ type: 'SET_TOOL', payload: 'text' });
