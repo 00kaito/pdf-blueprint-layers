@@ -46,6 +46,16 @@ import { v4 as uuidv4 } from 'uuid';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 
+// Helper to convert hex to RGB for pdf-lib
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? rgb(
+    parseInt(result[1], 16) / 255,
+    parseInt(result[2], 16) / 255,
+    parseInt(result[3], 16) / 255
+  ) : rgb(0, 0, 0);
+};
+
 export const Toolbar = () => {
   const { state, dispatch } = useEditor();
 
@@ -179,19 +189,25 @@ export const Toolbar = () => {
        if (!layer?.visible) continue;
 
        // Fix Y coordinate flip and origin difference
-       // PDF coordinate system starts at bottom-left
-       // HTML/Canvas starts at top-left
-       // We need to invert Y and adjust for object height
-       // Additionally, react-rnd / HTML might have some offsets.
+       // PDF coordinate system starts at bottom-left, HTML/Canvas starts at top-left.
        // The 'y' from state is relative to the top of the canvas div.
        
-       const pdfY = height - obj.y - obj.height; 
+       // Calculate scale factor if PDF page size differs from our 600px preview width
+       const scaleFactor = width / 600;
+       
+       const scaledX = obj.x * scaleFactor;
+       const scaledY = obj.y * scaleFactor;
+       const scaledWidth = obj.width * scaleFactor;
+       const scaledHeight = obj.height * scaleFactor;
+       const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
+
+       const pdfY = height - scaledY - scaledHeight; 
 
        if (obj.type === 'text' && obj.content) {
           page.drawText(obj.content, {
-            x: obj.x,
-            y: height - obj.y - (obj.fontSize || 16), 
-            size: obj.fontSize || 16,
+            x: scaledX,
+            y: height - scaledY - scaledFontSize, 
+            size: scaledFontSize,
             font: helveticaFont,
             color: rgb(0, 0, 0),
           });
@@ -206,53 +222,72 @@ export const Toolbar = () => {
 
             if (image) {
               page.drawImage(image, {
-                x: obj.x,
+                x: scaledX,
                 y: pdfY,
-                width: obj.width,
-                height: obj.height,
+                width: scaledWidth,
+                height: scaledHeight,
               });
             }
           } catch (e) {
             console.error("Failed to embed image", e);
           }
        } else if (obj.type === 'icon') {
-          // Draw a placeholder shape for icons
-          // In a real app we'd need to draw the SVG path of the icon
-          page.drawRectangle({
-            x: obj.x,
-            y: pdfY,
-            width: obj.width,
-            height: obj.height,
-            color: rgb(0.937, 0.266, 0.266), // #ef4444
-          });
-       } else if (obj.type === 'path' && obj.pathData) {
-          // SVG Path drawing
-          // PDF-lib doesn't support raw SVG path strings 'd="M..."' directly.
-          // We must parse the commands manually or use a helper.
-          // For this mockup, we'll implement a very simple parser for Move and Line commands
-          // which is what our simple drawing tool produces.
+          // Draw geometric shapes based on icon type
+          const iconType = obj.content || 'square';
+          const color = obj.color ? hexToRgb(obj.color) : rgb(0.937, 0.266, 0.266); // #ef4444 default
           
+          if (iconType === 'circle') {
+             // Draw circle (ellipse with equal radii)
+             page.drawEllipse({
+               x: scaledX + scaledWidth / 2,
+               y: pdfY + scaledHeight / 2,
+               xScale: scaledWidth / 2,
+               yScale: scaledHeight / 2,
+               color: color,
+               opacity: 1,
+             });
+          } else if (iconType === 'triangle') {
+             // Draw triangle (bottom-left, top-center, bottom-right)
+             // Not natively supported as a primitive, draw as SVG path
+             const path = `M ${scaledX} ${pdfY} L ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX + scaledWidth} ${pdfY} Z`;
+             page.drawSvgPath(path, { color: color });
+          } else if (iconType === 'star') {
+             // Simplified star (diamond shape) or just fallback to square/circle if too complex
+             // Let's use SVG path for a simple star-like shape if possible, or just a diamond.
+             // Diamond:
+             const path = `M ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX + scaledWidth} ${pdfY + scaledHeight / 2} L ${scaledX + scaledWidth / 2} ${pdfY} L ${scaledX} ${pdfY + scaledHeight / 2} Z`;
+             page.drawSvgPath(path, { color: color });
+          } else {
+             // Default to rectangle (square)
+             page.drawRectangle({
+               x: scaledX,
+               y: pdfY,
+               width: scaledWidth,
+               height: scaledHeight,
+               color: color,
+             });
+          }
+       } else if (obj.type === 'path' && obj.pathData) {
+          // Path drawing
+          // Need to scale path data points
           const commands = obj.pathData.split(' ');
-          // Format is: M x y L x y L x y ...
           
           if (commands.length >= 3) {
-             const pathBuilder = [];
-             
              // Move to start
              if (commands[0] === 'M') {
-                 const startX = parseFloat(commands[1]);
-                 const startY = parseFloat(commands[2]);
+                 const startX = parseFloat(commands[1]) * scaleFactor;
+                 const startY = parseFloat(commands[2]) * scaleFactor;
                  page.moveTo(startX, height - startY);
              }
              
              for (let i = 3; i < commands.length; i+=3) {
                  if (commands[i] === 'L') {
-                     const x = parseFloat(commands[i+1]);
-                     const y = parseFloat(commands[i+2]);
+                     const x = parseFloat(commands[i+1]) * scaleFactor;
+                     const y = parseFloat(commands[i+2]) * scaleFactor;
                      page.drawLine({
                          start: { x: page.getX(), y: page.getY() }, // Current pos
                          end: { x: x, y: height - y },
-                         thickness: 2,
+                         thickness: 2 * scaleFactor,
                          color: rgb(0, 0, 0),
                      });
                      page.moveTo(x, height - y); // Update current pos
