@@ -257,6 +257,24 @@ export const Toolbar = () => {
              // Diamond:
              const path = `M ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX + scaledWidth} ${pdfY + scaledHeight / 2} L ${scaledX + scaledWidth / 2} ${pdfY} L ${scaledX} ${pdfY + scaledHeight / 2} Z`;
              page.drawSvgPath(path, { color: color });
+          } else if (iconType === 'heart') {
+             // Simple heart approximation (diamond with top curves? No, path drawing is complex).
+             // Let's just draw a diamond for now as placeholder for Heart until we have a real path.
+             const path = `M ${scaledX + scaledWidth / 2} ${pdfY} L ${scaledX + scaledWidth} ${pdfY + scaledHeight * 0.7} L ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX} ${pdfY + scaledHeight * 0.7} Z`;
+             page.drawSvgPath(path, { color: color });
+          } else if (iconType === 'hexagon') {
+              // Hexagon
+              // Points: (0.25, 0), (0.75, 0), (1, 0.5), (0.75, 1), (0.25, 1), (0, 0.5) scaled
+              const w = scaledWidth;
+              const h = scaledHeight;
+              const path = `M ${scaledX + w * 0.25} ${pdfY} L ${scaledX + w * 0.75} ${pdfY} L ${scaledX + w} ${pdfY + h * 0.5} L ${scaledX + w * 0.75} ${pdfY + h} L ${scaledX + w * 0.25} ${pdfY + h} L ${scaledX} ${pdfY + h * 0.5} Z`;
+              page.drawSvgPath(path, { color: color });
+          } else if (iconType === 'arrow-right') {
+              // Arrow Right
+              const w = scaledWidth;
+              const h = scaledHeight;
+              const path = `M ${scaledX} ${pdfY + h * 0.25} L ${scaledX + w * 0.5} ${pdfY + h * 0.25} L ${scaledX + w * 0.5} ${pdfY} L ${scaledX + w} ${pdfY + h * 0.5} L ${scaledX + w * 0.5} ${pdfY + h} L ${scaledX + w * 0.5} ${pdfY + h * 0.75} L ${scaledX} ${pdfY + h * 0.75} Z`;
+              page.drawSvgPath(path, { color: color });
           } else {
              // Default to rectangle (square)
              page.drawRectangle({
