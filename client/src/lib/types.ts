@@ -19,6 +19,7 @@ export type EditorObject = {
   color?: string;
   fontSize?: number;
   opacity?: number;
+  rotation?: number; // Rotation in degrees
 };
 
 export type EditorState = {

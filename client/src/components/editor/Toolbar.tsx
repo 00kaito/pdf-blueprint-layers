@@ -43,7 +43,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { v4 as uuidv4 } from 'uuid';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 
 // Helper to convert hex to RGB for pdf-lib
@@ -55,6 +55,9 @@ const hexToRgb = (hex: string) => {
     parseInt(result[3], 16) / 255
   ) : rgb(0, 0, 0);
 };
+
+// Helper to convert degrees to radians
+const degreesToRadians = (degrees: number) => degrees * (Math.PI / 180);
 
 export const Toolbar = () => {
   const { state, dispatch } = useEditor();
@@ -73,7 +76,8 @@ export const Toolbar = () => {
         layerId: state.activeLayerId,
         content: 'Double click to edit',
         fontSize: 16,
-        color: '#000000'
+        color: '#000000',
+        rotation: 0
       }
     });
     dispatch({ type: 'SET_TOOL', payload: 'select' });
@@ -92,7 +96,8 @@ export const Toolbar = () => {
         height: 50,
         layerId: state.activeLayerId,
         color: '#ef4444',
-        content: iconType // store icon name in content
+        content: iconType, // store icon name in content
+        rotation: 0
       }
     });
     dispatch({ type: 'SET_TOOL', payload: 'select' });
@@ -115,7 +120,8 @@ export const Toolbar = () => {
           width: 200,
           height: 200,
           layerId: state.activeLayerId!,
-          content: url
+          content: url,
+          rotation: 0
         }
       });
     };
@@ -201,7 +207,8 @@ export const Toolbar = () => {
        const scaledHeight = obj.height * scaleFactor;
        const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
 
-       const pdfY = height - scaledY - scaledHeight; 
+       const pdfY = height - scaledY - scaledHeight;
+       const rotation = degrees(obj.rotation || 0);
 
        if (obj.type === 'text' && obj.content) {
           page.drawText(obj.content, {
@@ -210,6 +217,7 @@ export const Toolbar = () => {
             size: scaledFontSize,
             font: helveticaFont,
             color: rgb(0, 0, 0),
+            rotate: rotation,
           });
        } else if (obj.type === 'image' && obj.content) {
           try {
@@ -226,6 +234,7 @@ export const Toolbar = () => {
                 y: pdfY,
                 width: scaledWidth,
                 height: scaledHeight,
+                rotate: rotation,
               });
             }
           } catch (e) {
@@ -245,36 +254,37 @@ export const Toolbar = () => {
                yScale: scaledHeight / 2,
                color: color,
                opacity: 1,
+               rotate: rotation,
              });
           } else if (iconType === 'triangle') {
              // Draw triangle (bottom-left, top-center, bottom-right)
              // Not natively supported as a primitive, draw as SVG path
              const path = `M ${scaledX} ${pdfY} L ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX + scaledWidth} ${pdfY} Z`;
-             page.drawSvgPath(path, { color: color });
+             page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY }); // Note: rotate origin might be tricky for path
           } else if (iconType === 'star') {
              // Simplified star (diamond shape) or just fallback to square/circle if too complex
              // Let's use SVG path for a simple star-like shape if possible, or just a diamond.
              // Diamond:
              const path = `M ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX + scaledWidth} ${pdfY + scaledHeight / 2} L ${scaledX + scaledWidth / 2} ${pdfY} L ${scaledX} ${pdfY + scaledHeight / 2} Z`;
-             page.drawSvgPath(path, { color: color });
+             page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY });
           } else if (iconType === 'heart') {
              // Simple heart approximation (diamond with top curves? No, path drawing is complex).
              // Let's just draw a diamond for now as placeholder for Heart until we have a real path.
              const path = `M ${scaledX + scaledWidth / 2} ${pdfY} L ${scaledX + scaledWidth} ${pdfY + scaledHeight * 0.7} L ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX} ${pdfY + scaledHeight * 0.7} Z`;
-             page.drawSvgPath(path, { color: color });
+             page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY });
           } else if (iconType === 'hexagon') {
               // Hexagon
               // Points: (0.25, 0), (0.75, 0), (1, 0.5), (0.75, 1), (0.25, 1), (0, 0.5) scaled
               const w = scaledWidth;
               const h = scaledHeight;
               const path = `M ${scaledX + w * 0.25} ${pdfY} L ${scaledX + w * 0.75} ${pdfY} L ${scaledX + w} ${pdfY + h * 0.5} L ${scaledX + w * 0.75} ${pdfY + h} L ${scaledX + w * 0.25} ${pdfY + h} L ${scaledX} ${pdfY + h * 0.5} Z`;
-              page.drawSvgPath(path, { color: color });
+              page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY });
           } else if (iconType === 'arrow-right') {
               // Arrow Right
               const w = scaledWidth;
               const h = scaledHeight;
               const path = `M ${scaledX} ${pdfY + h * 0.25} L ${scaledX + w * 0.5} ${pdfY + h * 0.25} L ${scaledX + w * 0.5} ${pdfY} L ${scaledX + w} ${pdfY + h * 0.5} L ${scaledX + w * 0.5} ${pdfY + h} L ${scaledX + w * 0.5} ${pdfY + h * 0.75} L ${scaledX} ${pdfY + h * 0.75} Z`;
-              page.drawSvgPath(path, { color: color });
+              page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY });
           } else {
              // Default to rectangle (square)
              page.drawRectangle({
@@ -283,6 +293,7 @@ export const Toolbar = () => {
                width: scaledWidth,
                height: scaledHeight,
                color: color,
+               rotate: rotation,
              });
           }
        } else if (obj.type === 'path' && obj.pathData) {
@@ -435,11 +446,11 @@ export const Toolbar = () => {
           </>
         )}
 
-        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_SCALE', payload: Math.max(0.5, state.scale - 0.1) })}>
+        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_SCALE', payload: Math.max(0.1, state.scale - 0.25) })}>
           <ZoomOut className="w-4 h-4" />
         </Button>
         <span className="text-xs w-12 text-center">{Math.round(state.scale * 100)}%</span>
-        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_SCALE', payload: Math.min(2, state.scale + 0.1) })}>
+        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_SCALE', payload: Math.min(5, state.scale + 0.25) })}>
           <ZoomIn className="w-4 h-4" />
         </Button>
 
