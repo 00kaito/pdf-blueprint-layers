@@ -4,8 +4,8 @@ import { pdfjs, Document, Page } from 'react-pdf';
 import { Rnd } from 'react-rnd';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set worker URL dynamically to match version
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -134,7 +134,7 @@ export const Canvas = () => {
                      "cursor-pointer pointer-events-auto transition-colors",
                      state.selectedObjectId === obj.id ? "stroke-primary" : "stroke-black hover:stroke-primary/50"
                    )}
-                   onClick={(e) => {
+                   onClick={(e: any) => {
                       e.stopPropagation();
                       if (state.tool === 'select') {
                         dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
@@ -188,7 +188,7 @@ export const Canvas = () => {
               bounds="parent"
               disableDragging={layer.locked || state.tool !== 'select'}
               enableResizing={!layer.locked && state.tool === 'select'}
-              onClick={(e) => {
+              onClick={(e: any) => {
                  e.stopPropagation();
                  dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
               }}
