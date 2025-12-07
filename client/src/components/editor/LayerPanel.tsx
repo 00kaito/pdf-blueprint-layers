@@ -50,10 +50,23 @@ export const LayerPanel = () => {
   const [expandedLayers, setExpandedLayers] = useState<Record<string, boolean>>({});
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  
+  const [editingObjectId, setEditingObjectId] = useState<string | null>(null);
+  const [editingObjectName, setEditingObjectName] = useState("");
 
   const startEditing = (layer: { id: string, name: string }) => {
     setEditingLayerId(layer.id);
     setEditingName(layer.name);
+    setEditingObjectId(null); // Clear object editing
+  };
+  
+  const startObjectEditing = (obj: { id: string, name?: string, type: string, content?: string }, index: number) => {
+    setEditingObjectId(obj.id);
+    const defaultName = obj.name || (obj.type === 'text' 
+        ? (obj.content || 'Text Object') 
+        : `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} ${index + 1}`);
+    setEditingObjectName(defaultName);
+    setEditingLayerId(null); // Clear layer editing
   };
 
   const saveLayerName = () => {
@@ -63,6 +76,16 @@ export const LayerPanel = () => {
         payload: { id: editingLayerId, updates: { name: editingName } }
       });
       setEditingLayerId(null);
+    }
+  };
+  
+  const saveObjectName = () => {
+    if (editingObjectId) {
+      dispatch({
+        type: 'UPDATE_OBJECT',
+        payload: { id: editingObjectId, updates: { name: editingObjectName } }
+      });
+      setEditingObjectId(null);
     }
   };
 
@@ -174,11 +197,32 @@ export const LayerPanel = () => {
                         }}
                       >
                         <ObjectIcon type={obj.type} content={obj.content} />
-                        <span className="truncate select-none">
-                          {obj.type === 'text' 
-                            ? (obj.content || 'Text Object') 
-                            : `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} ${index + 1}`}
-                        </span>
+                        
+                        {editingObjectId === obj.id ? (
+                            <Input 
+                                value={editingObjectName}
+                                onChange={(e) => setEditingObjectName(e.target.value)}
+                                onBlur={saveObjectName}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveObjectName();
+                                }}
+                                className="h-5 py-0 px-1 text-xs w-full bg-white"
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        ) : (
+                            <span 
+                                className="truncate select-none w-full"
+                                onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    startObjectEditing(obj, index);
+                                }}
+                            >
+                              {obj.name || (obj.type === 'text' 
+                                ? (obj.content || 'Text Object') 
+                                : `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} ${index + 1}`)}
+                            </span>
+                        )}
                       </div>
                     ))}
                     {layerObjects.length === 0 && (

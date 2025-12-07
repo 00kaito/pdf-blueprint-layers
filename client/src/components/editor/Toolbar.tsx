@@ -109,6 +109,7 @@ export const Toolbar = () => {
       payload: {
         id: uuidv4(),
         type: 'text',
+        name: 'Text',
         x,
         y,
         width: 200 / state.scale,
@@ -131,6 +132,7 @@ export const Toolbar = () => {
       payload: {
         id: uuidv4(),
         type: 'icon',
+        name: iconType.charAt(0).toUpperCase() + iconType.slice(1),
         x,
         y,
         width: 50 / state.scale,
@@ -157,6 +159,7 @@ export const Toolbar = () => {
         payload: {
           id: uuidv4(),
           type: 'image',
+          name: 'Image',
           x,
           y,
           width: 200 / state.scale,
@@ -303,8 +306,10 @@ export const Toolbar = () => {
        if (obj.type === 'text' && obj.content) {
           // Calculate position for Top-Left alignment (standard for HTML text)
           // Text baseline starts at top of box minus font size
-          const textDy = h / 2 - scaledFontSize;
-          const textDx = -w / 2;
+          // Adjust for 4px padding (p-1) used in editor
+          const padding = 4 * scaleFactor;
+          const textDy = h / 2 - scaledFontSize - padding;
+          const textDx = -w / 2 + padding;
 
           // Rotate the vector from center to text start
           const textX = cx + (textDx * cos - textDy * sin);

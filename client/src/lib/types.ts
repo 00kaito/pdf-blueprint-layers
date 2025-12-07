@@ -14,6 +14,7 @@ export type EditorObject = {
   width: number;
   height: number;
   layerId: string;
+  name?: string; // User-defined name
   content?: string; // For text or image URL
   pathData?: string; // For SVG paths
   color?: string;

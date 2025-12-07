@@ -80,6 +80,7 @@ export const Canvas = () => {
           payload: {
             id: uuidv4(),
             type: 'path',
+            name: 'Drawing',
             x: 0,
             y: 0,
             width: 600, 
@@ -147,6 +148,7 @@ export const Canvas = () => {
                 payload: {
                   id: uuidv4(),
                   type: type as any,
+                  name: type === 'text' ? 'Text' : (type === 'image' ? 'Image' : 'Object'),
                   x: finalX,
                   y: finalY,
                   width,
@@ -342,8 +344,11 @@ export const Canvas = () => {
                     const handleMouseMove = (moveEvent: MouseEvent) => {
                       const deltaY = moveEvent.clientY - startY;
                       // Simple rotation logic: moving mouse up/down rotates object
-                      // For better rotation we'd calculate angle between center and mouse, but this is a quick win
-                      const newRotation = (startRotation + deltaY * 2) % 360; 
+                      // Snap to 45 degree increments
+                      const rawRotation = (startRotation + deltaY * 2) % 360; 
+                      const snapAngle = 45;
+                      const newRotation = Math.round(rawRotation / snapAngle) * snapAngle;
+
                       dispatch({
                         type: 'UPDATE_OBJECT',
                         payload: { id: obj.id, updates: { rotation: newRotation } }
