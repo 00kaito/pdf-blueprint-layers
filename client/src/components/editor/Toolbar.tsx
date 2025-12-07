@@ -349,7 +349,8 @@ export const Toolbar = () => {
                y: cy,
                xScale: scaledWidth / 2,
                yScale: scaledHeight / 2,
-               color: color,
+               borderColor: color, // Use borderColor instead of color for stroke only
+               borderWidth: 2, // Standard stroke width
                opacity: 1,
                rotate: rotation,
              });
@@ -387,7 +388,9 @@ export const Toolbar = () => {
              );
              
              // Now draw relative to 0,0
-             page.drawSvgPath(trianglePath, { color: color, x: 0, y: 0 });
+             // drawSvgPath uses fill by default if color is provided. To stroke, we might need different options or just accept fill for complex shapes for now as pdf-lib svg support is basic.
+             // Actually drawSvgPath supports borderColor/borderWidth in recent versions? No, it takes `color` (fill) and `borderColor` (stroke).
+             page.drawSvgPath(trianglePath, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
              
              page.pushOperators(popGraphicsState());
 
@@ -412,7 +415,9 @@ export const Toolbar = () => {
                     y: rotateY,
                     width: scaledWidth,
                     height: scaledHeight,
-                    color: color,
+                    borderColor: color, // Use borderColor
+                    borderWidth: 2,
+                    color: undefined, // No fill
                     rotate: rotation,
                  });
                  return; // Skip the pushOperators block
@@ -425,7 +430,7 @@ export const Toolbar = () => {
                    rotateDegrees(obj.rotation || 0),
                    translate(-w/2, -h/2)
                  );
-                 page.drawSvgPath(pathData, { color: color, x: 0, y: 0 });
+                 page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
                  page.pushOperators(popGraphicsState());
              }
           }
@@ -617,7 +622,11 @@ export const Toolbar = () => {
                    </Select>
 
                    <Separator orientation="vertical" className="h-6 mx-1" />
-                   
+                 </>
+               )}
+
+               {(selectedObject.type === 'text' || selectedObject.type === 'icon' || selectedObject.type === 'path') && (
+                 <>
                    <span className="text-xs text-muted-foreground">Color:</span>
                    <div className="relative flex items-center">
                      <input 
