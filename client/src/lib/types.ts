@@ -30,6 +30,7 @@ export type EditorState = {
   activeLayerId: string | null;
   currentPage: number;
   scale: number;
+  scrollPos: { x: number; y: number };
   tool: 'select' | 'text' | 'image' | 'icon' | 'draw';
 };
 
@@ -45,5 +46,6 @@ export type EditorAction =
   | { type: 'SET_TOOL'; payload: EditorState['tool'] }
   | { type: 'SET_PAGE'; payload: number }
   | { type: 'SET_SCALE'; payload: number }
+  | { type: 'SET_SCROLL'; payload: { x: number; y: number } }
   | { type: 'IMPORT_PROJECT'; payload: Partial<EditorState> }
   | { type: 'REORDER_LAYERS'; payload: { sourceIndex: number; destinationIndex: number } };

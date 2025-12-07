@@ -10,6 +10,7 @@ const initialState: EditorState = {
   activeLayerId: null,
   currentPage: 1,
   scale: 1,
+  scrollPos: { x: 0, y: 0 },
   tool: 'select',
 };
 
@@ -68,8 +69,17 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, currentPage: action.payload };
     case 'SET_SCALE':
       return { ...state, scale: action.payload };
+    case 'SET_SCROLL':
+      return { ...state, scrollPos: action.payload };
     case 'IMPORT_PROJECT':
       return { ...state, ...action.payload };
+    case 'REORDER_LAYERS': {
+      const { sourceIndex, destinationIndex } = action.payload;
+      const result = Array.from(state.layers);
+      const [removed] = result.splice(sourceIndex, 1);
+      result.splice(destinationIndex, 0, removed);
+      return { ...state, layers: result };
+    }
     default:
       return state;
   }

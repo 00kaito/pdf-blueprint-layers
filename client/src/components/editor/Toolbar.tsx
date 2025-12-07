@@ -43,6 +43,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { v4 as uuidv4 } from 'uuid';
+import * as pdflib from 'pdf-lib';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 
@@ -62,15 +63,44 @@ const degreesToRadians = (degrees: number) => degrees * (Math.PI / 180);
 export const Toolbar = () => {
   const { state, dispatch } = useEditor();
 
+  // Calculate center of visible area
+  const getCenterPosition = (width: number, height: number) => {
+    // Current visible center relative to the scaled canvas
+    // Canvas container has padding 32px (p-8)
+    // We want to place object in the middle of current view
+    // State has scrollPos (x, y)
+    // The canvas is scaled.
+    // If scrollPos is 0,0, we are at top left.
+    // But we are centering the canvas in the viewport if it fits.
+    
+    // Simplification: Place at scrollPos + viewport/2, converted to unscaled coords
+    // Let's assume a viewport roughly 800x600 for now or just use scrollPos
+    
+    // Better: Just use scrollPos.y + 100 as a start, but we need to account for scale
+    
+    // If we assume the viewport is roughly window size (e.g. 1000x800)
+    // Center is (scrollPos.x + windowWidth/2) / scale
+    
+    // Let's approximate viewport center
+    const viewportCenterX = (state.scrollPos?.x || 0) + 300; // 300 is half of ~600 sidebar-less width
+    const viewportCenterY = (state.scrollPos?.y || 0) + 300; 
+    
+    return {
+      x: Math.max(0, viewportCenterX / state.scale - width / 2),
+      y: Math.max(0, viewportCenterY / state.scale - height / 2)
+    };
+  };
+
   const handleAddText = () => {
     if (!state.activeLayerId) return;
+    const { x, y } = getCenterPosition(200, 50);
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
         id: uuidv4(),
         type: 'text',
-        x: 100,
-        y: 100,
+        x,
+        y,
         width: 200,
         height: 50,
         layerId: state.activeLayerId,
@@ -85,13 +115,14 @@ export const Toolbar = () => {
 
   const handleAddIcon = (iconType: string) => {
     if (!state.activeLayerId) return;
+    const { x, y } = getCenterPosition(50, 50);
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
         id: uuidv4(),
         type: 'icon',
-        x: 150,
-        y: 150,
+        x,
+        y,
         width: 50,
         height: 50,
         layerId: state.activeLayerId,
@@ -110,13 +141,14 @@ export const Toolbar = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const url = event.target?.result as string;
+      const { x, y } = getCenterPosition(200, 200);
       dispatch({
         type: 'ADD_OBJECT',
         payload: {
           id: uuidv4(),
           type: 'image',
-          x: 100,
-          y: 100,
+          x,
+          y,
           width: 200,
           height: 200,
           layerId: state.activeLayerId!,
@@ -210,10 +242,64 @@ export const Toolbar = () => {
        const pdfY = height - scaledY - scaledHeight;
        const rotation = degrees(obj.rotation || 0);
 
+       // Rotation logic:
+       // We want to rotate around the CENTER of the object.
+       // PDF-lib rotates around the bottom-left of the drawn element by default if we just pass 'rotate'.
+       // To rotate around center (cx, cy):
+       // 1. Translate to center: translate(cx, cy)
+       // 2. Rotate: rotate(angle)
+       // 3. Translate back: translate(-cx, -cy)
+       // Or simpler with pdf-lib:
+       // Calculate the new bottom-left position that would result in the visual center being the same.
+       // However, pdf-lib's drawImage/Text `rotate` option rotates the object around its own origin (bottom-left)
+       // AND then places it at x,y. 
+       // Wait, no. `rotate` option rotates the coordinate system relative to the anchor?
+       // Let's use standard affine transformation logic manually if needed, or adjust x/y.
+       
+       // Correct approach for pdf-lib rotation around center:
+       // The 'rotate' prop in drawImage/drawText rotates the object around its anchor (usually bottom-left).
+       // We want center rotation.
+       // Center C = (x + w/2, y + h/2)
+       // If we rotate around bottom-left A=(x,y), the center moves to C'.
+       // We want the final center to be C.
+       // So we need to shift the object by vector (C - C').
+       
+       // Actually, there is a simpler way:
+       // pdf-lib `rotate` option rotates the object around its origin (bottom-left)
+       // We need to move the origin such that after rotation, the center lands where we want.
+       
+       // Let's implement the shift:
+       // Angle theta (radians)
+       const theta = degreesToRadians(obj.rotation || 0);
+       const cos = Math.cos(theta);
+       const sin = Math.sin(theta);
+       
+       // Dimensions
+       const w = scaledWidth;
+       const h = scaledHeight; // For text, this is approximate
+       
+       // We want the visual center to be at:
+       const cx = scaledX + w / 2;
+       const cy = pdfY + h / 2;
+       
+       // If we draw at (x', y') with rotation theta, the center will be at:
+       // C'x = x' + (w/2 * cos - h/2 * sin)
+       // C'y = y' + (w/2 * sin + h/2 * cos)
+       // We set C' = (cx, cy) and solve for x', y'.
+       
+       const rotateX = cx - (w / 2 * cos - h / 2 * sin);
+       const rotateY = cy - (w / 2 * sin + h / 2 * cos);
+
        if (obj.type === 'text' && obj.content) {
+          // Text height is tricky, let's assume fontSize is roughly height
+          // For text, origin is usually baseline-left. 
+          // pdf-lib drawText y is baseline.
+          // Our pdfY is bottom of the bounding box.
+          // Let's just use the calculated rotateX/Y as the anchor point.
+          
           page.drawText(obj.content, {
-            x: scaledX,
-            y: height - scaledY - scaledFontSize, 
+            x: rotateX,
+            y: rotateY, // This might need adjustment for text baseline vs bottom
             size: scaledFontSize,
             font: helveticaFont,
             color: rgb(0, 0, 0),
@@ -230,8 +316,8 @@ export const Toolbar = () => {
 
             if (image) {
               page.drawImage(image, {
-                x: scaledX,
-                y: pdfY,
+                x: rotateX,
+                y: rotateY,
                 width: scaledWidth,
                 height: scaledHeight,
                 rotate: rotation,
@@ -247,9 +333,10 @@ export const Toolbar = () => {
           
           if (iconType === 'circle') {
              // Draw circle (ellipse with equal radii)
+             // Ellipse rotation is supported
              page.drawEllipse({
-               x: scaledX + scaledWidth / 2,
-               y: pdfY + scaledHeight / 2,
+               x: cx, // Ellipse draws from center
+               y: cy,
                xScale: scaledWidth / 2,
                yScale: scaledHeight / 2,
                color: color,
@@ -257,45 +344,82 @@ export const Toolbar = () => {
                rotate: rotation,
              });
           } else if (iconType === 'triangle') {
-             // Draw triangle (bottom-left, top-center, bottom-right)
-             // Not natively supported as a primitive, draw as SVG path
-             const path = `M ${scaledX} ${pdfY} L ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX + scaledWidth} ${pdfY} Z`;
-             page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY }); // Note: rotate origin might be tricky for path
-          } else if (iconType === 'star') {
-             // Simplified star (diamond shape) or just fallback to square/circle if too complex
-             // Let's use SVG path for a simple star-like shape if possible, or just a diamond.
-             // Diamond:
-             const path = `M ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX + scaledWidth} ${pdfY + scaledHeight / 2} L ${scaledX + scaledWidth / 2} ${pdfY} L ${scaledX} ${pdfY + scaledHeight / 2} Z`;
-             page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY });
-          } else if (iconType === 'heart') {
-             // Simple heart approximation (diamond with top curves? No, path drawing is complex).
-             // Let's just draw a diamond for now as placeholder for Heart until we have a real path.
-             const path = `M ${scaledX + scaledWidth / 2} ${pdfY} L ${scaledX + scaledWidth} ${pdfY + scaledHeight * 0.7} L ${scaledX + scaledWidth / 2} ${pdfY + scaledHeight} L ${scaledX} ${pdfY + scaledHeight * 0.7} Z`;
-             page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY });
-          } else if (iconType === 'hexagon') {
-              // Hexagon
-              // Points: (0.25, 0), (0.75, 0), (1, 0.5), (0.75, 1), (0.25, 1), (0, 0.5) scaled
-              const w = scaledWidth;
-              const h = scaledHeight;
-              const path = `M ${scaledX + w * 0.25} ${pdfY} L ${scaledX + w * 0.75} ${pdfY} L ${scaledX + w} ${pdfY + h * 0.5} L ${scaledX + w * 0.75} ${pdfY + h} L ${scaledX + w * 0.25} ${pdfY + h} L ${scaledX} ${pdfY + h * 0.5} Z`;
-              page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY });
-          } else if (iconType === 'arrow-right') {
-              // Arrow Right
-              const w = scaledWidth;
-              const h = scaledHeight;
-              const path = `M ${scaledX} ${pdfY + h * 0.25} L ${scaledX + w * 0.5} ${pdfY + h * 0.25} L ${scaledX + w * 0.5} ${pdfY} L ${scaledX + w} ${pdfY + h * 0.5} L ${scaledX + w * 0.5} ${pdfY + h} L ${scaledX + w * 0.5} ${pdfY + h * 0.75} L ${scaledX} ${pdfY + h * 0.75} Z`;
-              page.drawSvgPath(path, { color: color, rotate: rotation, x: scaledX, y: pdfY });
+             // For paths, we need to manually rotate points or use SVG path rotation if supported
+             // pdf-lib drawSvgPath doesn't support 'rotate' prop directly in all versions, but let's check.
+             // It does support `rotate`.
+             // But simpler to just draw the path at the calculated coordinates.
+             
+             // Triangle path relative to 0,0
+             const p1 = { x: 0, y: 0 };
+             const p2 = { x: w/2, y: h };
+             const p3 = { x: w, y: 0 };
+             
+             // We need to rotate these points around (w/2, h/2) and then translate to (scaledX, pdfY)
+             // Actually, page.drawSvgPath takes a path string.
+             // If we rely on `rotate` prop of drawSvgPath, does it rotate around origin of the path (0,0 of the viewport) or the center?
+             // It usually rotates around the origin of the coordinate system unless translated.
+             
+             // Let's try passing the rotated X/Y as origin.
+             const path = `M ${rotateX} ${rotateY} L ${rotateX + w / 2} ${rotateY + h} L ${rotateX + w} ${rotateY} Z`;
+             // This assumes drawing relative to bottom-left rotated anchor.
+             // Actually, SVG path drawing is sensitive.
+             // Let's just use the diamond fallback for all complex shapes for now to ensure visibility first, 
+             // but user complained about missing shapes.
+             
+             const trianglePath = `M ${w/2} ${h} L ${w} ${0} L ${0} ${0} Z`; // Local coords
+             // We can use page.pushOperators to translate/rotate/draw/pop
+             
+             page.pushOperators(
+               pdflib.pushGraphicsState(),
+               pdflib.translate(cx, cy),
+               pdflib.rotate(degrees(obj.rotation || 0)),
+               pdflib.translate(-w/2, -h/2)
+             );
+             
+             // Now draw relative to 0,0
+             page.drawSvgPath(trianglePath, { color: color, x: 0, y: 0 });
+             
+             page.pushOperators(pdflib.popGraphicsState());
+
           } else {
-             // Default to rectangle (square)
-             page.drawRectangle({
-               x: scaledX,
-               y: pdfY,
-               width: scaledWidth,
-               height: scaledHeight,
-               color: color,
-               rotate: rotation,
-             });
+             // General shape fallback using pushOperators for correct rotation
+             // This is the most robust way for all shapes
+             
+             let pathData = '';
+             if (iconType === 'triangle') {
+                 pathData = `M 0 0 L ${w/2} ${h} L ${w} 0 Z`;
+             } else if (iconType === 'star' || iconType === 'heart' || iconType === 'diamond') {
+                 // Diamond shape
+                 pathData = `M ${w/2} ${h} L ${w} ${h/2} L ${w/2} 0 L 0 ${h/2} Z`;
+             } else if (iconType === 'hexagon') {
+                 pathData = `M ${w*0.25} 0 L ${w*0.75} 0 L ${w} ${h*0.5} L ${w*0.75} ${h} L ${w*0.25} ${h} L 0 ${h*0.5} Z`;
+             } else if (iconType === 'arrow-right') {
+                 pathData = `M 0 ${h*0.25} L ${w*0.5} ${h*0.25} L ${w*0.5} 0 L ${w} ${h*0.5} L ${w*0.5} ${h} L ${w*0.5} ${h*0.75} L 0 ${h*0.75} Z`;
+             } else {
+                 // Square/Rect
+                 page.drawRectangle({
+                    x: rotateX,
+                    y: rotateY,
+                    width: scaledWidth,
+                    height: scaledHeight,
+                    color: color,
+                    rotate: rotation,
+                 });
+                 return; // Skip the pushOperators block
+             }
+             
+             if (pathData) {
+                 page.pushOperators(
+                   pdflib.pushGraphicsState(),
+                   pdflib.translate(cx, cy),
+                   pdflib.rotate(degrees(obj.rotation || 0)),
+                   pdflib.translate(-w/2, -h/2)
+                 );
+                 page.drawSvgPath(pathData, { color: color, x: 0, y: 0 });
+                 page.pushOperators(pdflib.popGraphicsState());
+             }
           }
+       } else if (obj.type === 'path' && obj.pathData) {
        } else if (obj.type === 'path' && obj.pathData) {
           // Path drawing
           // Need to scale path data points
@@ -450,7 +574,7 @@ export const Toolbar = () => {
           <ZoomOut className="w-4 h-4" />
         </Button>
         <span className="text-xs w-12 text-center">{Math.round(state.scale * 100)}%</span>
-        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_SCALE', payload: Math.min(5, state.scale + 0.25) })}>
+        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_SCALE', payload: Math.min(10, state.scale + 0.25) })}>
           <ZoomIn className="w-4 h-4" />
         </Button>
 

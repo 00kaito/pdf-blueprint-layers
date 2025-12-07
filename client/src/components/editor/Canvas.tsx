@@ -94,12 +94,22 @@ export const Canvas = () => {
     }
   };
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    // We update scroll position in state so Toolbar can use it for placement
+    // Debouncing would be better in a real app, but for prototype direct dispatch is OK
+    dispatch({
+      type: 'SET_SCROLL',
+      payload: { x: e.currentTarget.scrollLeft, y: e.currentTarget.scrollTop }
+    });
+  };
+
   return (
     <div 
       className="flex-1 bg-muted/30 overflow-auto flex justify-center p-8 relative select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onScroll={handleScroll}
     >
       <div 
         ref={containerRef}
