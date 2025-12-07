@@ -105,7 +105,7 @@ export const Canvas = () => {
 
   return (
     <div 
-      className="flex-1 bg-muted/30 overflow-auto flex relative select-none"
+      className="flex-1 bg-muted/30 overflow-auto relative select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -120,6 +120,8 @@ export const Canvas = () => {
         const content = e.dataTransfer.getData('application/editor-content');
         
         if (type && state.activeLayerId) {
+           // We need to calculate position relative to the Canvas content, not the viewport
+           // The rect should be the containerRef (the white canvas)
            const rect = containerRef.current?.getBoundingClientRect();
            if (rect) {
               // Calculate position relative to canvas, accounting for scale
@@ -157,10 +159,10 @@ export const Canvas = () => {
         }
       }}
     >
-      <div className="min-w-full min-h-full flex items-center justify-center p-8">
+      <div className="min-w-full min-h-full flex p-8">
       <div 
         ref={containerRef}
-        className="relative shadow-lg origin-top-left bg-white"
+        className="relative shadow-lg origin-top-left bg-white m-auto"
         // Removing transform scale here to allow native scroll
         style={{ 
           // We don't scale the container with CSS transform anymore to allow proper scrolling
