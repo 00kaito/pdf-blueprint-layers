@@ -103,7 +103,7 @@ export const Toolbar = () => {
 
   const handleAddText = () => {
     if (!state.activeLayerId) return;
-    const { x, y } = getCenterPosition(200, 50);
+    const { x, y } = getCenterPosition(200 / state.scale, 50 / state.scale);
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
@@ -111,11 +111,11 @@ export const Toolbar = () => {
         type: 'text',
         x,
         y,
-        width: 200,
-        height: 50,
+        width: 200 / state.scale,
+        height: 50 / state.scale,
         layerId: state.activeLayerId,
         content: 'Double click to edit',
-        fontSize: 16,
+        fontSize: 16 / state.scale,
         color: '#000000',
         rotation: 0
       }
@@ -125,7 +125,7 @@ export const Toolbar = () => {
 
   const handleAddIcon = (iconType: string) => {
     if (!state.activeLayerId) return;
-    const { x, y } = getCenterPosition(50, 50);
+    const { x, y } = getCenterPosition(50 / state.scale, 50 / state.scale);
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
@@ -133,8 +133,8 @@ export const Toolbar = () => {
         type: 'icon',
         x,
         y,
-        width: 50,
-        height: 50,
+        width: 50 / state.scale,
+        height: 50 / state.scale,
         layerId: state.activeLayerId,
         color: '#ef4444',
         content: iconType, // store icon name in content
@@ -151,7 +151,7 @@ export const Toolbar = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const url = event.target?.result as string;
-      const { x, y } = getCenterPosition(200, 200);
+      const { x, y } = getCenterPosition(200 / state.scale, 200 / state.scale);
       dispatch({
         type: 'ADD_OBJECT',
         payload: {
@@ -159,8 +159,8 @@ export const Toolbar = () => {
           type: 'image',
           x,
           y,
-          width: 200,
-          height: 200,
+          width: 200 / state.scale,
+          height: 200 / state.scale,
           layerId: state.activeLayerId!,
           content: url,
           rotation: 0

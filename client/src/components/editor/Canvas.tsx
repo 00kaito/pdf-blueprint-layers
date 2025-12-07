@@ -128,11 +128,15 @@ export const Canvas = () => {
               const x = (e.clientX - rect.left) / state.scale;
               const y = (e.clientY - rect.top) / state.scale;
               
-              // Default dimensions
-              let width = 50;
-              let height = 50;
-              if (type === 'text') { width = 200; height = 50; }
-              if (type === 'image') { width = 200; height = 200; }
+              // Calculate dimensions based on scale
+              // We want visual size to be consistent regardless of zoom
+              // e.g. at scale 10, a 200px object covers 2000px screen pixels.
+              // We want it to look like ~200px screen pixels.
+              // So width = 200 / scale
+              let width = 50 / state.scale;
+              let height = 50 / state.scale;
+              if (type === 'text') { width = 200 / state.scale; height = 50 / state.scale; }
+              if (type === 'image') { width = 200 / state.scale; height = 200 / state.scale; }
               
               // Center the object on the cursor
               const finalX = x - width / 2;
@@ -151,7 +155,7 @@ export const Canvas = () => {
                   content: content || (type === 'text' ? 'Double click to edit' : ''),
                   color: type === 'icon' ? '#ef4444' : '#000000',
                   rotation: 0,
-                  fontSize: 16
+                  fontSize: 16 / state.scale // Also scale font size for text so it's not huge
                 }
               });
               dispatch({ type: 'SET_TOOL', payload: 'select' });
