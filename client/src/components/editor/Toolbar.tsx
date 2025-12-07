@@ -43,6 +43,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { v4 as uuidv4 } from 'uuid';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   PDFDocument, 
   rgb, 
@@ -584,6 +586,56 @@ export const Toolbar = () => {
         {selectedObject && (
           <>
              <div className="flex items-center gap-2 mx-2">
+               {selectedObject.type === 'text' && (
+                 <>
+                   <span className="text-xs text-muted-foreground">Size:</span>
+                   <Select 
+                    value={selectedObject.fontSize?.toString() || "16"} 
+                    onValueChange={(val) => dispatch({
+                      type: 'UPDATE_OBJECT',
+                      payload: { id: selectedObject.id, updates: { fontSize: parseInt(val) } }
+                    })}
+                   >
+                    <SelectTrigger className="w-[70px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[8, 10, 11, 12, 14, 16, 18, 20, 24, 30, 36, 48, 60, 72].map(size => (
+                        <SelectItem key={size} value={size.toString()}>{size}px</SelectItem>
+                      ))}
+                    </SelectContent>
+                   </Select>
+                   <Separator orientation="vertical" className="h-6 mx-1" />
+                 </>
+               )}
+               
+               <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">W:</span>
+                  <Input 
+                    type="number" 
+                    className="w-16 h-8 text-xs" 
+                    value={Math.round(selectedObject.width)} 
+                    onChange={(e) => dispatch({
+                      type: 'UPDATE_OBJECT',
+                      payload: { id: selectedObject.id, updates: { width: parseInt(e.target.value) || 0 } }
+                    })}
+                  />
+               </div>
+               <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">H:</span>
+                  <Input 
+                    type="number" 
+                    className="w-16 h-8 text-xs" 
+                    value={Math.round(selectedObject.height)} 
+                    onChange={(e) => dispatch({
+                      type: 'UPDATE_OBJECT',
+                      payload: { id: selectedObject.id, updates: { height: parseInt(e.target.value) || 0 } }
+                    })}
+                  />
+               </div>
+
+               <Separator orientation="vertical" className="h-6 mx-1" />
+
                <span className="text-xs text-muted-foreground">Layer:</span>
                <Select value={selectedObject.layerId} onValueChange={handleMoveToLayer}>
                 <SelectTrigger className="w-[120px] h-8">
