@@ -149,6 +149,23 @@ export const LayerPanel = () => {
                       {layer.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 opacity-50" />}
                     </button>
                     
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Prevent deleting the last layer
+                        if (state.layers.length > 1) {
+                            dispatch({ type: 'DELETE_LAYER', payload: layer.id });
+                        }
+                      }}
+                      className={cn(
+                          "text-muted-foreground hover:text-destructive", 
+                          state.layers.length <= 1 ? "opacity-30 cursor-not-allowed" : ""
+                      )}
+                      disabled={state.layers.length <= 1}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+
                     {editingLayerId === layer.id ? (
                         <Input 
                             value={editingName}

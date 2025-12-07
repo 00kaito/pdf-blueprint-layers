@@ -54,6 +54,32 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       };
     case 'SELECT_LAYER':
       return { ...state, activeLayerId: action.payload };
+    case 'DELETE_LAYER': {
+      const layerId = action.payload;
+      const remainingLayers = state.layers.filter(l => l.id !== layerId);
+      const remainingObjects = state.objects.filter(o => o.layerId !== layerId);
+      
+      let newActiveLayerId = state.activeLayerId;
+      if (state.activeLayerId === layerId) {
+        newActiveLayerId = remainingLayers.length > 0 ? remainingLayers[0].id : null;
+      }
+      
+      let newSelectedObjectId = state.selectedObjectId;
+      if (state.selectedObjectId) {
+         const selectedObject = state.objects.find(o => o.id === state.selectedObjectId);
+         if (selectedObject && selectedObject.layerId === layerId) {
+             newSelectedObjectId = null;
+         }
+      }
+
+      return {
+        ...state,
+        layers: remainingLayers,
+        objects: remainingObjects,
+        activeLayerId: newActiveLayerId,
+        selectedObjectId: newSelectedObjectId
+      };
+    }
     case 'ADD_OBJECT':
       return { ...state, objects: [...state.objects, action.payload] };
     case 'UPDATE_OBJECT':
