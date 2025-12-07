@@ -19,6 +19,7 @@ export type EditorObject = {
   pathData?: string; // For SVG paths
   color?: string;
   fontSize?: number;
+  fontWeight?: string; // 'normal' | 'bold'
   opacity?: number;
   rotation?: number; // Rotation in degrees
 };

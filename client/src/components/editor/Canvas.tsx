@@ -390,7 +390,11 @@ export const Canvas = () => {
                         type: 'UPDATE_OBJECT',
                         payload: { id: obj.id, updates: { content: e.currentTarget.textContent || '' } }
                       })}
-                      style={{ fontSize: (obj.fontSize || 16) * state.scale, color: obj.color }}
+                      style={{ 
+                        fontSize: (obj.fontSize || 16) * state.scale, 
+                        color: obj.color,
+                        fontWeight: obj.fontWeight || 'normal'
+                      }}
                     >
                       {obj.content}
                     </div>

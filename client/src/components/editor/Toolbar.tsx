@@ -19,7 +19,8 @@ import {
   Circle,
   Triangle,
   Hexagon,
-  ArrowRight
+  ArrowRight,
+  Bold
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -235,6 +236,7 @@ export const Toolbar = () => {
     const page = pages[state.currentPage - 1];
     const { width, height } = page.getSize();
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
     for (const obj of state.objects) {
        const layer = state.layers.find(l => l.id === obj.layerId);
@@ -317,12 +319,13 @@ export const Toolbar = () => {
           const textY = cy + (textDx * sin + textDy * cos);
           
           const textColor = obj.color ? hexToRgb(obj.color) : rgb(0, 0, 0);
+          const font = obj.fontWeight === 'bold' ? helveticaBoldFont : helveticaFont;
 
           page.drawText(obj.content, {
             x: textX,
             y: textY, 
             size: scaledFontSize,
-            font: helveticaFont,
+            font: font,
             color: textColor,
             rotate: rotation,
           });
@@ -625,12 +628,24 @@ export const Toolbar = () => {
                     <SelectTrigger className="w-[70px] h-8">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      {[8, 10, 11, 12, 14, 16, 18, 20, 24, 30, 36, 48, 60, 72].map(size => (
+                    <SelectContent className="max-h-[300px]">
+                      {Array.from({ length: 72 }, (_, i) => i + 1).map(size => (
                         <SelectItem key={size} value={size.toString()}>{size}px</SelectItem>
                       ))}
                     </SelectContent>
                    </Select>
+
+                   <Toggle
+                      pressed={selectedObject.fontWeight === 'bold'}
+                      onPressedChange={(pressed) => dispatch({
+                        type: 'UPDATE_OBJECT',
+                        payload: { id: selectedObject.id, updates: { fontWeight: pressed ? 'bold' : 'normal' } }
+                      })}
+                      size="sm"
+                      className="h-8 w-8 ml-1"
+                   >
+                      <Bold className="w-4 h-4" />
+                   </Toggle>
 
                    <Separator orientation="vertical" className="h-6 mx-1" />
                  </>
