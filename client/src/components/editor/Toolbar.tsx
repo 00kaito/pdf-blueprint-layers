@@ -242,10 +242,6 @@ export const Toolbar = () => {
        const layer = state.layers.find(l => l.id === obj.layerId);
        if (!layer?.visible) continue;
 
-       // Fix Y coordinate flip and origin difference
-       // PDF coordinate system starts at bottom-left, HTML/Canvas starts at top-left.
-       // The 'y' from state is relative to the top of the canvas div.
-       
        // Calculate scale factor if PDF page size differs from our 600px preview width
        const scaleFactor = width / 600;
        
@@ -255,207 +251,26 @@ export const Toolbar = () => {
        const scaledHeight = obj.height * scaleFactor;
        const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
 
+       // PDF coordinate system (Y is up) vs HTML (Y is down)
        const pdfY = height - scaledY - scaledHeight;
-       const rotation = degrees(obj.rotation || 0);
-
-       // Rotation logic:
-       // We want to rotate around the CENTER of the object.
-       // PDF-lib rotates around the bottom-left of the drawn element by default if we just pass 'rotate'.
-       // To rotate around center (cx, cy):
-       // 1. Translate to center: translate(cx, cy)
-       // 2. Rotate: rotate(angle)
-       // 3. Translate back: translate(-cx, -cy)
-       // Or simpler with pdf-lib:
-       // Calculate the new bottom-left position that would result in the visual center being the same.
-       // However, pdf-lib's drawImage/Text `rotate` option rotates the object around its own origin (bottom-left)
-       // AND then places it at x,y. 
-       // Wait, no. `rotate` option rotates the coordinate system relative to the anchor?
-       // Let's use standard affine transformation logic manually if needed, or adjust x/y.
        
-       // Correct approach for pdf-lib rotation around center:
-       // The 'rotate' prop in drawImage/drawText rotates the object around its anchor (usually bottom-left).
-       // We want center rotation.
-       // Center C = (x + w/2, y + h/2)
-       // If we rotate around bottom-left A=(x,y), the center moves to C'.
-       // We want the final center to be C.
-       // So we need to shift the object by vector (C - C').
+       // Rotation logic using pushOperators to rotate coordinate system around center
+       // Center C = (scaledX + w/2, pdfY + h/2)
+       const cx = scaledX + scaledWidth / 2;
+       const cy = pdfY + scaledHeight / 2;
        
-       // Actually, there is a simpler way:
-       // pdf-lib `rotate` option rotates the object around its origin (bottom-left)
-       // We need to move the origin such that after rotation, the center lands where we want.
+       // Standard objects (Text, Image, Icon) use the rotated context
+       // Path objects (Drawing) are absolute and usually full-page, so we handle them separately
        
-       // Let's implement the shift:
-       // Angle theta (radians)
-       const theta = degreesToRadians(obj.rotation || 0);
-       const cos = Math.cos(theta);
-       const sin = Math.sin(theta);
-       
-       // Dimensions
-       const w = scaledWidth;
-       const h = scaledHeight; // For text, this is approximate
-       
-       // We want the visual center to be at:
-       const cx = scaledX + w / 2;
-       const cy = pdfY + h / 2;
-       
-       // If we draw at (x', y') with rotation theta, the center will be at:
-       // C'x = x' + (w/2 * cos - h/2 * sin)
-       // C'y = y' + (w/2 * sin + h/2 * cos)
-       // We set C' = (cx, cy) and solve for x', y'.
-       
-       const rotateX = cx - (w / 2 * cos - h / 2 * sin);
-       const rotateY = cy - (w / 2 * sin + h / 2 * cos);
-
-       if (obj.type === 'text' && obj.content) {
-          // Calculate position for Top-Left alignment (standard for HTML text)
-          // Text baseline starts at top of box minus font size
-          // Adjust for 4px padding (p-1) used in editor
-          const padding = 4 * scaleFactor;
-          const textDy = h / 2 - scaledFontSize - padding;
-          const textDx = -w / 2 + padding;
-
-          // Rotate the vector from center to text start
-          const textX = cx + (textDx * cos - textDy * sin);
-          const textY = cy + (textDx * sin + textDy * cos);
+       if (obj.type === 'path' && obj.pathData) {
+          // Path drawing (Freehand)
+          // These are usually full-canvas overlays with x=0, y=0
+          // We don't rotate the context for them, we just draw them relative to page
+          // BUT we need to flip Y coordinates
           
-          const textColor = obj.color ? hexToRgb(obj.color) : rgb(0, 0, 0);
-          const font = obj.fontWeight === 'bold' ? helveticaBoldFont : helveticaFont;
-
-          page.drawText(obj.content, {
-            x: textX,
-            y: textY, 
-            size: scaledFontSize,
-            font: font,
-            color: textColor,
-            rotate: rotation,
-          });
-       } else if (obj.type === 'image' && obj.content) {
-          try {
-            let image;
-            if (obj.content.startsWith('data:image/png')) {
-              image = await pdfDoc.embedPng(obj.content);
-            } else if (obj.content.startsWith('data:image/jpeg')) {
-              image = await pdfDoc.embedJpg(obj.content);
-            }
-
-            if (image) {
-              page.drawImage(image, {
-                x: rotateX,
-                y: rotateY,
-                width: scaledWidth,
-                height: scaledHeight,
-                rotate: rotation,
-              });
-            }
-          } catch (e) {
-            console.error("Failed to embed image", e);
-          }
-       } else if (obj.type === 'icon') {
-          // Draw geometric shapes based on icon type
-          const iconType = obj.content || 'square';
-          const color = obj.color ? hexToRgb(obj.color) : rgb(0.937, 0.266, 0.266); // #ef4444 default
-          
-          if (iconType === 'circle') {
-             // Draw circle (ellipse with equal radii)
-             // Ellipse rotation is supported
-             page.drawEllipse({
-               x: cx, // Ellipse draws from center
-               y: cy,
-               xScale: scaledWidth / 2,
-               yScale: scaledHeight / 2,
-               borderColor: color, // Use borderColor instead of color for stroke only
-               borderWidth: 2, // Standard stroke width
-               opacity: 1,
-               rotate: rotation,
-             });
-          } else if (iconType === 'triangle') {
-             // For paths, we need to manually rotate points or use SVG path rotation if supported
-             // pdf-lib drawSvgPath doesn't support 'rotate' prop directly in all versions, but let's check.
-             // It does support `rotate`.
-             // But simpler to just draw the path at the calculated coordinates.
-             
-             // Triangle path relative to 0,0
-             const p1 = { x: 0, y: 0 };
-             const p2 = { x: w/2, y: h };
-             const p3 = { x: w, y: 0 };
-             
-             // We need to rotate these points around (w/2, h/2) and then translate to (scaledX, pdfY)
-             // Actually, page.drawSvgPath takes a path string.
-             // If we rely on `rotate` prop of drawSvgPath, does it rotate around origin of the path (0,0 of the viewport) or the center?
-             // It usually rotates around the origin of the coordinate system unless translated.
-             
-             // Let's try passing the rotated X/Y as origin.
-             const path = `M ${rotateX} ${rotateY} L ${rotateX + w / 2} ${rotateY + h} L ${rotateX + w} ${rotateY} Z`;
-             // This assumes drawing relative to bottom-left rotated anchor.
-             // Actually, SVG path drawing is sensitive.
-             // Let's just use the diamond fallback for all complex shapes for now to ensure visibility first, 
-             // but user complained about missing shapes.
-             
-             const trianglePath = `M ${w/2} ${h} L ${w} ${0} L ${0} ${0} Z`; // Local coords
-             // We can use page.pushOperators to translate/rotate/draw/pop
-             
-             page.pushOperators(
-               pushGraphicsState(),
-               translate(cx, cy),
-               rotateDegrees(obj.rotation || 0),
-               translate(-w/2, -h/2)
-             );
-             
-             // Now draw relative to 0,0
-             // drawSvgPath uses fill by default if color is provided. To stroke, we might need different options or just accept fill for complex shapes for now as pdf-lib svg support is basic.
-             // Actually drawSvgPath supports borderColor/borderWidth in recent versions? No, it takes `color` (fill) and `borderColor` (stroke).
-             page.drawSvgPath(trianglePath, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
-             
-             page.pushOperators(popGraphicsState());
-
-          } else {
-             // General shape fallback using pushOperators for correct rotation
-             // This is the most robust way for all shapes
-             
-             let pathData = '';
-             if (iconType === 'triangle') {
-                 pathData = `M 0 0 L ${w/2} ${h} L ${w} 0 Z`;
-             } else if (iconType === 'star' || iconType === 'heart' || iconType === 'diamond') {
-                 // Diamond shape
-                 pathData = `M ${w/2} ${h} L ${w} ${h/2} L ${w/2} 0 L 0 ${h/2} Z`;
-             } else if (iconType === 'hexagon') {
-                 pathData = `M ${w*0.25} 0 L ${w*0.75} 0 L ${w} ${h*0.5} L ${w*0.75} ${h} L ${w*0.25} ${h} L 0 ${h*0.5} Z`;
-             } else if (iconType === 'arrow-right') {
-                 pathData = `M 0 ${h*0.25} L ${w*0.5} ${h*0.25} L ${w*0.5} 0 L ${w} ${h*0.5} L ${w*0.5} ${h} L ${w*0.5} ${h*0.75} L 0 ${h*0.75} Z`;
-             } else {
-                 // Square/Rect
-                 page.drawRectangle({
-                    x: rotateX,
-                    y: rotateY,
-                    width: scaledWidth,
-                    height: scaledHeight,
-                    borderColor: color, // Use borderColor
-                    borderWidth: 2,
-                    color: undefined, // No fill
-                    rotate: rotation,
-                 });
-                 return; // Skip the pushOperators block
-             }
-             
-             if (pathData) {
-                 page.pushOperators(
-                   pushGraphicsState(),
-                   translate(cx, cy),
-                   rotateDegrees(obj.rotation || 0),
-                   translate(-w/2, -h/2)
-                 );
-                 page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
-                 page.pushOperators(popGraphicsState());
-             }
-          }
-       } else if (obj.type === 'path' && obj.pathData) {
-       } else if (obj.type === 'path' && obj.pathData) {
-          // Path drawing
-          // Need to scale path data points
           const commands = obj.pathData.split(' ');
           
           if (commands.length >= 3) {
-             // Move to start
              if (commands[0] === 'M') {
                  const startX = parseFloat(commands[1]) * scaleFactor;
                  const startY = parseFloat(commands[2]) * scaleFactor;
@@ -476,7 +291,113 @@ export const Toolbar = () => {
                  }
              }
           }
+          continue; // Skip the rest of the loop for paths
        }
+
+       // For all other objects, apply rotation context
+       page.pushOperators(
+         pushGraphicsState(),
+         translate(cx, cy),
+         rotateDegrees(obj.rotation || 0),
+         translate(-scaledWidth / 2, -scaledHeight / 2)
+       );
+       
+       // NOW: (0, 0) is the bottom-left of the object's bounding box
+       // (scaledWidth, scaledHeight) is the top-right
+       // Y goes UP
+       
+       if (obj.type === 'text' && obj.content) {
+          const padding = 4 * scaleFactor;
+          const textColor = obj.color ? hexToRgb(obj.color) : rgb(0, 0, 0);
+          const font = obj.fontWeight === 'bold' ? helveticaBoldFont : helveticaFont;
+
+          // HTML text is top-aligned.
+          // Top of box is at Y = scaledHeight
+          // Text starts at Y = scaledHeight - padding - fontSize (baseline approx)
+          
+          page.drawText(obj.content, {
+            x: padding,
+            y: scaledHeight - padding - scaledFontSize, 
+            size: scaledFontSize,
+            font: font,
+            color: textColor,
+            rotate: degrees(0),
+          });
+       } else if (obj.type === 'image' && obj.content) {
+          try {
+            let image;
+            if (obj.content.startsWith('data:image/png')) {
+              image = await pdfDoc.embedPng(obj.content);
+            } else if (obj.content.startsWith('data:image/jpeg')) {
+              image = await pdfDoc.embedJpg(obj.content);
+            }
+
+            if (image) {
+              page.drawImage(image, {
+                x: 0,
+                y: 0,
+                width: scaledWidth,
+                height: scaledHeight,
+                rotate: degrees(0),
+              });
+            }
+          } catch (e) {
+            console.error("Failed to embed image", e);
+          }
+       } else if (obj.type === 'icon') {
+          const iconType = obj.content || 'square';
+          const color = obj.color ? hexToRgb(obj.color) : rgb(0.937, 0.266, 0.266); // #ef4444 default
+          
+          const w = scaledWidth;
+          const h = scaledHeight;
+
+          if (iconType === 'circle') {
+             // Ellipse centered at w/2, h/2
+             page.drawEllipse({
+               x: w / 2,
+               y: h / 2,
+               xScale: w / 2,
+               yScale: h / 2,
+               borderColor: color,
+               borderWidth: 2,
+               opacity: 1,
+               rotate: degrees(0),
+             });
+          } else {
+             // Geometric shapes
+             let pathData = '';
+             if (iconType === 'triangle') {
+                 // Triangle pointing UP
+                 // (0,0) is bottom-left
+                 pathData = `M ${w/2} ${h} L ${w} 0 L 0 0 Z`;
+             } else if (iconType === 'star' || iconType === 'heart' || iconType === 'diamond') {
+                 // Diamond
+                 pathData = `M ${w/2} ${h} L ${w} ${h/2} L ${w/2} 0 L 0 ${h/2} Z`;
+             } else if (iconType === 'hexagon') {
+                 pathData = `M ${w*0.25} 0 L ${w*0.75} 0 L ${w} ${h*0.5} L ${w*0.75} ${h} L ${w*0.25} ${h} L 0 ${h*0.5} Z`;
+             } else if (iconType === 'arrow-right') {
+                 pathData = `M 0 ${h*0.25} L ${w*0.5} ${h*0.25} L ${w*0.5} 0 L ${w} ${h*0.5} L ${w*0.5} ${h} L ${w*0.5} ${h*0.75} L 0 ${h*0.75} Z`;
+             } else {
+                 // Square/Rect
+                 page.drawRectangle({
+                    x: 0,
+                    y: 0,
+                    width: w,
+                    height: h,
+                    borderColor: color,
+                    borderWidth: 2,
+                    color: undefined,
+                    rotate: degrees(0),
+                 });
+             }
+             
+             if (pathData) {
+                 page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
+             }
+          }
+       }
+       
+       page.pushOperators(popGraphicsState());
     }
 
     const pdfBytes = await pdfDoc.save();
