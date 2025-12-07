@@ -306,7 +306,7 @@ export const Canvas = () => {
               }}
               bounds="parent"
               disableDragging={layer.locked || state.tool !== 'select'}
-              enableResizing={!layer.locked && (state.tool === 'select' || (state.tool === 'text' && state.selectedObjectId === obj.id))}
+              enableResizing={!layer.locked && state.selectedObjectId === obj.id && (state.tool === 'select' || state.tool === 'text')}
               onClick={(e: any) => {
                  e.stopPropagation();
                  if (state.selectedObjectId !== obj.id) {
