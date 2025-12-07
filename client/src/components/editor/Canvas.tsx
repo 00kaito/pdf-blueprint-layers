@@ -292,6 +292,18 @@ export const Canvas = () => {
                   }
                 });
               }}
+              resizeHandleStyles={{
+                bottomRight: { cursor: 'nwse-resize', width: '20px', height: '20px', right: '-10px', bottom: '-10px' },
+                bottomLeft: { cursor: 'nesw-resize', width: '20px', height: '20px', left: '-10px', bottom: '-10px' },
+                topRight: { cursor: 'nesw-resize', width: '20px', height: '20px', right: '-10px', top: '-10px' },
+                topLeft: { cursor: 'nwse-resize', width: '20px', height: '20px', left: '-10px', top: '-10px' },
+              }}
+              resizeHandleClasses={{
+                bottomRight: "bg-primary w-2 h-2 rounded-full",
+                bottomLeft: "bg-primary w-2 h-2 rounded-full",
+                topRight: "bg-primary w-2 h-2 rounded-full",
+                topLeft: "bg-primary w-2 h-2 rounded-full",
+              }}
               bounds="parent"
               disableDragging={layer.locked || state.tool !== 'select'}
               enableResizing={!layer.locked && state.tool === 'select'}
@@ -361,7 +373,7 @@ export const Canvas = () => {
                   {obj.type === 'text' ? (
                     <div 
                       className={cn(
-                        "w-full h-full p-1 outline-none transition-colors",
+                        "w-full h-full p-1 outline-none transition-colors whitespace-pre-wrap break-words overflow-hidden",
                         state.selectedObjectId === obj.id ? "bg-primary/5" : "hover:bg-primary/5"
                       )}
                       contentEditable={state.tool === 'text'}
