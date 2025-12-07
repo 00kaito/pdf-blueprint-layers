@@ -49,7 +49,7 @@ import {
   StandardFonts, 
   degrees, 
   translate, 
-  rotate, 
+  rotateDegrees, 
   pushGraphicsState, 
   popGraphicsState 
 } from 'pdf-lib';
@@ -380,7 +380,7 @@ export const Toolbar = () => {
              page.pushOperators(
                pushGraphicsState(),
                translate(cx, cy),
-               rotate(degrees(obj.rotation || 0)),
+               rotateDegrees(obj.rotation || 0),
                translate(-w/2, -h/2)
              );
              
@@ -420,7 +420,7 @@ export const Toolbar = () => {
                  page.pushOperators(
                    pushGraphicsState(),
                    translate(cx, cy),
-                   rotate(degrees(obj.rotation || 0)),
+                   rotateDegrees(obj.rotation || 0),
                    translate(-w/2, -h/2)
                  );
                  page.drawSvgPath(pathData, { color: color, x: 0, y: 0 });
