@@ -608,33 +608,6 @@ export const Toolbar = () => {
                    <Separator orientation="vertical" className="h-6 mx-1" />
                  </>
                )}
-               
-               <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">W:</span>
-                  <Input 
-                    type="number" 
-                    className="w-16 h-8 text-xs" 
-                    value={Math.round(selectedObject.width)} 
-                    onChange={(e) => dispatch({
-                      type: 'UPDATE_OBJECT',
-                      payload: { id: selectedObject.id, updates: { width: parseInt(e.target.value) || 0 } }
-                    })}
-                  />
-               </div>
-               <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">H:</span>
-                  <Input 
-                    type="number" 
-                    className="w-16 h-8 text-xs" 
-                    value={Math.round(selectedObject.height)} 
-                    onChange={(e) => dispatch({
-                      type: 'UPDATE_OBJECT',
-                      payload: { id: selectedObject.id, updates: { height: parseInt(e.target.value) || 0 } }
-                    })}
-                  />
-               </div>
-
-               <Separator orientation="vertical" className="h-6 mx-1" />
 
                <span className="text-xs text-muted-foreground">Layer:</span>
                <Select value={selectedObject.layerId} onValueChange={handleMoveToLayer}>
