@@ -13,8 +13,10 @@ import {
   Hexagon, 
   ArrowRight,
   RotateCw,
-  Camera
+  Camera,
+  Upload
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -234,8 +236,25 @@ export const Canvas = () => {
             />
           </Document>
         ) : (
-           <div className="bg-white flex items-center justify-center text-muted-foreground border border-dashed border-border" style={{ width: 600 * state.scale, height: 800 * state.scale }}>
-             No PDF Loaded
+           <div className="bg-white flex flex-col gap-4 items-center justify-center text-muted-foreground border border-dashed border-border relative" style={{ width: 600 * state.scale, height: 800 * state.scale }}>
+             <p>No PDF Loaded</p>
+             <div className="relative">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && file.type === 'application/pdf') {
+                      dispatch({ type: 'SET_PDF', payload: file });
+                    }
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Button variant="outline" size="sm">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload PDF
+                </Button>
+             </div>
            </div>
         )}
 
