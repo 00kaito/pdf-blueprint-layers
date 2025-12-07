@@ -105,15 +105,62 @@ export const Canvas = () => {
 
   return (
     <div 
-      className="flex-1 bg-muted/30 overflow-auto flex justify-center p-8 relative select-none"
+      className="flex-1 bg-muted/30 overflow-auto flex relative select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onScroll={handleScroll}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const type = e.dataTransfer.getData('application/editor-object');
+        const content = e.dataTransfer.getData('application/editor-content');
+        
+        if (type && state.activeLayerId) {
+           const rect = containerRef.current?.getBoundingClientRect();
+           if (rect) {
+              // Calculate position relative to canvas, accounting for scale
+              const x = (e.clientX - rect.left) / state.scale;
+              const y = (e.clientY - rect.top) / state.scale;
+              
+              // Default dimensions
+              let width = 50;
+              let height = 50;
+              if (type === 'text') { width = 200; height = 50; }
+              if (type === 'image') { width = 200; height = 200; }
+              
+              // Center the object on the cursor
+              const finalX = x - width / 2;
+              const finalY = y - height / 2;
+
+              dispatch({
+                type: 'ADD_OBJECT',
+                payload: {
+                  id: uuidv4(),
+                  type: type as any,
+                  x: finalX,
+                  y: finalY,
+                  width,
+                  height,
+                  layerId: state.activeLayerId,
+                  content: content || (type === 'text' ? 'Double click to edit' : ''),
+                  color: type === 'icon' ? '#ef4444' : '#000000',
+                  rotation: 0,
+                  fontSize: 16
+                }
+              });
+              dispatch({ type: 'SET_TOOL', payload: 'select' });
+           }
+        }
+      }}
     >
+      <div className="min-w-full min-h-full flex items-center justify-center p-8">
       <div 
         ref={containerRef}
-        className="relative shadow-lg origin-top-left"
+        className="relative shadow-lg origin-top-left bg-white"
         // Removing transform scale here to allow native scroll
         style={{ 
           // We don't scale the container with CSS transform anymore to allow proper scrolling
@@ -334,6 +381,7 @@ export const Canvas = () => {
             </Rnd>
           );
         })}
+      </div>
       </div>
     </div>
   );

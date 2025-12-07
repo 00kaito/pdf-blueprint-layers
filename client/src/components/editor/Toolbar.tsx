@@ -43,8 +43,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { v4 as uuidv4 } from 'uuid';
-import * as pdflib from 'pdf-lib';
-import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
+import { 
+  PDFDocument, 
+  rgb, 
+  StandardFonts, 
+  degrees, 
+  translate, 
+  rotate, 
+  pushGraphicsState, 
+  popGraphicsState 
+} from 'pdf-lib';
 import { saveAs } from 'file-saver';
 
 // Helper to convert hex to RGB for pdf-lib
@@ -370,16 +378,16 @@ export const Toolbar = () => {
              // We can use page.pushOperators to translate/rotate/draw/pop
              
              page.pushOperators(
-               pdflib.pushGraphicsState(),
-               pdflib.translate(cx, cy),
-               pdflib.rotate(degrees(obj.rotation || 0)),
-               pdflib.translate(-w/2, -h/2)
+               pushGraphicsState(),
+               translate(cx, cy),
+               rotate(degrees(obj.rotation || 0)),
+               translate(-w/2, -h/2)
              );
              
              // Now draw relative to 0,0
              page.drawSvgPath(trianglePath, { color: color, x: 0, y: 0 });
              
-             page.pushOperators(pdflib.popGraphicsState());
+             page.pushOperators(popGraphicsState());
 
           } else {
              // General shape fallback using pushOperators for correct rotation
@@ -410,13 +418,13 @@ export const Toolbar = () => {
              
              if (pathData) {
                  page.pushOperators(
-                   pdflib.pushGraphicsState(),
-                   pdflib.translate(cx, cy),
-                   pdflib.rotate(degrees(obj.rotation || 0)),
-                   pdflib.translate(-w/2, -h/2)
+                   pushGraphicsState(),
+                   translate(cx, cy),
+                   rotate(degrees(obj.rotation || 0)),
+                   translate(-w/2, -h/2)
                  );
                  page.drawSvgPath(pathData, { color: color, x: 0, y: 0 });
-                 page.pushOperators(pdflib.popGraphicsState());
+                 page.pushOperators(popGraphicsState());
              }
           }
        } else if (obj.type === 'path' && obj.pathData) {
@@ -475,6 +483,11 @@ export const Toolbar = () => {
     />
   );
 
+  const handleDragStart = (e: React.DragEvent, type: string, content?: string) => {
+      e.dataTransfer.setData('application/editor-object', type);
+      if (content) e.dataTransfer.setData('application/editor-content', content);
+  };
+
   return (
     <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-between shrink-0">
       <div className="flex items-center gap-2">
@@ -495,11 +508,17 @@ export const Toolbar = () => {
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={handleAddText}>
-                <Type className="w-4 h-4" />
-              </Button>
+              <div 
+                draggable 
+                onDragStart={(e) => handleDragStart(e, 'text')}
+                className="cursor-grab active:cursor-grabbing"
+              >
+                <Button variant="ghost" size="icon" onClick={handleAddText}>
+                    <Type className="w-4 h-4" />
+                </Button>
+              </div>
             </TooltipTrigger>
-            <TooltipContent>Add Text</TooltipContent>
+            <TooltipContent>Add Text (Drag & Drop)</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -522,13 +541,27 @@ export const Toolbar = () => {
             </PopoverTrigger>
             <PopoverContent className="w-64">
               <div className="grid grid-cols-4 gap-2">
-                <Button variant="outline" size="icon" onClick={() => handleAddIcon('square')}><Square className="w-4 h-4" /></Button>
-                <Button variant="outline" size="icon" onClick={() => handleAddIcon('circle')}><Circle className="w-4 h-4" /></Button>
-                <Button variant="outline" size="icon" onClick={() => handleAddIcon('triangle')}><Triangle className="w-4 h-4" /></Button>
-                <Button variant="outline" size="icon" onClick={() => handleAddIcon('star')}><Star className="w-4 h-4" /></Button>
-                <Button variant="outline" size="icon" onClick={() => handleAddIcon('heart')}><Heart className="w-4 h-4" /></Button>
-                <Button variant="outline" size="icon" onClick={() => handleAddIcon('hexagon')}><Hexagon className="w-4 h-4" /></Button>
-                <Button variant="outline" size="icon" onClick={() => handleAddIcon('arrow-right')}><ArrowRight className="w-4 h-4" /></Button>
+                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'square')} className="cursor-grab">
+                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('square')}><Square className="w-4 h-4" /></Button>
+                </div>
+                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'circle')} className="cursor-grab">
+                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('circle')}><Circle className="w-4 h-4" /></Button>
+                </div>
+                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'triangle')} className="cursor-grab">
+                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('triangle')}><Triangle className="w-4 h-4" /></Button>
+                </div>
+                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'star')} className="cursor-grab">
+                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('star')}><Star className="w-4 h-4" /></Button>
+                </div>
+                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'heart')} className="cursor-grab">
+                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('heart')}><Heart className="w-4 h-4" /></Button>
+                </div>
+                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'hexagon')} className="cursor-grab">
+                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('hexagon')}><Hexagon className="w-4 h-4" /></Button>
+                </div>
+                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'arrow-right')} className="cursor-grab">
+                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('arrow-right')}><ArrowRight className="w-4 h-4" /></Button>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
