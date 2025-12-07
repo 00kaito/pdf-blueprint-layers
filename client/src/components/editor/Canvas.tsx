@@ -305,7 +305,7 @@ export const Canvas = () => {
                 topLeft: "bg-primary w-2 h-2 rounded-full",
               }}
               bounds="parent"
-              disableDragging={layer.locked || (state.tool !== 'select' && !(state.tool === 'text' && state.selectedObjectId === obj.id))}
+              disableDragging={layer.locked || state.tool !== 'select'}
               enableResizing={!layer.locked && (state.tool === 'select' || (state.tool === 'text' && state.selectedObjectId === obj.id))}
               onClick={(e: any) => {
                  e.stopPropagation();
