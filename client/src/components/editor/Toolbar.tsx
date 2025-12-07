@@ -588,6 +588,16 @@ export const Toolbar = () => {
              <div className="flex items-center gap-2 mx-2">
                {selectedObject.type === 'text' && (
                  <>
+                   <Input 
+                      className="w-[200px] h-8" 
+                      value={selectedObject.content}
+                      onChange={(e) => dispatch({
+                        type: 'UPDATE_OBJECT',
+                        payload: { id: selectedObject.id, updates: { content: e.target.value } }
+                      })}
+                      placeholder="Type text here..."
+                   />
+                   <Separator orientation="vertical" className="h-6 mx-1" />
                    <span className="text-xs text-muted-foreground">Size:</span>
                    <Select 
                     value={selectedObject.fontSize?.toString() || "16"} 
