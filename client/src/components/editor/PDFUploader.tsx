@@ -118,24 +118,10 @@ export const PDFUploader = () => {
               Upload PDF
             </Button>
           </div>
-
-          <div className="relative">
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleProjectUpload}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              data-testid="input-project-upload"
-            />
-            <Button variant="outline" size="lg" className="w-full">
-              <FileUp className="mr-2 h-4 w-4" />
-              Open Project (JSON)
-            </Button>
-          </div>
         </div>
         
         <p className="text-xs text-muted-foreground">
-          Supports PDF and JSON project files.
+          Supports PDF files.
         </p>
       </div>
     </div>

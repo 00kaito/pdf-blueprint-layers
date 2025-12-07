@@ -12,6 +12,7 @@ const initialState: EditorState = {
   scale: 1,
   scrollPos: { x: 0, y: 0 },
   tool: 'select',
+  clipboardObject: null,
 };
 
 const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
@@ -86,6 +87,30 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       const [removed] = result.splice(sourceIndex, 1);
       result.splice(destinationIndex, 0, removed);
       return { ...state, layers: result };
+    }
+    case 'COPY_OBJECT': {
+      if (!state.selectedObjectId) return state;
+      const objectToCopy = state.objects.find(o => o.id === state.selectedObjectId);
+      if (!objectToCopy) return state;
+      return { ...state, clipboardObject: { ...objectToCopy } };
+    }
+    case 'PASTE_OBJECT': {
+      if (!state.clipboardObject || !state.activeLayerId) return state;
+      const newId = uuidv4();
+      const offset = 20 / state.scale;
+      const newObject = {
+        ...state.clipboardObject,
+        id: newId,
+        x: state.clipboardObject.x + offset,
+        y: state.clipboardObject.y + offset,
+        layerId: state.activeLayerId, // Paste into active layer
+        name: `${state.clipboardObject.name} (Copy)`
+      };
+      return {
+        ...state,
+        objects: [...state.objects, newObject],
+        selectedObjectId: newId
+      };
     }
     default:
       return state;

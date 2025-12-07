@@ -35,6 +35,7 @@ export type EditorState = {
   scale: number;
   scrollPos: { x: number; y: number };
   tool: 'select' | 'text' | 'image' | 'icon' | 'draw';
+  clipboardObject: EditorObject | null;
 };
 
 export type EditorAction =
@@ -52,4 +53,6 @@ export type EditorAction =
   | { type: 'SET_SCALE'; payload: number }
   | { type: 'SET_SCROLL'; payload: { x: number; y: number } }
   | { type: 'IMPORT_PROJECT'; payload: Partial<EditorState> }
-  | { type: 'REORDER_LAYERS'; payload: { sourceIndex: number; destinationIndex: number } };
+  | { type: 'REORDER_LAYERS'; payload: { sourceIndex: number; destinationIndex: number } }
+  | { type: 'COPY_OBJECT' }
+  | { type: 'PASTE_OBJECT' };
