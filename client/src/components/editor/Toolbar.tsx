@@ -301,18 +301,23 @@ export const Toolbar = () => {
        const rotateY = cy - (w / 2 * sin + h / 2 * cos);
 
        if (obj.type === 'text' && obj.content) {
-          // Text height is tricky, let's assume fontSize is roughly height
-          // For text, origin is usually baseline-left. 
-          // pdf-lib drawText y is baseline.
-          // Our pdfY is bottom of the bounding box.
-          // Let's just use the calculated rotateX/Y as the anchor point.
+          // Calculate position for Top-Left alignment (standard for HTML text)
+          // Text baseline starts at top of box minus font size
+          const textDy = h / 2 - scaledFontSize;
+          const textDx = -w / 2;
+
+          // Rotate the vector from center to text start
+          const textX = cx + (textDx * cos - textDy * sin);
+          const textY = cy + (textDx * sin + textDy * cos);
           
+          const textColor = obj.color ? hexToRgb(obj.color) : rgb(0, 0, 0);
+
           page.drawText(obj.content, {
-            x: rotateX,
-            y: rotateY, // This might need adjustment for text baseline vs bottom
+            x: textX,
+            y: textY, 
             size: scaledFontSize,
             font: helveticaFont,
-            color: rgb(0, 0, 0),
+            color: textColor,
             rotate: rotation,
           });
        } else if (obj.type === 'image' && obj.content) {
