@@ -305,11 +305,14 @@ export const Canvas = () => {
                 topLeft: "bg-primary w-2 h-2 rounded-full",
               }}
               bounds="parent"
-              disableDragging={layer.locked || state.tool !== 'select'}
-              enableResizing={!layer.locked && state.tool === 'select'}
+              disableDragging={layer.locked || (state.tool !== 'select' && !(state.tool === 'text' && state.selectedObjectId === obj.id))}
+              enableResizing={!layer.locked && (state.tool === 'select' || (state.tool === 'text' && state.selectedObjectId === obj.id))}
               onClick={(e: any) => {
                  e.stopPropagation();
-                 dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+                 if (state.selectedObjectId !== obj.id) {
+                    dispatch({ type: 'SET_TOOL', payload: 'select' });
+                    dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+                 }
               }}
               onDoubleClick={(e: any) => {
                 e.stopPropagation();
