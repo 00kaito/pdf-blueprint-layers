@@ -615,6 +615,21 @@ export const Toolbar = () => {
                       ))}
                     </SelectContent>
                    </Select>
+
+                   <Separator orientation="vertical" className="h-6 mx-1" />
+                   
+                   <span className="text-xs text-muted-foreground">Color:</span>
+                   <div className="relative flex items-center">
+                     <input 
+                        type="color" 
+                        value={selectedObject.color || "#000000"}
+                        onChange={(e) => dispatch({
+                          type: 'UPDATE_OBJECT',
+                          payload: { id: selectedObject.id, updates: { color: e.target.value } }
+                        })}
+                        className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer"
+                     />
+                   </div>
                    <Separator orientation="vertical" className="h-6 mx-1" />
                  </>
                )}

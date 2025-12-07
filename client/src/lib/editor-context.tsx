@@ -37,6 +37,13 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         ],
         activeLayerId: newLayerId,
       };
+    case 'UPDATE_LAYER':
+      return {
+        ...state,
+        layers: state.layers.map((l) =>
+          l.id === action.payload.id ? { ...l, ...action.payload.updates } : l
+        ),
+      };
     case 'TOGGLE_LAYER_VISIBILITY':
       return {
         ...state,

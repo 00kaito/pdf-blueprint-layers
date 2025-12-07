@@ -37,6 +37,7 @@ export type EditorState = {
 export type EditorAction =
   | { type: 'SET_PDF'; payload: File }
   | { type: 'ADD_LAYER'; payload: string } // name
+  | { type: 'UPDATE_LAYER'; payload: { id: string; updates: Partial<Layer> } }
   | { type: 'TOGGLE_LAYER_VISIBILITY'; payload: string } // id
   | { type: 'SELECT_LAYER'; payload: string } // id
   | { type: 'ADD_OBJECT'; payload: EditorObject }

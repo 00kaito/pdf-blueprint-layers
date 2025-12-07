@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from "@/components/ui/input";
 import { cn } from '@/lib/utils';
 
 const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
@@ -47,6 +48,23 @@ const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
 export const LayerPanel = () => {
   const { state, dispatch } = useEditor();
   const [expandedLayers, setExpandedLayers] = useState<Record<string, boolean>>({});
+  const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  const startEditing = (layer: { id: string, name: string }) => {
+    setEditingLayerId(layer.id);
+    setEditingName(layer.name);
+  };
+
+  const saveLayerName = () => {
+    if (editingLayerId) {
+      dispatch({
+        type: 'UPDATE_LAYER',
+        payload: { id: editingLayerId, updates: { name: editingName } }
+      });
+      setEditingLayerId(null);
+    }
+  };
 
   const toggleLayerExpand = (layerId: string) => {
     setExpandedLayers(prev => ({
@@ -107,7 +125,30 @@ export const LayerPanel = () => {
                     >
                       {layer.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 opacity-50" />}
                     </button>
-                    <span className="truncate select-none">{layer.name}</span>
+                    
+                    {editingLayerId === layer.id ? (
+                        <Input 
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onBlur={saveLayerName}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveLayerName();
+                            }}
+                            className="h-6 py-0 px-1 text-sm w-full bg-white"
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        <span 
+                            className="truncate select-none w-full"
+                            onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                startEditing(layer);
+                            }}
+                        >
+                            {layer.name}
+                        </span>
+                    )}
                   </div>
                 </div>
 
