@@ -64,8 +64,34 @@ export const Canvas = () => {
     if (isDrawing && state.tool === 'draw') {
       const rect = containerRef.current?.getBoundingClientRect();
       if (rect) {
-        const x = (e.clientX - rect.left) / state.scale;
-        const y = (e.clientY - rect.top) / state.scale;
+        let x = (e.clientX - rect.left) / state.scale;
+        let y = (e.clientY - rect.top) / state.scale;
+        
+        if (e.shiftKey) {
+          // Constrain to vertical or horizontal based on previous point
+          // The drawingPath is "M x y L x y ...".
+          // We need to find the last point.
+          // Since we are appending " L x y", we can parse the string or just store last point in state.
+          // Parsing is safer to sync with path string.
+          const parts = drawingPath.trim().split(' ');
+          // parts structure: ["M", x, y, "L", x, y, ...]
+          if (parts.length >= 3) {
+             const lastY = parseFloat(parts[parts.length - 1]);
+             const lastX = parseFloat(parts[parts.length - 2]);
+             
+             const dx = Math.abs(x - lastX);
+             const dy = Math.abs(y - lastY);
+             
+             if (dx > dy) {
+                // Horizontal
+                y = lastY;
+             } else {
+                // Vertical
+                x = lastX;
+             }
+          }
+        }
+
         setDrawingPath((prev) => `${prev} L ${x} ${y}`);
       }
     }
@@ -87,7 +113,8 @@ export const Canvas = () => {
             height: 800,
             layerId: state.activeLayerId,
             pathData: drawingPath,
-            color: '#000000'
+            color: '#000000',
+            strokeWidth: 2
           }
         });
       }
@@ -229,7 +256,7 @@ export const Canvas = () => {
                    key={obj.id} 
                    d={scaledPath} 
                    stroke={obj.color || "black"} 
-                   strokeWidth={2 * state.scale} 
+                   strokeWidth={(obj.strokeWidth || 2) * state.scale} 
                    fill="none"
                    strokeLinecap="round"
                    strokeLinejoin="round"

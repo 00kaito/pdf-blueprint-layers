@@ -284,7 +284,7 @@ export const Toolbar = () => {
                      page.drawLine({
                          start: { x: page.getX(), y: page.getY() }, // Current pos
                          end: { x: x, y: height - y },
-                         thickness: 2 * scaleFactor,
+                         thickness: (obj.strokeWidth || 2) * scaleFactor,
                          color: rgb(0, 0, 0),
                      });
                      page.moveTo(x, height - y); // Update current pos
@@ -584,6 +584,25 @@ export const Toolbar = () => {
                           payload: { id: selectedObject.id, updates: { color: e.target.value } }
                         })}
                         className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer"
+                     />
+                   </div>
+                   <Separator orientation="vertical" className="h-6 mx-1" />
+                 </>
+               )}
+
+               {selectedObject.type === 'path' && (
+                 <>
+                   <span className="text-xs text-muted-foreground">Width:</span>
+                   <div className="w-[100px] flex items-center gap-2">
+                     <Slider
+                        value={[selectedObject.strokeWidth || 2]}
+                        min={1}
+                        max={20}
+                        step={1}
+                        onValueChange={([val]) => dispatch({
+                          type: 'UPDATE_OBJECT',
+                          payload: { id: selectedObject.id, updates: { strokeWidth: val } }
+                        })}
                      />
                    </div>
                    <Separator orientation="vertical" className="h-6 mx-1" />

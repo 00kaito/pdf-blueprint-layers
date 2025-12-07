@@ -18,6 +18,7 @@ export type EditorObject = {
   content?: string; // For text or image URL
   pathData?: string; // For SVG paths
   color?: string;
+  strokeWidth?: number;
   fontSize?: number;
   fontWeight?: string; // 'normal' | 'bold'
   opacity?: number;
