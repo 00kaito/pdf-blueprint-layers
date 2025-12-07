@@ -12,7 +12,8 @@ import {
   Heart, 
   Hexagon, 
   ArrowRight,
-  RotateCw 
+  RotateCw,
+  Camera
 } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -30,6 +31,7 @@ const IconRenderer = ({ iconType, color }: { iconType: string, color?: string })
     case 'heart': return <Heart {...props} />;
     case 'hexagon': return <Hexagon {...props} />;
     case 'arrow-right': return <ArrowRight {...props} />;
+    case 'camera': return <Camera {...props} />;
     case 'square':
     default: return <Square {...props} />;
   }

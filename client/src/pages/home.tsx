@@ -8,7 +8,7 @@ import { Canvas } from '@/components/editor/Canvas';
 const EditorApp = () => {
   const { state } = useEditor();
 
-  if (!state.pdfFile) {
+  if (!state.pdfFile && state.objects.length === 0) {
     return <PDFUploader />;
   }
 

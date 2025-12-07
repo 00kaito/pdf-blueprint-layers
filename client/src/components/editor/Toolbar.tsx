@@ -20,7 +20,8 @@ import {
   Triangle,
   Hexagon,
   ArrowRight,
-  Bold
+  Bold,
+  Camera
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -377,6 +378,40 @@ export const Toolbar = () => {
                  pathData = `M ${w*0.25} 0 L ${w*0.75} 0 L ${w} ${h*0.5} L ${w*0.75} ${h} L ${w*0.25} ${h} L 0 ${h*0.5} Z`;
              } else if (iconType === 'arrow-right') {
                  pathData = `M 0 ${h*0.25} L ${w*0.5} ${h*0.25} L ${w*0.5} 0 L ${w} ${h*0.5} L ${w*0.5} ${h} L ${w*0.5} ${h*0.75} L 0 ${h*0.75} Z`;
+             } else if (iconType === 'camera') {
+                 // Camera icon shape
+                 // A simple camera shape: box with a smaller box on top and a circle in middle
+                 // But for simplicity, we can draw a simplified path or just a rect + circle
+                 // Let's try to draw a path approximating a camera icon.
+                 // Body: Rect(0, 0, w, h*0.8)
+                 // Top bump: Rect(w*0.3, h*0.8, w*0.4, h*0.2)
+                 // Lens: Circle(w/2, h*0.4, r=h*0.25)
+                 
+                 // Let's use SVG path for a single shape if possible, or composite.
+                 // Composite is harder with just pathData.
+                 // We'll draw a camera-like path.
+                 // Start bottom-left
+                 pathData = `M 0 0 L ${w} 0 L ${w} ${h*0.8} L ${w*0.7} ${h*0.8} L ${w*0.6} ${h} L ${w*0.4} ${h} L ${w*0.3} ${h*0.8} L 0 ${h*0.8} Z`;
+                 
+                 // We should probably also draw the lens (circle) but single path is filled.
+                 // If we want the lens to be "hole", we can use fill-rule evenodd, but pdf-lib might be tricky.
+                 // Let's just stick to the silhouette for the PDF export or draw separate circle.
+                 
+                 // Draw silhouette
+                 page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
+                 
+                 // Draw lens circle
+                 page.drawEllipse({
+                    x: w/2,
+                    y: h*0.4,
+                    xScale: w*0.25,
+                    yScale: h*0.25,
+                    borderColor: color,
+                    borderWidth: 2,
+                    opacity: 1
+                 });
+                 
+                 pathData = ''; // Clear pathData so we don't draw it again below
              } else {
                  // Square/Rect
                  page.drawRectangle({
@@ -503,6 +538,9 @@ export const Toolbar = () => {
                 </div>
                 <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'arrow-right')} className="cursor-grab">
                     <Button variant="outline" size="icon" onClick={() => handleAddIcon('arrow-right')}><ArrowRight className="w-4 h-4" /></Button>
+                </div>
+                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'camera')} className="cursor-grab">
+                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('camera')}><Camera className="w-4 h-4" /></Button>
                 </div>
               </div>
             </PopoverContent>
