@@ -855,7 +855,7 @@ export const Toolbar = () => {
                 </div>
                 <Slider
                   id="label-size"
-                  min={6}
+                  min={1}
                   max={30}
                   step={1}
                   value={[state.exportSettings.labelFontSize]}
