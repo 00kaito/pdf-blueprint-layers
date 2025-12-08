@@ -443,27 +443,42 @@ export const Toolbar = () => {
        // Draw Object Name (Label)
        if (obj.name && obj.type !== 'path') {
           const labelText = obj.name;
-          const labelFontSize = 10 * scaleFactor;
+          
+          // Match the visual size from the Editor
+          // In Editor, label is fixed 10px screen size.
+          // In PDF, we need to convert this to PDF units based on the current zoom (state.scale).
+          // If user is zoomed in (scale > 1), 10px screen size is a small amount of "units".
+          // If we used fixed 10 units, it would look huge.
+          
+          const labelScreenPixelSize = 10;
+          const labelUnitSize = labelScreenPixelSize / state.scale;
+          const labelFontSize = labelUnitSize * scaleFactor;
+          
           const labelFont = helveticaFont;
           const textWidth = labelFont.widthOfTextAtSize(labelText, labelFontSize);
           const textHeight = labelFontSize;
           
           // Calculate label position relative to object center
-          // In CSS/Canvas, label is at bottom, rotated with object
-          // Distance from center to bottom of object + gap
-          const gap = 5 * scaleFactor;
-          const distance = scaledHeight / 2 + gap + textHeight; // Offset to baseline roughly
+          // In CSS, label has class `-bottom-6` -> bottom: -24px.
+          // This places the bottom of the label 24px below the object's bottom.
+          // So distance from Object Bottom to Label Bottom is 24px (screen pixels).
+          
+          const offsetScreenPixels = 24;
+          const offsetUnits = offsetScreenPixels / state.scale;
+          const offsetFromObjectBottom = offsetUnits * scaleFactor;
+          
+          // Distance from Center to Label Baseline
+          // Center -> Bottom = scaledHeight / 2
+          // Bottom -> Label Bottom = offsetFromObjectBottom
+          // Label Bottom -> Baseline ~ small adjustment (padding)
+          // Let's assume baseline is roughly at the label bottom minus a bit of padding.
+          // But for simplicity, let's treat offsetFromObjectBottom as distance to text center/baseline area.
+          
+          const distance = scaledHeight / 2 + offsetFromObjectBottom - (textHeight / 2); 
           
           // Vector to bottom (0, -distance)
           // Rotate this vector by obj.rotation (using correct PDF angle direction)
-          // The label stays "under" the object, so it rotates WITH the object positionally,
-          // but we draw the text horizontally (unrotated).
-          
           const angleRad = degreesToRadians(rotationAngle);
-          
-          // Standard rotation matrix for (0, -d)
-          // x' = x cos - y sin = 0 - (-d) sin = d sin
-          // y' = x sin + y cos = 0 + (-d) cos = -d cos
           
           const dx = distance * Math.sin(angleRad);
           const dy = -distance * Math.cos(angleRad);
@@ -478,7 +493,7 @@ export const Toolbar = () => {
           
           page.drawRectangle({
              x: lx - bgWidth / 2,
-             y: ly - bgPadding, // Adjust for baseline
+             y: ly - bgPadding, 
              width: bgWidth,
              height: bgHeight,
              color: rgb(1, 1, 1), // White
