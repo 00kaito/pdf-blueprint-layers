@@ -17,6 +17,11 @@ export type EditorObject = {
   name?: string; // User-defined name
   content?: string; // For text or image URL
   pathData?: string; // For SVG paths
+  metadata?: {
+    socketId?: string;
+    patchPanelPort?: string;
+    purpose?: 'Data' | 'Mic' | 'CAM' | 'TV' | 'Other';
+  };
   color?: string;
   strokeWidth?: number;
   fontSize?: number;
@@ -34,8 +39,18 @@ export type EditorState = {
   currentPage: number;
   scale: number;
   scrollPos: { x: number; y: number };
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw';
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp';
   clipboardObject: EditorObject | null;
+  autoNumbering: {
+    enabled: boolean;
+    prefix: string;
+    counter: number;
+    template: {
+      type: 'icon';
+      content: string;
+      color: string;
+    } | null;
+  };
 };
 
 export type EditorAction =
@@ -56,4 +71,6 @@ export type EditorAction =
   | { type: 'IMPORT_PROJECT'; payload: Partial<EditorState> }
   | { type: 'REORDER_LAYERS'; payload: { sourceIndex: number; destinationIndex: number } }
   | { type: 'COPY_OBJECT' }
-  | { type: 'PASTE_OBJECT' };
+  | { type: 'PASTE_OBJECT' }
+  | { type: 'SET_AUTO_NUMBERING'; payload: Partial<EditorState['autoNumbering']> }
+  | { type: 'INCREMENT_COUNTER' };

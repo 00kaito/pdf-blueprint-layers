@@ -4,6 +4,7 @@ import { PDFUploader } from '@/components/editor/PDFUploader';
 import { LayerPanel } from '@/components/editor/LayerPanel';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { Canvas } from '@/components/editor/Canvas';
+import { PropertiesPanel } from '@/components/editor/PropertiesPanel';
 
 const EditorApp = () => {
   const { state, dispatch } = useEditor();
@@ -61,6 +62,7 @@ const EditorApp = () => {
       <div className="flex flex-1 overflow-hidden">
         <LayerPanel />
         <Canvas />
+        <PropertiesPanel />
       </div>
     </div>
   );

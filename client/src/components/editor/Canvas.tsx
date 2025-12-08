@@ -59,6 +59,45 @@ export const Canvas = () => {
         const y = (e.clientY - rect.top) / state.scale;
         setDrawingPath(`M ${x} ${y}`);
       }
+    } else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
+       // Stamp logic
+       const rect = containerRef.current?.getBoundingClientRect();
+       if (rect) {
+          const x = (e.clientX - rect.left) / state.scale;
+          const y = (e.clientY - rect.top) / state.scale;
+          
+          const template = state.autoNumbering.template;
+          const width = 50 / state.scale;
+          const height = 50 / state.scale;
+          const finalX = x - width / 2;
+          const finalY = y - height / 2;
+          
+          const numberStr = state.autoNumbering.counter.toString().padStart(2, '0');
+          const name = `${state.autoNumbering.prefix}${numberStr}`;
+          
+          dispatch({
+            type: 'ADD_OBJECT',
+            payload: {
+              id: uuidv4(),
+              type: template.type,
+              name: name,
+              x: finalX,
+              y: finalY,
+              width,
+              height,
+              layerId: state.activeLayerId,
+              content: template.content,
+              color: template.color,
+              rotation: 0,
+              metadata: {
+                 socketId: name,
+                 purpose: 'Data'
+              }
+            }
+          });
+          
+          dispatch({ type: 'INCREMENT_COUNTER' });
+       }
     } else {
       dispatch({ type: 'SELECT_OBJECT', payload: null });
     }
@@ -415,6 +454,16 @@ export const Canvas = () => {
                   <RotateCw className="w-3 h-3 text-primary" />
                 </div>
               )}
+
+              {/* Object Name Label */}
+              <div 
+                className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/80 px-1 rounded text-[10px] pointer-events-none border border-black/10"
+                style={{ 
+                  transform: `rotate(-${obj.rotation || 0}deg)`, // Counter-rotate label so it stays horizontal
+                }}
+              >
+                {obj.name}
+              </div>
 
               <div 
                 className="w-full h-full relative"

@@ -13,6 +13,12 @@ const initialState: EditorState = {
   scrollPos: { x: 0, y: 0 },
   tool: 'select',
   clipboardObject: null,
+  autoNumbering: {
+    enabled: false,
+    prefix: 'IDF1-P1-',
+    counter: 1,
+    template: null
+  }
 };
 
 const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
@@ -138,6 +144,16 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         selectedObjectId: newId
       };
     }
+    case 'SET_AUTO_NUMBERING':
+      return {
+        ...state,
+        autoNumbering: { ...state.autoNumbering, ...action.payload }
+      };
+    case 'INCREMENT_COUNTER':
+      return {
+        ...state,
+        autoNumbering: { ...state.autoNumbering, counter: state.autoNumbering.counter + 1 }
+      };
     default:
       return state;
   }

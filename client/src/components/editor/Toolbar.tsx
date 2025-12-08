@@ -21,7 +21,8 @@ import {
   Hexagon,
   ArrowRight,
   Bold,
-  Camera
+  Camera,
+  Hash
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -129,6 +130,24 @@ export const Toolbar = () => {
 
   const handleAddIcon = (iconType: string) => {
     if (!state.activeLayerId) return;
+
+    if (state.autoNumbering.enabled) {
+      // If auto-numbering is enabled, we don't add object directly.
+      // We set the template and switch to Stamp tool.
+      dispatch({
+        type: 'SET_AUTO_NUMBERING',
+        payload: {
+          template: {
+            type: 'icon',
+            content: iconType,
+            color: '#ef4444'
+          }
+        }
+      });
+      dispatch({ type: 'SET_TOOL', payload: 'stamp' });
+      return;
+    }
+
     const { x, y } = getCenterPosition(50 / state.scale, 50 / state.scale);
     dispatch({
       type: 'ADD_OBJECT',
@@ -557,6 +576,64 @@ export const Toolbar = () => {
             </TooltipTrigger>
             <TooltipContent>Draw</TooltipContent>
           </Tooltip>
+
+          <Separator orientation="vertical" className="h-6 mx-1" />
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Toggle
+                pressed={state.autoNumbering.enabled}
+                onPressedChange={(pressed) => {
+                   dispatch({ 
+                     type: 'SET_AUTO_NUMBERING', 
+                     payload: { enabled: pressed } 
+                   });
+                   if (!pressed && state.tool === 'stamp') {
+                     dispatch({ type: 'SET_TOOL', payload: 'select' });
+                   }
+                }}
+              >
+                <Hash className="w-4 h-4" />
+              </Toggle>
+            </PopoverTrigger>
+            <PopoverContent className="w-72">
+              <div className="space-y-4">
+                 <div className="flex items-center justify-between">
+                    <h4 className="font-medium leading-none">Auto-Numbering</h4>
+                 </div>
+                 <div className="grid gap-2">
+                    <div className="grid grid-cols-3 items-center gap-4">
+                      <Label htmlFor="prefix">Prefix</Label>
+                      <Input
+                        id="prefix"
+                        value={state.autoNumbering.prefix}
+                        onChange={(e) => dispatch({
+                          type: 'SET_AUTO_NUMBERING',
+                          payload: { prefix: e.target.value }
+                        })}
+                        className="col-span-2 h-8"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                      <Label htmlFor="counter">Start #</Label>
+                      <Input
+                        id="counter"
+                        type="number"
+                        value={state.autoNumbering.counter}
+                        onChange={(e) => dispatch({
+                          type: 'SET_AUTO_NUMBERING',
+                          payload: { counter: parseInt(e.target.value) || 1 }
+                        })}
+                        className="col-span-2 h-8"
+                      />
+                    </div>
+                 </div>
+                 <p className="text-xs text-muted-foreground">
+                   Enable this, then select an icon from the menu. Click on canvas to stamp sequentially numbered objects.
+                 </p>
+              </div>
+            </PopoverContent>
+          </Popover>
         </TooltipProvider>
       </div>
 
