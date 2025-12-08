@@ -444,37 +444,26 @@ export const Toolbar = () => {
        if (obj.name && obj.type !== 'path') {
           const labelText = obj.name;
           
-          // Match the visual size from the Editor
-          // In Editor, label is fixed 10px screen size.
-          // In PDF, we need to convert this to PDF units based on the current zoom (state.scale).
-          // If user is zoomed in (scale > 1), 10px screen size is a small amount of "units".
-          // If we used fixed 10 units, it would look huge.
-          
-          const labelScreenPixelSize = 10;
-          const labelUnitSize = labelScreenPixelSize / state.scale;
-          const labelFontSize = labelUnitSize * scaleFactor;
+          // Use user-defined font size for export (default 10)
+          // We apply scaleFactor to convert to PDF coordinates relative to page width
+          const labelFontSize = state.exportSettings.labelFontSize * scaleFactor;
           
           const labelFont = helveticaFont;
           const textWidth = labelFont.widthOfTextAtSize(labelText, labelFontSize);
           const textHeight = labelFontSize;
           
           // Calculate label position relative to object center
-          // In CSS, label has class `-bottom-6` -> bottom: -24px.
-          // This places the bottom of the label 24px below the object's bottom.
-          // So distance from Object Bottom to Label Bottom is 24px (screen pixels).
+          // Place label below the object with a gap proportional to font size
+          // Gap = 40% of font size (e.g. 4pt for 10pt font)
+          const gap = labelFontSize * 0.4;
           
-          const offsetScreenPixels = 24;
-          const offsetUnits = offsetScreenPixels / state.scale;
-          const offsetFromObjectBottom = offsetUnits * scaleFactor;
-          
-          // Distance from Center to Label Baseline
+          // Distance from Center to Label Center (approx)
           // Center -> Bottom = scaledHeight / 2
-          // Bottom -> Label Bottom = offsetFromObjectBottom
-          // Label Bottom -> Baseline ~ small adjustment (padding)
-          // Let's assume baseline is roughly at the label bottom minus a bit of padding.
-          // But for simplicity, let's treat offsetFromObjectBottom as distance to text center/baseline area.
+          // Bottom -> Top of Label Box = gap
+          // Top of Label Box -> Label Baseline = textHeight (approx)
+          // We want the text to be below the object.
           
-          const distance = scaledHeight / 2 + offsetFromObjectBottom - (textHeight / 2); 
+          const distance = scaledHeight / 2 + gap + (textHeight / 2); 
           
           // Vector to bottom (0, -distance)
           // Rotate this vector by obj.rotation (using correct PDF angle direction)
@@ -850,6 +839,38 @@ export const Toolbar = () => {
           </label>
         </Button>
         
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="mr-2">
+              <Settings2 className="w-4 h-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="end">
+            <div className="space-y-4">
+              <h4 className="font-medium leading-none">Export Settings</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="label-size">Label Font Size (PDF)</Label>
+                  <span className="text-sm text-muted-foreground">{state.exportSettings.labelFontSize}px</span>
+                </div>
+                <Slider
+                  id="label-size"
+                  min={6}
+                  max={30}
+                  step={1}
+                  value={[state.exportSettings.labelFontSize]}
+                  onValueChange={([value]) => 
+                    dispatch({ type: 'SET_EXPORT_SETTINGS', payload: { labelFontSize: value } })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Adjusts the size of object labels in the downloaded PDF.
+                </p>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
         <Button size="sm" onClick={handleFlattenAndDownload}>
           <Download className="w-4 h-4 mr-2" />
           Export PDF

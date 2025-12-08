@@ -18,6 +18,9 @@ const initialState: EditorState = {
     prefix: 'IDF1-P1-',
     counter: 1,
     template: null
+  },
+  exportSettings: {
+    labelFontSize: 10
   }
 };
 
@@ -153,6 +156,11 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return {
         ...state,
         autoNumbering: { ...state.autoNumbering, counter: state.autoNumbering.counter + 1 }
+      };
+    case 'SET_EXPORT_SETTINGS':
+      return {
+        ...state,
+        exportSettings: { ...state.exportSettings, ...action.payload }
       };
     default:
       return state;

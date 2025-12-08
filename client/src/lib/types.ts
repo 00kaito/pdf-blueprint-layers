@@ -51,6 +51,9 @@ export type EditorState = {
       color: string;
     } | null;
   };
+  exportSettings: {
+    labelFontSize: number;
+  };
 };
 
 export type EditorAction =
@@ -73,4 +76,5 @@ export type EditorAction =
   | { type: 'COPY_OBJECT' }
   | { type: 'PASTE_OBJECT' }
   | { type: 'SET_AUTO_NUMBERING'; payload: Partial<EditorState['autoNumbering']> }
-  | { type: 'INCREMENT_COUNTER' };
+  | { type: 'INCREMENT_COUNTER' }
+  | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<EditorState['exportSettings']> };
