@@ -453,6 +453,50 @@ export const Toolbar = () => {
        }
        
        page.pushOperators(popGraphicsState());
+
+       // Draw Object Name (Label)
+       if (obj.name && obj.type !== 'path') {
+          const labelText = obj.name;
+          const labelFontSize = 10 * scaleFactor;
+          const labelFont = helveticaFont;
+          const textWidth = labelFont.widthOfTextAtSize(labelText, labelFontSize);
+          
+          // Calculate label position relative to object center
+          // In CSS/Canvas, label is at bottom, rotated with object
+          // Distance from center to bottom of object + gap
+          const gap = 5 * scaleFactor;
+          const distance = scaledHeight / 2 + gap + labelFontSize; // Offset to baseline roughly
+          
+          // Vector to bottom (0, -distance)
+          // Rotate this vector by obj.rotation
+          // Note: We use the same rotation direction as the object
+          const angleRad = degreesToRadians(obj.rotation || 0);
+          
+          // Standard rotation matrix for (0, -d)
+          // x' = x cos - y sin = 0 - (-d) sin = d sin
+          // y' = x sin + y cos = 0 + (-d) cos = -d cos
+          
+          // BUT, we need to match the visual behavior.
+          // If PDF rotation is CCW (standard math):
+          // Vector (0, -d) is Down.
+          // Rotate +90 (CCW) -> Vector becomes (d, 0) Right.
+          // Visual check: If object rotates CCW 90, its bottom is now at Right. Correct.
+          
+          const dx = distance * Math.sin(angleRad);
+          const dy = -distance * Math.cos(angleRad);
+          
+          const lx = cx + dx - textWidth / 2; // Center horizontally
+          const ly = cy + dy;
+          
+          // Draw text unrotated (horizontal relative to page)
+          page.drawText(labelText, {
+             x: lx,
+             y: ly,
+             size: labelFontSize,
+             font: labelFont,
+             color: rgb(0, 0, 0),
+          });
+       }
     }
 
     const pdfBytes = await pdfDoc.save();
