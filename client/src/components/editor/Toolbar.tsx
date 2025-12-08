@@ -316,10 +316,13 @@ export const Toolbar = () => {
        }
 
        // For all other objects, apply rotation context
+       // Note: PDF rotation is CCW, CSS is CW. So we negate the angle.
+       const rotationAngle = -(obj.rotation || 0);
+       
        page.pushOperators(
          pushGraphicsState(),
          translate(cx, cy),
-         rotateDegrees(obj.rotation || 0),
+         rotateDegrees(rotationAngle),
          translate(-scaledWidth / 2, -scaledHeight / 2)
        );
        
@@ -400,27 +403,10 @@ export const Toolbar = () => {
                  pathData = `M 0 ${h*0.25} L ${w*0.5} ${h*0.25} L ${w*0.5} 0 L ${w} ${h*0.5} L ${w*0.5} ${h} L ${w*0.5} ${h*0.75} L 0 ${h*0.75} Z`;
              } else if (iconType === 'camera') {
                  // Camera icon shape
-                 // A simple camera shape: box with a smaller box on top and a circle in middle
-                 // But for simplicity, we can draw a simplified path or just a rect + circle
-                 // Let's try to draw a path approximating a camera icon.
-                 // Body: Rect(0, 0, w, h*0.8)
-                 // Top bump: Rect(w*0.3, h*0.8, w*0.4, h*0.2)
-                 // Lens: Circle(w/2, h*0.4, r=h*0.25)
-                 
-                 // Let's use SVG path for a single shape if possible, or composite.
-                 // Composite is harder with just pathData.
-                 // We'll draw a camera-like path.
-                 // Start bottom-left
                  pathData = `M 0 0 L ${w} 0 L ${w} ${h*0.8} L ${w*0.7} ${h*0.8} L ${w*0.6} ${h} L ${w*0.4} ${h} L ${w*0.3} ${h*0.8} L 0 ${h*0.8} Z`;
                  
-                 // We should probably also draw the lens (circle) but single path is filled.
-                 // If we want the lens to be "hole", we can use fill-rule evenodd, but pdf-lib might be tricky.
-                 // Let's just stick to the silhouette for the PDF export or draw separate circle.
-                 
-                 // Draw silhouette
                  page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
                  
-                 // Draw lens circle
                  page.drawEllipse({
                     x: w/2,
                     y: h*0.4,
@@ -431,7 +417,7 @@ export const Toolbar = () => {
                     opacity: 1
                  });
                  
-                 pathData = ''; // Clear pathData so we don't draw it again below
+                 pathData = ''; // Clear pathData
              } else {
                  // Square/Rect
                  page.drawRectangle({
@@ -460,37 +446,48 @@ export const Toolbar = () => {
           const labelFontSize = 10 * scaleFactor;
           const labelFont = helveticaFont;
           const textWidth = labelFont.widthOfTextAtSize(labelText, labelFontSize);
+          const textHeight = labelFontSize;
           
           // Calculate label position relative to object center
           // In CSS/Canvas, label is at bottom, rotated with object
           // Distance from center to bottom of object + gap
           const gap = 5 * scaleFactor;
-          const distance = scaledHeight / 2 + gap + labelFontSize; // Offset to baseline roughly
+          const distance = scaledHeight / 2 + gap + textHeight; // Offset to baseline roughly
           
           // Vector to bottom (0, -distance)
-          // Rotate this vector by obj.rotation
-          // Note: We use the same rotation direction as the object
-          const angleRad = degreesToRadians(obj.rotation || 0);
+          // Rotate this vector by obj.rotation (using correct PDF angle direction)
+          // The label stays "under" the object, so it rotates WITH the object positionally,
+          // but we draw the text horizontally (unrotated).
+          
+          const angleRad = degreesToRadians(rotationAngle);
           
           // Standard rotation matrix for (0, -d)
           // x' = x cos - y sin = 0 - (-d) sin = d sin
           // y' = x sin + y cos = 0 + (-d) cos = -d cos
           
-          // BUT, we need to match the visual behavior.
-          // If PDF rotation is CCW (standard math):
-          // Vector (0, -d) is Down.
-          // Rotate +90 (CCW) -> Vector becomes (d, 0) Right.
-          // Visual check: If object rotates CCW 90, its bottom is now at Right. Correct.
-          
           const dx = distance * Math.sin(angleRad);
           const dy = -distance * Math.cos(angleRad);
           
-          const lx = cx + dx - textWidth / 2; // Center horizontally
+          const lx = cx + dx; 
           const ly = cy + dy;
           
+          // Background for label
+          const bgPadding = 2 * scaleFactor;
+          const bgWidth = textWidth + bgPadding * 2;
+          const bgHeight = textHeight + bgPadding * 2;
+          
+          page.drawRectangle({
+             x: lx - bgWidth / 2,
+             y: ly - bgPadding, // Adjust for baseline
+             width: bgWidth,
+             height: bgHeight,
+             color: rgb(1, 1, 1), // White
+             opacity: 0.8,
+          });
+
           // Draw text unrotated (horizontal relative to page)
           page.drawText(labelText, {
-             x: lx,
+             x: lx - textWidth / 2,
              y: ly,
              size: labelFontSize,
              font: labelFont,
