@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {Rnd} from 'react-rnd';
 import {ArrowRight, Camera, Circle, Heart, Hexagon, RotateCw, Square, Star, Triangle} from 'lucide-react';
 import {useDocument, useUI} from '@/lib/editor-context';
@@ -27,6 +27,41 @@ const IconRenderer = ({ iconType, color }: { iconType: string, color?: string })
 export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
   const { dispatch } = useDocument();
   const { state: uiState } = useUI();
+  const [isRotating, setIsRotating] = useState(false);
+
+  const handleRotationMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsRotating(true);
+
+    // Get center of the object in screen coordinates
+    const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const handleMouseMove = (mE: MouseEvent) => {
+      const angle = Math.atan2(mE.clientY - centerY, mE.clientX - centerX);
+      let degree = (angle * (180 / Math.PI)) + 90;
+      const snappedDegree = Math.round(degree / 45) * 45;
+      dispatch({ 
+        type: 'UPDATE_OBJECT', 
+        payload: { id: obj.id, updates: { rotation: snappedDegree } } 
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsRotating(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const isSelected = uiState.selectedObjectId === obj.id;
 
   return (
     <Rnd
@@ -50,17 +85,10 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
         e.stopPropagation();
         dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
       }}
-      onDoubleClick={(e: any) => {
-        e.stopPropagation();
-        const newName = prompt('Enter object name (label):', obj.name || '');
-        if (newName !== null) {
-          dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { name: newName } } });
-        }
-      }}
       scale={1}
       bounds="parent"
-      disableDragging={layer.locked || uiState.tool !== 'select'}
-      enableResizing={!layer.locked && uiState.selectedObjectId === obj.id}
+      disableDragging={layer.locked || uiState.tool !== 'select' || isRotating}
+      enableResizing={!layer.locked && isSelected}
       resizeHandleClasses={{
         bottomRight: "bg-primary w-2 h-2 rounded-full",
         bottomLeft:  "bg-primary w-2 h-2 rounded-full",
@@ -69,30 +97,24 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       }}
       className={cn(
         "group z-20",
-        uiState.selectedObjectId === obj.id ? "ring-1 ring-primary ring-offset-1" : "",
+        isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         layer.locked ? "pointer-events-none" : "cursor-move"
       )}
-      style={{ transform: `rotate(${obj.rotation || 0}deg)`, opacity: obj.opacity ?? 1 }}
+      style={{ opacity: obj.opacity ?? 1, zIndex: isSelected ? 30 : 20 }}
     >
-      {uiState.selectedObjectId === obj.id && !layer.locked && (
+      {isSelected && !layer.locked && (
         <div 
-          className="absolute -top-8 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-md"
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            const sY = e.clientY, sR = obj.rotation || 0;
-            const hMM = (mE: MouseEvent) => {
-              const rawRotation = (sR + (mE.clientY - sY) * 2) % 360;
-              const newRotation = Math.round(rawRotation / 45) * 45;
-              dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { rotation: newRotation } } });
-            };
-            const hMU = () => { document.removeEventListener('mousemove', hMM); document.removeEventListener('mouseup', hMU); };
-            document.addEventListener('mousemove', hMM); document.addEventListener('mouseup', hMU);
-          }}
+          className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 hover:scale-110 transition-transform"
+          onMouseDown={handleRotationMouseDown}
         >
-          <RotateCw className="w-3 h-3" />
+          <RotateCw className="w-4 h-4" />
         </div>
       )}
-      <div className="w-full h-full relative group">
+      
+      <div 
+        className="w-full h-full relative" 
+        style={{ transform: `rotate(${obj.rotation || 0}deg)` }}
+      >
           {obj.type === 'text' && (
             <div 
               className={cn("w-full h-full p-1 break-words overflow-hidden outline-none", obj.fontWeight === 'bold' ? 'font-bold' : '')} 
@@ -108,9 +130,34 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
             </div>
           )}
           {obj.type === 'icon' && <IconRenderer iconType={obj.content || 'square'} color={obj.color} />}
-          {obj.type === 'image' && obj.content && <img src={obj.content} alt="" className="w-full h-full object-contain pointer-events-none" />}
+          {obj.type === 'image' && obj.content && (
+            obj.color ? (
+              <div 
+                className="w-full h-full"
+                style={{ 
+                  backgroundColor: obj.color,
+                  maskImage: `url(${obj.content})`,
+                  maskRepeat: 'no-repeat',
+                  maskPosition: 'center',
+                  maskSize: 'contain',
+                  WebkitMaskImage: `url(${obj.content})`,
+                  WebkitMaskRepeat: 'no-repeat',
+                  WebkitMaskPosition: 'center',
+                  WebkitMaskSize: 'contain'
+                }}
+              />
+            ) : (
+              <img src={obj.content} alt="" className="w-full h-full object-contain pointer-events-none" />
+            )
+          )}
       </div>
-      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/60 px-0.5 rounded pointer-events-none" style={{ fontSize: 1 * uiState.scale, transform: `translateX(-50%) rotate(-${obj.rotation || 0}deg)` }}>{obj.name}</div>
+
+      <div 
+        className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/80 border border-border px-1.5 py-0.5 rounded text-[10px] font-medium pointer-events-none shadow-sm"
+        style={{ transform: `translateX(-50%)` }}
+      >
+        {obj.name}
+      </div>
     </Rnd>
   );
 };

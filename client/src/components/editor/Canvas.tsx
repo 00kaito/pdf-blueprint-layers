@@ -1,4 +1,5 @@
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useMemo, useRef, useState} from 'react';
+import {v4 as uuidv4} from 'uuid';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {Document, Page, pdfjs} from 'react-pdf';
 import {debounce} from '@/lib/utils';
@@ -42,9 +43,13 @@ export const Canvas = () => {
     } else { dispatch({ type: 'SELECT_OBJECT', payload: null }); }
   };
 
-  const handleScroll = useCallback(debounce((e: React.UIEvent<HTMLDivElement>) => {
-    dispatch({ type: 'SET_SCROLL', payload: { x: e.currentTarget.scrollLeft, y: e.currentTarget.scrollTop } });
+  const debouncedScroll = useMemo(() => debounce((scroll: { x: number, y: number }) => {
+    dispatch({ type: 'SET_SCROLL', payload: scroll });
   }, 16), [dispatch]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    debouncedScroll({ x: e.currentTarget.scrollLeft, y: e.currentTarget.scrollTop });
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();

@@ -57,6 +57,7 @@ export const LayerPanel = () => {
   
   const [editingObjectId, setEditingObjectId] = useState<string | null>(null);
   const [editingObjectName, setEditingObjectName] = useState("");
+  const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
 
   const startEditing = (layer: { id: string, name: string }) => {
     setEditingLayerId(layer.id);
@@ -104,8 +105,33 @@ export const LayerPanel = () => {
     dispatch({ type: 'ADD_LAYER', payload: `Layer ${state.layers.length + 1}` });
   };
 
+  const handleObjectDragStart = (e: React.DragEvent, objectId: string) => {
+    e.dataTransfer.setData('application/move-object-id', objectId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleLayerDragOver = (e: React.DragEvent, layerId: string) => {
+    e.preventDefault();
+    if (e.dataTransfer.types.includes('application/move-object-id')) {
+      setDragOverLayerId(layerId);
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  const handleLayerDrop = (e: React.DragEvent, layerId: string) => {
+    e.preventDefault();
+    setDragOverLayerId(null);
+    const objectId = e.dataTransfer.getData('application/move-object-id');
+    if (objectId) {
+      dispatch({
+        type: 'UPDATE_OBJECT',
+        payload: { id: objectId, updates: { layerId } }
+      });
+    }
+  };
+
   return (
-    <div className="w-64 border-l border-border bg-card flex flex-col h-full shrink-0">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Overlay Blueprint Section */}
       <div className="p-4 border-b border-border bg-muted/20">
         <div className="flex items-center gap-2 font-medium text-sm mb-3">
@@ -187,9 +213,13 @@ export const LayerPanel = () => {
                     "flex items-center justify-between p-2 rounded-md text-sm cursor-pointer transition-colors group",
                     state.activeLayerId === layer.id
                       ? "bg-primary/10 text-primary font-medium"
-                      : "hover:bg-accent"
+                      : "hover:bg-accent",
+                    dragOverLayerId === layer.id && "bg-primary/20 ring-2 ring-primary ring-inset"
                   )}
                   onClick={() => dispatch({ type: 'SELECT_LAYER', payload: layer.id })}
+                  onDragOver={(e) => handleLayerDragOver(e, layer.id)}
+                  onDragLeave={() => setDragOverLayerId(null)}
+                  onDrop={(e) => handleLayerDrop(e, layer.id)}
                 >
                   <div className="flex items-center gap-2 truncate">
                     <button
@@ -259,8 +289,10 @@ export const LayerPanel = () => {
                     {layerObjects.map((obj, index) => (
                       <div
                         key={obj.id}
+                        draggable
+                        onDragStart={(e) => handleObjectDragStart(e, obj.id)}
                         className={cn(
-                          "flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors",
+                          "flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors cursor-grab active:cursor-grabbing",
                           state.selectedObjectId === obj.id
                             ? "bg-primary/20 text-primary"
                             : "hover:bg-accent text-muted-foreground"

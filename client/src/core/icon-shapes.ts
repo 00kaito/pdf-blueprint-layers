@@ -18,6 +18,7 @@ export const buildIconPath = (
   const right = offX + minSide;
 
   const shapes: Record<string, string> = {
+    square:   `M ${left} ${bottom} L ${right} ${bottom} L ${right} ${top} L ${left} ${top} Z`,
     triangle: `M ${midX} ${top} L ${right} ${bottom} L ${left} ${bottom} Z`,
     star:     `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`,
     heart:    `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`, // Placeholder

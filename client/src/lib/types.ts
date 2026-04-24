@@ -22,6 +22,8 @@ export type EditorObject = {
     socketId?: string;
     patchPanelPort?: string;
     purpose?: 'Data' | 'Mic' | 'CAM' | 'TV' | 'Other';
+    switchId?: string;
+    cableId?: string;
   };
   color?: string;
   strokeWidth?: number;

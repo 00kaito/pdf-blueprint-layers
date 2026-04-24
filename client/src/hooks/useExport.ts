@@ -140,7 +140,7 @@ export const useExport = () => {
           try {
             let contentToEmbed = obj.content;
             if (obj.content.startsWith('data:image/svg+xml')) {
-                contentToEmbed = await svgToPng(obj.content, scaledWidth, scaledHeight);
+                contentToEmbed = await svgToPng(obj.content, scaledWidth, scaledHeight, obj.color);
             }
             const image = contentToEmbed.startsWith('data:image/png') 
                 ? await pdfDoc.embedPng(contentToEmbed) 
