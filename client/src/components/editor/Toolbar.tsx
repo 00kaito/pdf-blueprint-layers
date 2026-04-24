@@ -1,66 +1,49 @@
 import React from 'react';
-import { useEditor } from '@/lib/editor-context';
-import { 
-  MousePointer2, 
-  Type, 
-  Image as ImageIcon, 
-  Pencil, 
-  Download, 
-  Save, 
-  ZoomIn, 
-  ZoomOut,
-  Trash2,
-  Square,
-  Layers,
-  Upload,
-  FolderOpen,
-  Star,
-  Heart,
-  Circle,
-  Triangle,
-  Hexagon,
-  ArrowRight,
-  Bold,
-  Camera,
-  Hash,
-  Settings2
+import {useEditor} from '@/lib/editor-context';
+import {
+    ArrowRight,
+    Bold,
+    Camera,
+    Circle,
+    Download,
+    FolderOpen,
+    Hash,
+    Heart,
+    Hexagon,
+    Image as ImageIcon,
+    MousePointer2,
+    Pencil,
+    Save,
+    Settings2,
+    Square,
+    Star,
+    Trash2,
+    Triangle,
+    Type,
+    ZoomIn,
+    ZoomOut
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Toggle } from '@/components/ui/toggle';
+import {Button} from '@/components/ui/button';
+import {Separator} from '@/components/ui/separator';
+import {Toggle} from '@/components/ui/toggle';
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,} from '@/components/ui/tooltip';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
+import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover";
+import {v4 as uuidv4} from 'uuid';
+import {Input} from "@/components/ui/input";
+import {Slider} from '@/components/ui/slider';
+import {Label} from "@/components/ui/label";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from '@/components/ui/tooltip';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { v4 as uuidv4 } from 'uuid';
-import { Input } from "@/components/ui/input";
-import { Slider } from '@/components/ui/slider';
-import { Label } from "@/components/ui/label";
-import { 
-  PDFDocument, 
-  rgb, 
-  StandardFonts, 
-  degrees, 
-  translate, 
-  rotateDegrees, 
-  pushGraphicsState, 
-  popGraphicsState 
+    degrees,
+    PDFDocument,
+    popGraphicsState,
+    pushGraphicsState,
+    rgb,
+    rotateDegrees,
+    StandardFonts,
+    translate
 } from 'pdf-lib';
-import { saveAs } from 'file-saver';
+import {saveAs} from 'file-saver';
 
 // Helper to convert hex to RGB for pdf-lib
 const hexToRgb = (hex: string) => {
@@ -80,35 +63,24 @@ export const Toolbar = () => {
 
   // Calculate center of visible area
   const getCenterPosition = (width: number, height: number) => {
-    // Current visible center relative to the scaled canvas
-    // Canvas container has padding 32px (p-8)
-    // We want to place object in the middle of current view
-    // State has scrollPos (x, y)
-    // The canvas is scaled.
-    // If scrollPos is 0,0, we are at top left.
-    // But we are centering the canvas in the viewport if it fits.
-    
-    // Simplification: Place at scrollPos + viewport/2, converted to unscaled coords
-    // Let's assume a viewport roughly 800x600 for now or just use scrollPos
-    
-    // Better: Just use scrollPos.y + 100 as a start, but we need to account for scale
-    
-    // If we assume the viewport is roughly window size (e.g. 1000x800)
-    // Center is (scrollPos.x + windowWidth/2) / scale
-    
-    // Let's approximate viewport center
-    const viewportCenterX = (state.scrollPos?.x || 0) + 300; // 300 is half of ~600 sidebar-less width
-    const viewportCenterY = (state.scrollPos?.y || 0) + 300; 
-    
+    // scrollPos is the scroll offset of the outer container in screen pixels.
+    // Converting to unscaled canvas units: scrollPos / scale
+    // Adding half the viewport in unscaled units gives the visible center.
+    // We approximate the canvas viewport size as the window minus sidebars (~600px wide, ~800px tall).
+    const scrollX = (state.scrollPos?.x || 0) / state.scale;
+    const scrollY = (state.scrollPos?.y || 0) / state.scale;
+    const viewportW = window.innerWidth / state.scale;
+    const viewportH = window.innerHeight / state.scale;
+
     return {
-      x: Math.max(0, viewportCenterX / state.scale - width / 2),
-      y: Math.max(0, viewportCenterY / state.scale - height / 2)
+      x: Math.max(0, Math.min(600 - width, scrollX + viewportW / 2 - width / 2)),
+      y: Math.max(0, scrollY + viewportH / 2 - height / 2)
     };
   };
 
   const handleAddText = () => {
     if (!state.activeLayerId) return;
-    const { x, y } = getCenterPosition(200 / state.scale, 50 / state.scale);
+    const { x, y } = getCenterPosition(200, 50);
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
@@ -117,11 +89,11 @@ export const Toolbar = () => {
         name: 'Text',
         x,
         y,
-        width: 200 / state.scale,
-        height: 50 / state.scale,
+        width: 200,
+        height: 50,
         layerId: state.activeLayerId,
         content: 'Double click to edit',
-        fontSize: 16 / state.scale,
+        fontSize: 16,
         color: '#000000',
         rotation: 0
       }
@@ -149,7 +121,7 @@ export const Toolbar = () => {
       return;
     }
 
-    const { x, y } = getCenterPosition(50 / state.scale, 50 / state.scale);
+    const { x, y } = getCenterPosition(50, 50);
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
@@ -158,8 +130,8 @@ export const Toolbar = () => {
         name: iconType.charAt(0).toUpperCase() + iconType.slice(1),
         x,
         y,
-        width: 50 / state.scale,
-        height: 50 / state.scale,
+        width: 50,
+        height: 50,
         layerId: state.activeLayerId,
         color: '#ef4444',
         content: iconType, // store icon name in content
@@ -176,7 +148,7 @@ export const Toolbar = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const url = event.target?.result as string;
-      const { x, y } = getCenterPosition(200 / state.scale, 200 / state.scale);
+      const { x, y } = getCenterPosition(200, 200);
       dispatch({
         type: 'ADD_OBJECT',
         payload: {
@@ -185,8 +157,8 @@ export const Toolbar = () => {
           name: 'Image',
           x,
           y,
-          width: 200 / state.scale,
-          height: 200 / state.scale,
+          width: 200,
+          height: 200,
           layerId: state.activeLayerId!,
           content: url,
           rotation: 0
@@ -248,14 +220,32 @@ export const Toolbar = () => {
     saveAs(blob, 'project.json');
   };
 
-  const handleFlattenAndDownload = async () => {
+    const handleFlattenAndDownload = async () => {
     if (!state.pdfFile) return;
 
+    console.log("[Export] Starting flattening process...");
     const arrayBuffer = await state.pdfFile.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
     const pages = pdfDoc.getPages();
     const page = pages[state.currentPage - 1];
-    const { width, height } = page.getSize();
+    
+    // Get page dimensions and rotation
+    const { width: pW, height: pH } = page.getSize();
+    const pageRotation = page.getRotation().angle;
+    
+    console.log(`[Export] PDF Page Info: PhysWidth=${pW}, PhysHeight=${pH}, Rotation=${pageRotation}`);
+    
+    // Determine visual dimensions (what the user sees in the editor)
+    let vW, vH;
+    if (pageRotation === 90 || pageRotation === 270) {
+      vW = pH;
+      vH = pW;
+    } else {
+      vW = pW;
+      vH = pH;
+    }
+    console.log(`[Export] Visual Dimensions (Editor Context): vW=${vW}, vH=${vH}`);
+
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
@@ -263,73 +253,98 @@ export const Toolbar = () => {
        const layer = state.layers.find(l => l.id === obj.layerId);
        if (!layer?.visible) continue;
 
-       // Calculate scale factor if PDF page size differs from our 600px preview width
-       const scaleFactor = width / 600;
+       console.log(`[Export] Processing Object: ${obj.name} (${obj.type})`, {
+         visualX: obj.x,
+         visualY: obj.y,
+         visualWidth: obj.width,
+         visualHeight: obj.height,
+         rotation: obj.rotation
+       });
+
+       // Calculate scale factor based on visual width
+       const scaleFactor = vW / 600;
        
        const scaledX = obj.x * scaleFactor;
        const scaledY = obj.y * scaleFactor;
        const scaledWidth = obj.width * scaleFactor;
        const scaledHeight = obj.height * scaleFactor;
-       const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
+       
+       // Function to map visual coordinates to physical PDF coordinates
+       const getPhysicalCoords = (vx: number, vy: number) => {
+         let result;
+         switch (pageRotation) {
+           case 90: 
+             // Visual TL is Phys BL (0,0) -> Not really, depends on viewer
+             // Based on common PDF viewer behavior for /Rotate:
+             result = { x: vy, y: vx }; 
+             break;
+           case 180: 
+             result = { x: pW - vx, y: vy }; 
+             break;
+           case 270: 
+             result = { x: pW - vy, y: pH - vx }; 
+             break;
+           case 0:
+           default: 
+             result = { x: vx, y: pH - vy }; 
+             break;
+         }
+         return result;
+       };
 
-       // PDF coordinate system (Y is up) vs HTML (Y is down)
-       const pdfY = height - scaledY - scaledHeight;
-       
-       // Rotation logic using pushOperators to rotate coordinate system around center
-       // Center C = (scaledX + w/2, pdfY + h/2)
-       const cx = scaledX + scaledWidth / 2;
-       const cy = pdfY + scaledHeight / 2;
-       
-       // Standard objects (Text, Image, Icon) use the rotated context
-       // Path objects (Drawing) are absolute and usually full-page, so we handle them separately
-       
        if (obj.type === 'path' && obj.pathData) {
-          // Path drawing (Freehand)
-          // These are usually full-canvas overlays with x=0, y=0
-          // We don't rotate the context for them, we just draw them relative to page
-          // BUT we need to flip Y coordinates
-          
           const commands = obj.pathData.split(' ');
-          
+
           if (commands.length >= 3) {
              if (commands[0] === 'M') {
                  const startX = parseFloat(commands[1]) * scaleFactor;
                  const startY = parseFloat(commands[2]) * scaleFactor;
-                 page.moveTo(startX, height - startY);
+                 const { x, y } = getPhysicalCoords(startX, startY);
+                 page.moveTo(x, y);
              }
-             
+
              for (let i = 3; i < commands.length; i+=3) {
                  if (commands[i] === 'L') {
-                     const x = parseFloat(commands[i+1]) * scaleFactor;
-                     const y = parseFloat(commands[i+2]) * scaleFactor;
+                     const vx = parseFloat(commands[i+1]) * scaleFactor;
+                     const vy = parseFloat(commands[i+2]) * scaleFactor;
+                     const { x, y } = getPhysicalCoords(vx, vy);
+
                      page.drawLine({
-                         start: { x: page.getX(), y: page.getY() }, // Current pos
-                         end: { x: x, y: height - y },
+                         start: { x: page.getX(), y: page.getY() },
+                         end: { x, y },
                          thickness: (obj.strokeWidth || 2) * scaleFactor,
-                         color: rgb(0, 0, 0),
+                         color: obj.color ? hexToRgb(obj.color) : rgb(0, 0, 0),
                      });
-                     page.moveTo(x, height - y); // Update current pos
+                     page.moveTo(x, y);
                  }
              }
           }
-          continue; // Skip the rest of the loop for paths
+          continue;
        }
 
-       // For all other objects, apply rotation context
-       // Note: PDF rotation is CCW, CSS is CW. So we negate the angle.
-       const rotationAngle = -(obj.rotation || 0);
-       
+       // For non-path objects, calculate center in physical coordinates
+       const vCx = scaledX + scaledWidth / 2;
+       const vCy = scaledY + scaledHeight / 2;
+       const { x: pCx, y: pCy } = getPhysicalCoords(vCx, vCy);
+
+       // Note: PDF rotation is CCW, CSS/Visual is CW. 
+       const visualRotation = obj.rotation || 0;
+
+       // Correct rotation logic:
+       // The viewer rotates the page by pageRotation (CCW).
+       // To compensate and add our visualRotation:
+       const totalRotation = pageRotation - visualRotation;
+
        page.pushOperators(
          pushGraphicsState(),
-         translate(cx, cy),
-         rotateDegrees(rotationAngle),
+         translate(pCx, pCy),
+         rotateDegrees(totalRotation),
          translate(-scaledWidth / 2, -scaledHeight / 2)
        );
-       
-       // NOW: (0, 0) is the bottom-left of the object's bounding box
-       // (scaledWidth, scaledHeight) is the top-right
-       // Y goes UP
-       
+
+
+const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
+
        if (obj.type === 'text' && obj.content) {
           const padding = 4 * scaleFactor;
           const textColor = obj.color ? hexToRgb(obj.color) : rgb(0, 0, 0);
@@ -445,35 +460,27 @@ export const Toolbar = () => {
           const labelText = obj.name;
           
           // Use user-defined font size for export (default 10)
-          // We apply scaleFactor to convert to PDF coordinates relative to page width
           const labelFontSize = state.exportSettings.labelFontSize * scaleFactor;
           
           const labelFont = helveticaFont;
           const textWidth = labelFont.widthOfTextAtSize(labelText, labelFontSize);
           const textHeight = labelFontSize;
           
-          // Calculate label position relative to object center
-          // Place label below the object with a gap proportional to font size
-          // Gap = 40% of font size (e.g. 4pt for 10pt font)
           const gap = labelFontSize * 0.4;
-          
-          // Distance from Center to Label Center (approx)
-          // Center -> Bottom = scaledHeight / 2
-          // Bottom -> Top of Label Box = gap
-          // Top of Label Box -> Label Baseline = textHeight (approx)
-          // We want the text to be below the object.
-          
           const distance = scaledHeight / 2 + gap + (textHeight / 2); 
           
-          // Vector to bottom (0, -distance)
-          // Rotate this vector by obj.rotation (using correct PDF angle direction)
-          const angleRad = degreesToRadians(rotationAngle);
+          // Vector to label center in visual space (CW rotation)
+          const angleRad = (visualRotation * Math.PI) / 180;
           
-          const dx = distance * Math.sin(angleRad);
-          const dy = -distance * Math.cos(angleRad);
+          const vDx = distance * Math.sin(angleRad);
+          const vDy = distance * Math.cos(angleRad);
           
-          const lx = cx + dx; 
-          const ly = cy + dy;
+          // Visual label position (vCy + vDy because visual Y is down)
+          const vLx = vCx + vDx; 
+          const vLy = vCy + vDy;
+          
+          // Map to physical PDF coordinates
+          const { x: pLx, y: pLy } = getPhysicalCoords(vLx, vLy);
           
           // Background for label
           const bgPadding = 2 * scaleFactor;
@@ -481,18 +488,18 @@ export const Toolbar = () => {
           const bgHeight = textHeight + bgPadding * 2;
           
           page.drawRectangle({
-             x: lx - bgWidth / 2,
-             y: ly - bgPadding, 
+             x: pLx - bgWidth / 2,
+             y: pLy - bgPadding / 2, // Center vertically roughly
              width: bgWidth,
              height: bgHeight,
              color: rgb(1, 1, 1), // White
              opacity: 0.8,
           });
 
-          // Draw text unrotated (horizontal relative to page)
+          // Draw text
           page.drawText(labelText, {
-             x: lx - textWidth / 2,
-             y: ly,
+             x: pLx - textWidth / 2,
+             y: pLy,
              size: labelFontSize,
              font: labelFont,
              color: rgb(0, 0, 0),

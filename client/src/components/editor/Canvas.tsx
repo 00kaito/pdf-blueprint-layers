@@ -1,22 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useEditor } from '@/lib/editor-context';
-import { pdfjs, Document, Page } from 'react-pdf';
-import { Rnd } from 'react-rnd';
-import { cn } from '@/lib/utils';
-import { v4 as uuidv4 } from 'uuid';
-import { 
-  Square, 
-  Circle, 
-  Triangle, 
-  Star, 
-  Heart, 
-  Hexagon, 
-  ArrowRight,
-  RotateCw,
-  Camera,
-  Upload
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, {useRef, useState} from 'react';
+import {useEditor} from '@/lib/editor-context';
+import {Document, Page, pdfjs} from 'react-pdf';
+import {Rnd} from 'react-rnd';
+import {cn} from '@/lib/utils';
+import {v4 as uuidv4} from 'uuid';
+import {ArrowRight, Camera, Circle, Heart, Hexagon, RotateCw, Square, Star, Triangle, Upload} from 'lucide-react';
+import {Button} from '@/components/ui/button';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -47,8 +36,19 @@ export const Canvas = () => {
   const [isDrawing, setIsDrawing] = useState(false);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    console.log(`[Canvas] PDF Loaded: ${numPages} pages`);
     setNumPages(numPages);
   }
+
+  // Adding a callback to capture page info when a page is rendered
+  const onPageLoadSuccess = (page: any) => {
+    console.log(`[Canvas] Page ${page.pageNumber} details:`, {
+      originalWidth: page.originalWidth,
+      originalHeight: page.originalHeight,
+      rotate: page.rotate, // This is the rotation from the PDF metadata
+      view: page.view
+    });
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (state.tool === 'draw' && state.activeLayerId) {
@@ -67,10 +67,12 @@ export const Canvas = () => {
           const y = (e.clientY - rect.top) / state.scale;
           
           const template = state.autoNumbering.template;
-          const width = 50 / state.scale;
-          const height = 50 / state.scale;
+          const width = 50;
+          const height = 50;
           const finalX = x - width / 2;
           const finalY = y - height / 2;
+          
+          console.log(`[Canvas] Stamp Added: x=${finalX.toFixed(2)}, y=${finalY.toFixed(2)}`);
           
           const numberStr = state.autoNumbering.counter.toString().padStart(2, '0');
           const name = `${state.autoNumbering.prefix}${numberStr}`;
@@ -199,19 +201,16 @@ export const Canvas = () => {
               const x = (e.clientX - rect.left) / state.scale;
               const y = (e.clientY - rect.top) / state.scale;
               
-              // Calculate dimensions based on scale
-              // We want visual size to be consistent regardless of zoom
-              // e.g. at scale 10, a 200px object covers 2000px screen pixels.
-              // We want it to look like ~200px screen pixels.
-              // So width = 200 / scale
-              let width = 50 / state.scale;
-              let height = 50 / state.scale;
-              if (type === 'text') { width = 200 / state.scale; height = 50 / state.scale; }
-              if (type === 'image') { width = 200 / state.scale; height = 200 / state.scale; }
+              let width = 50;
+              let height = 50;
+              if (type === 'text') { width = 200; height = 50; }
+              if (type === 'image') { width = 200; height = 200; }
               
               // Center the object on the cursor
               const finalX = x - width / 2;
               const finalY = y - height / 2;
+
+              console.log(`[Canvas] Object Dropped: type=${type}, x=${finalX.toFixed(2)}, y=${finalY.toFixed(2)}`);
 
               dispatch({
                 type: 'ADD_OBJECT',
@@ -227,7 +226,7 @@ export const Canvas = () => {
                   content: content || (type === 'text' ? 'Double click to edit' : ''),
                   color: type === 'icon' ? '#ef4444' : '#000000',
                   rotation: 0,
-                  fontSize: 16 / state.scale // Also scale font size for text so it's not huge
+                  fontSize: 16
                 }
               });
               dispatch({ type: 'SET_TOOL', payload: 'select' });
@@ -271,7 +270,8 @@ export const Canvas = () => {
               renderTextLayer={false} 
               renderAnnotationLayer={false}
               width={600} 
-              scale={state.scale} // Use native React-PDF scaling for clarity
+              scale={state.scale}
+              onLoadSuccess={onPageLoadSuccess}
             />
           </Document>
         ) : (
@@ -362,9 +362,12 @@ export const Canvas = () => {
               // scale={state.scale} // We are manually scaling dimensions and position, so scale should be 1
               scale={1} 
               onDragStop={(e: any, d) => {
+                const newX = d.x / state.scale;
+                const newY = d.y / state.scale;
+                console.log(`[Canvas] Object Moved: id=${obj.id}, x=${newX.toFixed(2)}, y=${newY.toFixed(2)}`);
                 dispatch({
                   type: 'UPDATE_OBJECT',
-                  payload: { id: obj.id, updates: { x: d.x / state.scale, y: d.y / state.scale } }
+                  payload: { id: obj.id, updates: { x: newX, y: newY } }
                 });
               }}
               onResizeStop={(e: any, direction, ref, delta, position) => {
