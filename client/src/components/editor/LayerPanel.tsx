@@ -1,30 +1,32 @@
-import React, { useState } from 'react';
-import { useEditor } from '@/lib/editor-context';
-import { 
-  Eye, 
-  EyeOff, 
-  Layers, 
-  Plus, 
-  Trash2, 
-  Lock, 
-  Unlock, 
-  ChevronDown, 
-  ChevronRight,
-  Type,
-  Image as ImageIcon,
-  Square,
-  Circle,
-  Triangle,
-  Star,
-  Heart,
-  Hexagon,
-  ArrowRight,
-  PenTool
+import React, {useState} from 'react';
+import {useEditor} from '@/lib/editor-context';
+import {
+    ArrowRight,
+    ChevronDown,
+    ChevronRight,
+    Circle,
+    Copy,
+    Eye,
+    EyeOff,
+    FileText,
+    Heart,
+    Hexagon,
+    Image as ImageIcon,
+    Layers,
+    PenTool,
+    Plus,
+    Square,
+    Star,
+    Trash2,
+    Triangle,
+    Type,
+    X
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from "@/components/ui/input";
-import { cn } from '@/lib/utils';
+import {Button} from '@/components/ui/button';
+import {ScrollArea} from '@/components/ui/scroll-area';
+import {Input} from "@/components/ui/input";
+import {Slider} from "@/components/ui/slider";
+import {cn} from '@/lib/utils';
 
 const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
   if (type === 'text') return <Type className="w-3 h-3" />;
@@ -102,6 +104,64 @@ export const LayerPanel = () => {
 
   return (
     <div className="w-64 border-l border-border bg-card flex flex-col h-full shrink-0">
+      {/* Overlay Blueprint Section */}
+      <div className="p-4 border-b border-border bg-muted/20">
+        <div className="flex items-center gap-2 font-medium text-sm mb-3">
+          <Copy className="w-4 h-4 text-primary" />
+          Overlay Blueprint
+        </div>
+        
+        {!state.overlayPdfFile ? (
+          <div className="relative">
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) dispatch({ type: 'SET_OVERLAY_PDF', payload: file });
+              }}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <Button variant="outline" size="sm" className="w-full border-dashed">
+              <Plus className="w-3 h-3 mr-2" />
+              Add Overlay PDF
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between bg-background p-2 rounded border border-border">
+              <div className="flex items-center gap-2 truncate">
+                <FileText className="w-3 h-3 text-muted-foreground" />
+                <span className="text-xs truncate font-medium">{state.overlayPdfFile.name}</span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-5 w-5 hover:text-destructive"
+                onClick={() => dispatch({ type: 'SET_OVERLAY_PDF', payload: null })}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+            
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground font-medium uppercase">Transparency</span>
+                <span className="text-[10px] font-mono bg-muted px-1 rounded">{Math.round(state.overlayOpacity * 100)}%</span>
+              </div>
+              <Slider
+                value={[state.overlayOpacity]}
+                min={0}
+                max={1}
+                step={0.05}
+                onValueChange={([val]) => dispatch({ type: 'SET_OVERLAY_OPACITY', payload: val })}
+                className="py-2"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2 font-medium text-sm">
           <Layers className="w-4 h-4" />

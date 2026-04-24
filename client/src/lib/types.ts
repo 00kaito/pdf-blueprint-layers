@@ -32,6 +32,8 @@ export type EditorObject = {
 
 export type EditorState = {
   pdfFile: File | null;
+  overlayPdfFile: File | null;
+  overlayOpacity: number;
   layers: Layer[];
   objects: EditorObject[];
   selectedObjectId: string | null;
@@ -54,10 +56,13 @@ export type EditorState = {
   exportSettings: {
     labelFontSize: number;
   };
+  customIcons: { id: string; url: string; name: string }[];
 };
 
 export type EditorAction =
   | { type: 'SET_PDF'; payload: File }
+  | { type: 'SET_OVERLAY_PDF'; payload: File | null }
+  | { type: 'SET_OVERLAY_OPACITY'; payload: number }
   | { type: 'ADD_LAYER'; payload: string } // name
   | { type: 'UPDATE_LAYER'; payload: { id: string; updates: Partial<Layer> } }
   | { type: 'TOGGLE_LAYER_VISIBILITY'; payload: string } // id
@@ -77,4 +82,6 @@ export type EditorAction =
   | { type: 'PASTE_OBJECT' }
   | { type: 'SET_AUTO_NUMBERING'; payload: Partial<EditorState['autoNumbering']> }
   | { type: 'INCREMENT_COUNTER' }
-  | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<EditorState['exportSettings']> };
+  | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<EditorState['exportSettings']> }
+  | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
+  | { type: 'DELETE_CUSTOM_ICON'; payload: string };

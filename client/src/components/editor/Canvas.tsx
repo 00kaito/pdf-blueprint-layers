@@ -67,8 +67,9 @@ export const Canvas = () => {
           const y = (e.clientY - rect.top) / state.scale;
           
           const template = state.autoNumbering.template;
-          const width = 50;
-          const height = 50;
+          const baseSize = 50;
+          const width = baseSize / state.scale;
+          const height = baseSize / state.scale;
           const finalX = x - width / 2;
           const finalY = y - height / 2;
           
@@ -201,10 +202,13 @@ export const Canvas = () => {
               const x = (e.clientX - rect.left) / state.scale;
               const y = (e.clientY - rect.top) / state.scale;
               
-              let width = 50;
-              let height = 50;
-              if (type === 'text') { width = 200; height = 50; }
-              if (type === 'image') { width = 200; height = 200; }
+              let baseW = 50;
+              let baseH = 50;
+              if (type === 'text') { baseW = 200; baseH = 50; }
+              if (type === 'image') { baseW = 200; baseH = 200; }
+              
+              const width = baseW / state.scale;
+              const height = baseH / state.scale;
               
               // Center the object on the cursor
               const finalX = x - width / 2;
@@ -217,7 +221,7 @@ export const Canvas = () => {
                 payload: {
                   id: uuidv4(),
                   type: type as any,
-                  name: type === 'text' ? 'Text' : (type === 'image' ? 'Image' : 'Object'),
+                  name: '',
                   x: finalX,
                   y: finalY,
                   width,
@@ -226,7 +230,7 @@ export const Canvas = () => {
                   content: content || (type === 'text' ? 'Double click to edit' : ''),
                   color: type === 'icon' ? '#ef4444' : '#000000',
                   rotation: 0,
-                  fontSize: 16
+                  fontSize: 16 / state.scale
                 }
               });
               dispatch({ type: 'SET_TOOL', payload: 'select' });
@@ -297,6 +301,28 @@ export const Canvas = () => {
            </div>
         )}
 
+        {/* Overlay PDF Document */}
+        {state.overlayPdfFile && (
+           <div 
+             className="absolute inset-0 pointer-events-none" 
+             style={{ opacity: state.overlayOpacity, zIndex: 5 }}
+           >
+             <Document
+               file={state.overlayPdfFile}
+               className="bg-transparent"
+             >
+               <Page 
+                 pageNumber={state.currentPage} 
+                 renderTextLayer={false} 
+                 renderAnnotationLayer={false}
+                 width={600} 
+                 scale={state.scale}
+                 className="bg-transparent"
+               />
+             </Document>
+           </div>
+        )}
+
         <svg 
           className="absolute inset-0 pointer-events-none overflow-visible" 
           style={{ width: '100%', height: '100%', zIndex: 10 }}
@@ -320,6 +346,7 @@ export const Canvas = () => {
                    fill="none"
                    strokeLinecap="round"
                    strokeLinejoin="round"
+                   style={{ opacity: obj.opacity ?? 1 }}
                    className={cn(
                      "cursor-pointer pointer-events-auto transition-colors",
                      state.selectedObjectId === obj.id ? "stroke-primary" : "stroke-black hover:stroke-primary/50"
@@ -419,7 +446,8 @@ export const Canvas = () => {
                 layer.locked ? "pointer-events-none" : "cursor-move"
               )}
               style={{
-                transform: `rotate(${obj.rotation || 0}deg)`
+                transform: `rotate(${obj.rotation || 0}deg)`,
+                opacity: obj.opacity ?? 1
               }}
             >
               {/* Rotation Handle */}
@@ -460,9 +488,13 @@ export const Canvas = () => {
 
               {/* Object Name Label */}
               <div 
-                className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/80 px-1 rounded text-[10px] pointer-events-none border border-black/10"
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/60 px-0.5 rounded pointer-events-none"
                 style={{ 
-                  transform: `rotate(-${obj.rotation || 0}deg)`, // Counter-rotate label so it stays horizontal
+                  fontSize: 1 * state.scale,
+                  // We DON'T rotate this div with the object, 
+                  // but Rnd might apply rotation to parent. 
+                  // We need to counter-rotate it based on object rotation.
+                  transform: `translateX(-50%) rotate(-${obj.rotation || 0}deg)`, 
                 }}
               >
                 {obj.name}

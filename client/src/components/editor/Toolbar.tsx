@@ -13,6 +13,7 @@ import {
     Image as ImageIcon,
     MousePointer2,
     Pencil,
+    Plus,
     Save,
     Settings2,
     Square,
@@ -20,6 +21,7 @@ import {
     Trash2,
     Triangle,
     Type,
+    X,
     ZoomIn,
     ZoomOut
 } from 'lucide-react';
@@ -45,7 +47,6 @@ import {
 } from 'pdf-lib';
 import {saveAs} from 'file-saver';
 
-// Helper to convert hex to RGB for pdf-lib
 const hexToRgb = (hex: string) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? rgb(
@@ -57,6 +58,32 @@ const hexToRgb = (hex: string) => {
 
 // Helper to convert degrees to radians
 const degreesToRadians = (degrees: number) => degrees * (Math.PI / 180);
+
+// Helper to convert SVG Data URL to PNG Data URL for PDF embedding
+const svgToPng = (svgDataUrl: string, targetWidth: number, targetHeight: number): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      // Use 4x scaling for high quality (approx 288 DPI)
+      const qualityMultiplier = 4;
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth * qualityMultiplier;
+      canvas.height = targetHeight * qualityMultiplier;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Failed to load SVG for conversion'));
+    img.src = svgDataUrl;
+  });
+};
 
 export const Toolbar = () => {
   const { state, dispatch } = useEditor();
@@ -80,20 +107,26 @@ export const Toolbar = () => {
 
   const handleAddText = () => {
     if (!state.activeLayerId) return;
-    const { x, y } = getCenterPosition(200, 50);
+    // Scale initial dimensions based on current zoom to keep visual size consistent
+    const baseWidth = 200;
+    const baseHeight = 50;
+    const width = baseWidth / state.scale;
+    const height = baseHeight / state.scale;
+
+    const { x, y } = getCenterPosition(width, height);
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
         id: uuidv4(),
         type: 'text',
-        name: 'Text',
+        name: '',
         x,
         y,
-        width: 200,
-        height: 50,
+        width,
+        height,
         layerId: state.activeLayerId,
         content: 'Double click to edit',
-        fontSize: 16,
+        fontSize: 16 / state.scale, // Also scale initial font size
         color: '#000000',
         rotation: 0
       }
@@ -104,9 +137,11 @@ export const Toolbar = () => {
   const handleAddIcon = (iconType: string) => {
     if (!state.activeLayerId) return;
 
+    // Scale initial dimensions
+    const baseSize = 50;
+    const size = baseSize / state.scale;
+
     if (state.autoNumbering.enabled) {
-      // If auto-numbering is enabled, we don't add object directly.
-      // We set the template and switch to Stamp tool.
       dispatch({
         type: 'SET_AUTO_NUMBERING',
         payload: {
@@ -121,20 +156,20 @@ export const Toolbar = () => {
       return;
     }
 
-    const { x, y } = getCenterPosition(50, 50);
+    const { x, y } = getCenterPosition(size, size);
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
         id: uuidv4(),
         type: 'icon',
-        name: iconType.charAt(0).toUpperCase() + iconType.slice(1),
+        name: '',
         x,
         y,
-        width: 50,
-        height: 50,
+        width: size,
+        height: size,
         layerId: state.activeLayerId,
         color: '#ef4444',
-        content: iconType, // store icon name in content
+        content: iconType,
         rotation: 0
       }
     });
@@ -148,17 +183,19 @@ export const Toolbar = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const url = event.target?.result as string;
-      const { x, y } = getCenterPosition(200, 200);
+      const baseSize = 200;
+      const size = baseSize / state.scale;
+      const { x, y } = getCenterPosition(size, size);
       dispatch({
         type: 'ADD_OBJECT',
         payload: {
           id: uuidv4(),
           type: 'image',
-          name: 'Image',
+          name: '',
           x,
           y,
-          width: 200,
-          height: 200,
+          width: size,
+          height: size,
           layerId: state.activeLayerId!,
           content: url,
           rotation: 0
@@ -191,6 +228,26 @@ export const Toolbar = () => {
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleCustomIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const url = event.target?.result as string;
+      dispatch({
+        type: 'ADD_CUSTOM_ICON',
+        payload: {
+          id: uuidv4(),
+          url,
+          name: file.name
+        }
+      });
+    };
+    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
@@ -249,7 +306,14 @@ export const Toolbar = () => {
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    for (const obj of state.objects) {
+    // Sort objects by layer order (back to front)
+    const sortedObjects = [...state.objects].sort((a, b) => {
+      const layerA = state.layers.find(l => l.id === a.layerId);
+      const layerB = state.layers.find(l => l.id === b.layerId);
+      return (layerA?.order || 0) - (layerB?.order || 0);
+    });
+
+    for (const obj of sortedObjects) {
        const layer = state.layers.find(l => l.id === obj.layerId);
        if (!layer?.visible) continue;
 
@@ -361,23 +425,47 @@ const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
             font: font,
             color: textColor,
             rotate: degrees(0),
+            opacity: (obj.opacity ?? 1) * (layer.opacity ?? 1),
           });
        } else if (obj.type === 'image' && obj.content) {
           try {
             let image;
-            if (obj.content.startsWith('data:image/png')) {
-              image = await pdfDoc.embedPng(obj.content);
-            } else if (obj.content.startsWith('data:image/jpeg')) {
-              image = await pdfDoc.embedJpg(obj.content);
+            let contentToEmbed = obj.content;
+
+            // If it's an SVG, convert it to PNG first with optimized size
+            if (obj.content.startsWith('data:image/svg+xml')) {
+              try {
+                contentToEmbed = await svgToPng(obj.content, scaledWidth, scaledHeight);
+              } catch (err) {
+                console.error('SVG conversion failed', err);
+              }
+            }
+
+            if (contentToEmbed.startsWith('data:image/png')) {
+              image = await pdfDoc.embedPng(contentToEmbed);
+            } else if (contentToEmbed.startsWith('data:image/jpeg') || contentToEmbed.startsWith('data:image/jpg')) {
+              image = await pdfDoc.embedJpg(contentToEmbed);
             }
 
             if (image) {
+              const imgW = image.width;
+              const imgH = image.height;
+              // Calculate scale to fit while maintaining aspect ratio (object-contain)
+              const ratio = Math.min(scaledWidth / imgW, scaledHeight / imgH);
+              const finalW = imgW * ratio;
+              const finalH = imgH * ratio;
+              
+              // Center the image in the bounding box
+              const offX = (scaledWidth - finalW) / 2;
+              const offY = (scaledHeight - finalH) / 2;
+
               page.drawImage(image, {
-                x: 0,
-                y: 0,
-                width: scaledWidth,
-                height: scaledHeight,
+                x: offX,
+                y: offY,
+                width: finalW,
+                height: finalH,
                 rotate: degrees(0),
+                opacity: (obj.opacity ?? 1) * (layer.opacity ?? 1),
               });
             }
           } catch (e) {
@@ -389,57 +477,66 @@ const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
           
           const w = scaledWidth;
           const h = scaledHeight;
+          const minSide = Math.min(w, h);
+          const offX = (w - minSide) / 2;
+          const offY = (h - minSide) / 2;
 
           if (iconType === 'circle') {
-             // Ellipse centered at w/2, h/2
              page.drawEllipse({
                x: w / 2,
                y: h / 2,
-               xScale: w / 2,
-               yScale: h / 2,
+               xScale: minSide / 2,
+               yScale: minSide / 2,
                borderColor: color,
                borderWidth: 2,
                opacity: 1,
                rotate: degrees(0),
              });
           } else {
-             // Geometric shapes
+             // Geometric shapes centered in the box
              let pathData = '';
+             const midX = w / 2;
+             const top = offY + minSide;
+             const bottom = offY;
+             const left = offX;
+             const right = offX + minSide;
+
              if (iconType === 'triangle') {
-                 // Triangle pointing UP
-                 // (0,0) is bottom-left
-                 pathData = `M ${w/2} ${h} L ${w} 0 L 0 0 Z`;
+                 pathData = `M ${midX} ${top} L ${right} ${bottom} L ${left} ${bottom} Z`;
              } else if (iconType === 'star' || iconType === 'heart' || iconType === 'diamond') {
-                 // Diamond
-                 pathData = `M ${w/2} ${h} L ${w} ${h/2} L ${w/2} 0 L 0 ${h/2} Z`;
+                 // Diamond shape for simplicity, centered
+                 const midY = h / 2;
+                 pathData = `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`;
              } else if (iconType === 'hexagon') {
-                 pathData = `M ${w*0.25} 0 L ${w*0.75} 0 L ${w} ${h*0.5} L ${w*0.75} ${h} L ${w*0.25} ${h} L 0 ${h*0.5} Z`;
+                 const midY = h / 2;
+                 const qX = minSide * 0.25;
+                 pathData = `M ${left+qX} ${bottom} L ${right-qX} ${bottom} L ${right} ${midY} L ${right-qX} ${top} L ${left+qX} ${top} L ${left} ${midY} Z`;
              } else if (iconType === 'arrow-right') {
-                 pathData = `M 0 ${h*0.25} L ${w*0.5} ${h*0.25} L ${w*0.5} 0 L ${w} ${h*0.5} L ${w*0.5} ${h} L ${w*0.5} ${h*0.75} L 0 ${h*0.75} Z`;
+                 const midY = h / 2;
+                 const qY = minSide * 0.25;
+                 pathData = `M ${left} ${midY-qY} L ${midX} ${midY-qY} L ${midX} ${bottom} L ${right} ${midY} L ${midX} ${top} L ${midX} ${midY+qY} L ${left} ${midY+qY} Z`;
              } else if (iconType === 'camera') {
-                 // Camera icon shape
-                 pathData = `M 0 0 L ${w} 0 L ${w} ${h*0.8} L ${w*0.7} ${h*0.8} L ${w*0.6} ${h} L ${w*0.4} ${h} L ${w*0.3} ${h*0.8} L 0 ${h*0.8} Z`;
+                 pathData = `M ${left} ${bottom} L ${right} ${bottom} L ${right} ${bottom + minSide*0.8} L ${left + minSide*0.7} ${bottom + minSide*0.8} L ${left + minSide*0.6} ${top} L ${left + minSide*0.4} ${top} L ${left + minSide*0.3} ${bottom + minSide*0.8} L ${left} ${bottom + minSide*0.8} Z`;
                  
-                 page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
+                 page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0 });
                  
                  page.drawEllipse({
-                    x: w/2,
-                    y: h*0.4,
-                    xScale: w*0.25,
-                    yScale: h*0.25,
+                    x: midX,
+                    y: bottom + minSide*0.4,
+                    xScale: minSide*0.25,
+                    yScale: minSide*0.25,
                     borderColor: color,
                     borderWidth: 2,
                     opacity: 1
                  });
-                 
-                 pathData = ''; // Clear pathData
+                 pathData = '';
              } else {
-                 // Square/Rect
+                 // Square/Rect centered
                  page.drawRectangle({
-                    x: 0,
-                    y: 0,
-                    width: w,
-                    height: h,
+                    x: offX,
+                    y: offY,
+                    width: minSide,
+                    height: minSide,
                     borderColor: color,
                     borderWidth: 2,
                     color: undefined,
@@ -448,7 +545,7 @@ const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
              }
              
              if (pathData) {
-                 page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0, color: undefined });
+                 page.drawSvgPath(pathData, { borderColor: color, borderWidth: 2, x: 0, y: 0 });
              }
           }
        }
@@ -459,7 +556,7 @@ const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
        if (obj.name && obj.type !== 'path') {
           const labelText = obj.name;
           
-          // Use user-defined font size for export (default 10)
+          // Use user-defined font size for export
           const labelFontSize = state.exportSettings.labelFontSize * scaleFactor;
           
           const labelFont = helveticaFont;
@@ -467,42 +564,42 @@ const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
           const textHeight = labelFontSize;
           
           const gap = labelFontSize * 0.4;
+          // Position label visually BELOW the object, ignoring object's internal rotation
           const distance = scaledHeight / 2 + gap + (textHeight / 2); 
           
-          // Vector to label center in visual space (CW rotation)
-          const angleRad = (visualRotation * Math.PI) / 180;
-          
-          const vDx = distance * Math.sin(angleRad);
-          const vDy = distance * Math.cos(angleRad);
-          
-          // Visual label position (vCy + vDy because visual Y is down)
-          const vLx = vCx + vDx; 
-          const vLy = vCy + vDy;
+          // Visual label position (always straight down from center)
+          const vLx = vCx; 
+          const vLy = vCy + distance;
           
           // Map to physical PDF coordinates
           const { x: pLx, y: pLy } = getPhysicalCoords(vLx, vLy);
           
           // Background for label
-          const bgPadding = 2 * scaleFactor;
+          const bgPadding = 0.5 * scaleFactor;
           const bgWidth = textWidth + bgPadding * 2;
           const bgHeight = textHeight + bgPadding * 2;
           
+          // To make the label horizontal for the user, we must rotate it by the same angle as the page
+          const labelRotation = degrees(pageRotation);
+
           page.drawRectangle({
              x: pLx - bgWidth / 2,
-             y: pLy - bgPadding / 2, // Center vertically roughly
+             y: pLy - bgPadding / 2, 
              width: bgWidth,
              height: bgHeight,
              color: rgb(1, 1, 1), // White
-             opacity: 0.8,
+             opacity: 0.6,
+             rotate: labelRotation,
           });
 
-          // Draw text
+          // Draw text rotated to match page rotation (appears horizontal to user)
           page.drawText(labelText, {
              x: pLx - textWidth / 2,
              y: pLy,
              size: labelFontSize,
              font: labelFont,
              color: rgb(0, 0, 0),
+             rotate: labelRotation,
           });
        }
     }
@@ -529,6 +626,16 @@ const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
       className="hidden"
       id="project-upload"
       onChange={handleProjectUpload}
+    />
+  );
+
+  const CustomIconInput = () => (
+    <input
+      type="file"
+      accept="image/*"
+      className="hidden"
+      id="custom-icon-upload"
+      onChange={handleCustomIconUpload}
     />
   );
 
@@ -589,30 +696,102 @@ const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64">
-              <div className="grid grid-cols-4 gap-2">
-                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'square')} className="cursor-grab">
-                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('square')}><Square className="w-4 h-4" /></Button>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-2 text-muted-foreground">Standard Icons</h4>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'square')} className="cursor-grab">
+                        <Button variant="outline" size="icon" onClick={() => handleAddIcon('square')}><Square className="w-4 h-4" /></Button>
+                    </div>
+                    <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'circle')} className="cursor-grab">
+                        <Button variant="outline" size="icon" onClick={() => handleAddIcon('circle')}><Circle className="w-4 h-4" /></Button>
+                    </div>
+                    <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'triangle')} className="cursor-grab">
+                        <Button variant="outline" size="icon" onClick={() => handleAddIcon('triangle')}><Triangle className="w-4 h-4" /></Button>
+                    </div>
+                    <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'star')} className="cursor-grab">
+                        <Button variant="outline" size="icon" onClick={() => handleAddIcon('star')}><Star className="w-4 h-4" /></Button>
+                    </div>
+                    <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'heart')} className="cursor-grab">
+                        <Button variant="outline" size="icon" onClick={() => handleAddIcon('heart')}><Heart className="w-4 h-4" /></Button>
+                    </div>
+                    <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'hexagon')} className="cursor-grab">
+                        <Button variant="outline" size="icon" onClick={() => handleAddIcon('hexagon')}><Hexagon className="w-4 h-4" /></Button>
+                    </div>
+                    <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'arrow-right')} className="cursor-grab">
+                        <Button variant="outline" size="icon" onClick={() => handleAddIcon('arrow-right')}><ArrowRight className="w-4 h-4" /></Button>
+                    </div>
+                    <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'camera')} className="cursor-grab">
+                        <Button variant="outline" size="icon" onClick={() => handleAddIcon('camera')}><Camera className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
                 </div>
-                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'circle')} className="cursor-grab">
-                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('circle')}><Circle className="w-4 h-4" /></Button>
-                </div>
-                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'triangle')} className="cursor-grab">
-                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('triangle')}><Triangle className="w-4 h-4" /></Button>
-                </div>
-                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'star')} className="cursor-grab">
-                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('star')}><Star className="w-4 h-4" /></Button>
-                </div>
-                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'heart')} className="cursor-grab">
-                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('heart')}><Heart className="w-4 h-4" /></Button>
-                </div>
-                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'hexagon')} className="cursor-grab">
-                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('hexagon')}><Hexagon className="w-4 h-4" /></Button>
-                </div>
-                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'arrow-right')} className="cursor-grab">
-                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('arrow-right')}><ArrowRight className="w-4 h-4" /></Button>
-                </div>
-                <div draggable onDragStart={(e) => handleDragStart(e, 'icon', 'camera')} className="cursor-grab">
-                    <Button variant="outline" size="icon" onClick={() => handleAddIcon('camera')}><Camera className="w-4 h-4" /></Button>
+
+                <Separator />
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">My Icons</h4>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                      <label htmlFor="custom-icon-upload" className="cursor-pointer">
+                        <Plus className="h-4 w-4" />
+                        <CustomIconInput />
+                      </label>
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-1">
+                    {state.customIcons.map((icon) => (
+                      <div 
+                        key={icon.id} 
+                        draggable 
+                        onDragStart={(e) => handleDragStart(e, 'image', icon.url)}
+                        className="relative group cursor-grab"
+                      >
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="w-full h-10 p-1"
+                          onClick={() => {
+                            if (!state.activeLayerId) return;
+                            const baseSize = 50;
+                            const size = baseSize / state.scale;
+                            const { x, y } = getCenterPosition(size, size);
+                            dispatch({
+                              type: 'ADD_OBJECT',
+                              payload: {
+                                id: uuidv4(),
+                                type: 'image',
+                                name: '',
+                                x,
+                                y,
+                                width: size,
+                                height: size,
+                                layerId: state.activeLayerId,
+                                content: icon.url,
+                                rotation: 0
+                              }
+                            });
+                          }}
+                        >
+                          <img src={icon.url} alt={icon.name} className="w-full h-full object-contain" />
+                        </Button>
+                        <button 
+                          className="absolute -top-1 -right-1 hidden group-hover:flex bg-destructive text-destructive-foreground rounded-full w-4 h-4 items-center justify-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dispatch({ type: 'DELETE_CUSTOM_ICON', payload: icon.id });
+                          }}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {state.customIcons.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground col-span-4 text-center py-2">
+                        No custom icons yet. Upload one!
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </PopoverContent>

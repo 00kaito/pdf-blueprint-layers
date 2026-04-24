@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { EditorState, EditorAction, Layer, EditorObject } from './types';
-import { v4 as uuidv4 } from 'uuid';
+import React, {createContext, ReactNode, useContext, useReducer} from 'react';
+import {EditorAction, EditorState} from './types';
+import {v4 as uuidv4} from 'uuid';
 
 const initialState: EditorState = {
   pdfFile: null,
+  overlayPdfFile: null,
+  overlayOpacity: 0.5,
   layers: [],
   objects: [],
   selectedObjectId: null,
@@ -20,8 +22,9 @@ const initialState: EditorState = {
     template: null
   },
   exportSettings: {
-    labelFontSize: 10
-  }
+    labelFontSize: 1
+  },
+  customIcons: []
 };
 
 const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
@@ -36,6 +39,10 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         objects: [],
         currentPage: 1,
       };
+    case 'SET_OVERLAY_PDF':
+      return { ...state, overlayPdfFile: action.payload };
+    case 'SET_OVERLAY_OPACITY':
+      return { ...state, overlayOpacity: action.payload };
     case 'ADD_LAYER':
       const newLayerId = uuidv4();
       const maxOrder = Math.max(...state.layers.map((l) => l.order), -1);
@@ -139,7 +146,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         x: state.clipboardObject.x + offset,
         y: state.clipboardObject.y + offset,
         layerId: state.activeLayerId, // Paste into active layer
-        name: `${state.clipboardObject.name} (Copy)`
+        name: state.clipboardObject.name // Preserve original name without suffix
       };
       return {
         ...state,
@@ -161,6 +168,16 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return {
         ...state,
         exportSettings: { ...state.exportSettings, ...action.payload }
+      };
+    case 'ADD_CUSTOM_ICON':
+      return {
+        ...state,
+        customIcons: [...state.customIcons, action.payload]
+      };
+    case 'DELETE_CUSTOM_ICON':
+      return {
+        ...state,
+        customIcons: state.customIcons.filter(icon => icon.id !== action.payload)
       };
     default:
       return state;
