@@ -1,0 +1,47 @@
+#### STATUS: DONE ✅ — wszystkie trzy punkty zaimplementowane, nic nie wymaga zmiany.
+
+---
+
+## Priority 3 — Component-Level Anti-Patterns
+
+### 3.1 Input components defined inside Toolbar
+**File:** `Toolbar.tsx:612-640`
+
+`FileInput`, `ProjectInput`, and `CustomIconInput` are React function components
+defined inside `Toolbar`. React treats them as new component types every render,
+causing unmount→remount on each re-render (resets the input's file value).
+Move them to module scope or replace with plain `<input>` elements directly:
+```tsx
+// Replace FileInput component with direct JSX inside the label
+<label htmlFor="image-upload" className="cursor-pointer">
+  <ImageIcon className="w-4 h-4" />
+  <input type="file" accept="image/*" className="hidden" id="image-upload" onChange={handleImageUpload} />
+</label>
+```
+
+### 3.2 Duplicated SVG path scaling in Canvas
+**File:** `Canvas.tsx:335-338` and `Canvas.tsx:367-370`
+
+The path-scaling transform is copy-pasted in two places:
+```ts
+obj.pathData.split(' ').map((val) => {
+  if (['M', 'L'].includes(val)) return val;
+  return parseFloat(val) * state.scale;
+}).join(' ')
+```
+Extract to a module-level utility:
+```ts
+// src/core/svg-utils.ts
+export const scalePath = (pathData: string, scale: number): string =>
+  pathData.split(' ').map(val =>
+    ['M', 'L'].includes(val) ? val : String(parseFloat(val) * scale)
+  ).join(' ');
+```
+
+### 3.3 Inline drop handler in Canvas JSX
+**File:** `Canvas.tsx:190-238`
+
+The `onDrop` handler (48 lines) is embedded directly in JSX, making the render
+function hard to read. Extract to `handleDrop` alongside the other mouse handlers.
+
+---

@@ -1,0 +1,29 @@
+#### STATUS: DONE ✅ — oba punkty zaimplementowane, nic nie wymaga zmiany.
+
+---
+
+### 2.3 Debounce scroll dispatch
+**File:** `Canvas.tsx:171-178`
+
+`handleScroll` currently dispatches on every scroll frame. Use `useCallback` +
+`useMemo` with a 16ms debounce (one frame):
+```ts
+const handleScroll = useCallback(
+  debounce((e: React.UIEvent<HTMLDivElement>) => {
+    dispatch({ type: 'SET_SCROLL', payload: { x: e.currentTarget.scrollLeft, y: e.currentTarget.scrollTop } });
+  }, 16),
+  [dispatch]
+);
+```
+
+### 2.4 Memoize layer sort in export
+**File:** `Toolbar.tsx:310-314`
+
+The sort callback calls `state.layers.find()` for each comparison — O(n²).
+Replace with a pre-built lookup map:
+```ts
+const layerOrderById = Object.fromEntries(state.layers.map(l => [l.id, l.order]));
+const sortedObjects = [...state.objects].sort((a, b) =>
+  (layerOrderById[a.layerId] ?? 0) - (layerOrderById[b.layerId] ?? 0)
+);
+```

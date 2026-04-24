@@ -1,6 +1,14 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import {type ClassValue, clsx} from "clsx"
+import {twMerge} from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+export function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return function(this: any, ...args: Parameters<T>) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(this, args), delay);
+  } as T;
 }

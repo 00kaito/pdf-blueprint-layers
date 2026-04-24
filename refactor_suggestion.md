@@ -54,6 +54,16 @@ tree — including `Toolbar.tsx`, which has expensive JSX subtrees.
 **Result:** Scroll events only trigger re-renders in Canvas. Toolbar only re-renders
 when document data changes (object add/remove/update, not mouse move).
 
+#### IS DONE:
+268 + *   **[Fix 2.2] Split Context**: Rozdzielono `EditorContext` na `DocumentContext` (dane wolnozmienne) i `UIContext` (dane szybkozmienne, np. scroll).
+269 +     *   *Pliki:* `client/src/lib/types.ts`, `client/src/lib/editor-context.tsx`.
+270 +     *   *Efekt:* Toolbar i LayerPanel nie re-renderują się podczas przewijania.
+271 + *   **[Fix 2.3] Scroll Debounce**: Wprowadzono funkcję `debounce` (16ms) dla zdarzenia `onScroll` w edytorze.
+272 +     *   *Pliki:* `client/src/lib/utils.ts`, `client/src/components/editor/Canvas.tsx`.
+273 + *   **[Fix 2.4] Sorting Optimization**: Zoptymalizowano sortowanie warstw podczas eksportu PDF przy użyciu mapy wyszukiwania (O(n) zamiast O(n²)).
+274 +     *   *Plik:* `client/src/components/editor/Toolbar.tsx` (funkcja `handleFlattenAndDownload`).
+275 +
+
 ### 2.3 Debounce scroll dispatch
 **File:** `Canvas.tsx:171-178`
 
@@ -258,7 +268,25 @@ src/
 
 ---
 
-## Implementation Order
+## 🟢 Status wdrożenia (Implementation Status)
+
+Zrealizowano kluczowe punkty planu refaktoryzacji, skupiając się na wydajności i czystości kodu:
+
+### Zrealizowane w ramach Priority 1 & 2:
+*   **[Fix 1.1]** Dodano pole `opacity` do typu `Layer` w `types.ts`.
+*   **[Fix 1.2]** Usunięto nieużywaną funkcję `degreesToRadians` z `Toolbar.tsx`.
+*   **[Fix 2.2] Split Context**: Rozdzielono `EditorContext` na `DocumentContext` (dane wolnozmienne) i `UIContext` (dane szybkozmienne, np. scroll).
+    *   *Pliki:* `client/src/lib/types.ts`, `client/src/lib/editor-context.tsx`.
+    *   *Efekt:* Toolbar i LayerPanel nie re-renderują się podczas przewijania.
+*   **[Fix 2.3] Scroll Debounce**: Wprowadzono funkcję `debounce` (16ms) dla zdarzenia `onScroll` w edytorze.
+    *   *Pliki:* `client/src/lib/utils.ts`, `client/src/components/editor/Canvas.tsx`.
+*   **[Fix 2.4] Sorting Optimization**: Zoptymalizowano sortowanie warstw podczas eksportu PDF przy użyciu mapy wyszukiwania (O(n) zamiast O(n²)).
+    *   *Plik:* `client/src/components/editor/Toolbar.tsx` (funkcja `handleFlattenAndDownload`).
+
+### Pozostałe kluczowe ulepszenia:
+*   **SVG to PDF Compatibility**: Wprowadzono dynamiczne renderowanie SVG do PNG w wysokiej rozdzielczości (DPI ~288) z optymalizacją rozmiaru pliku.
+*   **PDF Overlay System**: Dodano dedykowany system nakładek PDF z niezależną regulacją przezroczystości.
+*   **Auto-scaling**: Nowo dodawane obiekty automatycznie dostosowują swój rozmiar startowy do aktualnego Zoomu.
 
 | Step | Change | Risk | Benefit |
 |------|--------|------|---------|

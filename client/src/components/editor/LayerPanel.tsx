@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {useEditor} from '@/lib/editor-context';
+import {useDocument, useUI} from '@/lib/editor-context';
 import {
     ArrowRight,
     ChevronDown,
@@ -48,7 +48,9 @@ const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
 };
 
 export const LayerPanel = () => {
-  const { state, dispatch } = useEditor();
+  const { state: docState, dispatch } = useDocument();
+  const { state: uiState } = useUI();
+  const state = { ...docState, ...uiState };
   const [expandedLayers, setExpandedLayers] = useState<Record<string, boolean>>({});
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");

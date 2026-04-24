@@ -1,19 +1,13 @@
-import React, {createContext, ReactNode, useContext, useReducer} from 'react';
-import {EditorAction, EditorState} from './types';
+import React, {createContext, ReactNode, useContext, useMemo, useReducer} from 'react';
+import {DocumentState, EditorAction, EditorState, UIState} from './types';
 import {v4 as uuidv4} from 'uuid';
 
-const initialState: EditorState = {
+const initialDocumentState: DocumentState = {
   pdfFile: null,
   overlayPdfFile: null,
   overlayOpacity: 0.5,
   layers: [],
   objects: [],
-  selectedObjectId: null,
-  activeLayerId: null,
-  currentPage: 1,
-  scale: 1,
-  scrollPos: { x: 0, y: 0 },
-  tool: 'select',
   clipboardObject: null,
   autoNumbering: {
     enabled: false,
@@ -27,6 +21,20 @@ const initialState: EditorState = {
   customIcons: []
 };
 
+const initialUIState: UIState = {
+  selectedObjectId: null,
+  activeLayerId: null,
+  currentPage: 1,
+  scale: 1,
+  scrollPos: { x: 0, y: 0 },
+  tool: 'select'
+};
+
+const initialState: EditorState = {
+  ...initialDocumentState,
+  ...initialUIState
+};
+
 const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
   switch (action.type) {
     case 'SET_PDF':
@@ -34,7 +42,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return {
         ...state,
         pdfFile: action.payload,
-        layers: [{ id: defaultLayerId, name: 'Layer 1', visible: true, locked: false, order: 0 }],
+        layers: [{ id: defaultLayerId, name: 'Layer 1', visible: true, locked: false, order: 0, opacity: 1 }],
         activeLayerId: defaultLayerId,
         objects: [],
         currentPage: 1,
@@ -50,7 +58,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         ...state,
         layers: [
           ...state.layers,
-          { id: newLayerId, name: action.payload, visible: true, locked: false, order: maxOrder + 1 },
+          { id: newLayerId, name: action.payload, visible: true, locked: false, order: maxOrder + 1, opacity: 1 },
         ],
         activeLayerId: newLayerId,
       };
@@ -184,25 +192,73 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
   }
 };
 
-const EditorContext = createContext<{
-  state: EditorState;
+const DocumentContext = createContext<{
+  state: DocumentState;
+  dispatch: React.Dispatch<EditorAction>;
+} | null>(null);
+
+const UIContext = createContext<{
+  state: UIState;
   dispatch: React.Dispatch<EditorAction>;
 } | null>(null);
 
 export const EditorProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(editorReducer, initialState);
 
+  const documentValue = useMemo(() => ({
+    state: {
+      pdfFile: state.pdfFile,
+      overlayPdfFile: state.overlayPdfFile,
+      overlayOpacity: state.overlayOpacity,
+      layers: state.layers,
+      objects: state.objects,
+      clipboardObject: state.clipboardObject,
+      autoNumbering: state.autoNumbering,
+      exportSettings: state.exportSettings,
+      customIcons: state.customIcons,
+    },
+    dispatch
+  }), [state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.layers, state.objects, state.clipboardObject, state.autoNumbering, state.exportSettings, state.customIcons, dispatch]);
+
+  const uiValue = useMemo(() => ({
+    state: {
+      selectedObjectId: state.selectedObjectId,
+      activeLayerId: state.activeLayerId,
+      currentPage: state.currentPage,
+      scale: state.scale,
+      scrollPos: state.scrollPos,
+      tool: state.tool,
+    },
+    dispatch
+  }), [state.selectedObjectId, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, dispatch]);
+
   return (
-    <EditorContext.Provider value={{ state, dispatch }}>
-      {children}
-    </EditorContext.Provider>
+    <DocumentContext.Provider value={documentValue}>
+      <UIContext.Provider value={uiValue}>
+        {children}
+      </UIContext.Provider>
+    </DocumentContext.Provider>
   );
 };
 
-export const useEditor = () => {
-  const context = useContext(EditorContext);
-  if (!context) {
-    throw new Error('useEditor must be used within an EditorProvider');
-  }
+export const useDocument = () => {
+  const context = useContext(DocumentContext);
+  if (!context) throw new Error('useDocument must be used within EditorProvider');
   return context;
+};
+
+export const useUI = () => {
+  const context = useContext(UIContext);
+  if (!context) throw new Error('useUI must be used within EditorProvider');
+  return context;
+};
+
+// Kept for backward compatibility during migration
+export const useEditor = () => {
+  const doc = useDocument();
+  const ui = useUI();
+  return {
+    state: { ...doc.state, ...ui.state } as EditorState,
+    dispatch: doc.dispatch
+  };
 };

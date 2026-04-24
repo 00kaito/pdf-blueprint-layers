@@ -1,0 +1,29 @@
+Propozycja "Next Level" (Dla aplikacji profesjonalnej):
+
+  Jeśli planujesz dalszy rozwój do poziomu komercyjnego narzędzia CAD/GIS, oto kierunki, w których warto pójść:
+
+  1. Discriminated Unions dla Typów Obiektów
+  Obecnie EditorObject ma wiele opcjonalnych pól (pathData?, fontSize?). Lepiej zastosować Unię Rozróżnialną:
+
+   1 type TextObject = { type: 'text'; content: string; fontSize: number; ... };
+   2 type PathObject = { type: 'path'; pathData: string; ... };
+   3 type EditorObject = TextObject | PathObject | ImageObject;
+  Zaleta: TypeScript będzie wymuszał istnienie pathData tylko dla ścieżek, co eliminuje błędy "undefined" w runtime.
+
+  2. Wzorzec Command (Undo/Redo)
+  W edytorach graficznych funkcja Cofnij/Ponów jest niezbędna. Obecny useReducer można łatwo rozbudować o historię (np. przy użyciu biblioteki zundo dla Zustanda lub ręcznej implementacji stosu akcji).
+
+  3. Przejście na Zustand (Zamiast Context API)
+  Przy bardzo dużej liczbie obiektów (setki ikon na planie), Context API może stać się wąskim gardłem. Zustand pozwala na subskrypcję konkretnych pól (np. tylko obj.x), co sprawia, że zmieniający się obiekt re-renderuje tylko siebie, a nie całą listę.
+
+  4. Tool Strategy Pattern
+  Zamiast dużego if/else w handleMouseDown, można stworzyć mapę narzędzi:
+
+   1 const tools = {
+   2   draw: { onMouseDown: handleDrawStart, ... },
+   3   stamp: { onMouseDown: handleStampDrop, ... },
+   4   select: { onMouseDown: handleSelect, ... }
+   5 };
+   6 // Wywołanie: tools[state.tool].onMouseDown(e);
+
+  Podsumowanie: Na tym etapie architektura jest bardzo solidna. Możesz bezpiecznie dodawać nowe funkcje, wiedząc, że system jest przejrzysty i wydajny.

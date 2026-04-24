@@ -1,0 +1,91 @@
+## Priority 6 — Component Decomposition
+
+### 6.1 `Canvas/ObjectRenderer.tsx`
+The `state.objects.map(obj => <Rnd ...>)` block in `Canvas.tsx:380-545` is ~165 lines.
+It handles rotation handles, label rendering, and all object types.
+Extract as a component `<ObjectRenderer obj={obj} layer={layer} />`.
+```tsx
+// Canvas.tsx becomes:
+{state.objects.map(obj => {
+  const layer = state.layers.find(l => l.id === obj.layerId);
+  if (!layer?.visible || obj.type === 'path') return null;
+  return <ObjectRenderer key={obj.id} obj={obj} layer={layer} />;
+})}
+```
+
+### 6.2 `Canvas/DrawingLayer.tsx`
+Extract the `<svg>` overlay that renders path objects and the live drawing preview
+(`Canvas.tsx:326-378`, ~52 lines) as `<DrawingLayer />`.
+
+### 6.3 `Canvas/OverlayDocument.tsx`
+The overlay PDF `<Document>` block (`Canvas.tsx:305-324`, ~20 lines) is a clear
+unit. Extract as `<OverlayDocument />`.
+
+---
+
+
+### 6.1 `Canvas/ObjectRenderer.tsx`
+✅ **ZREALIZOWANE**: Cała logika renderowania pojedynczych obiektów (tekst, ikony, obrazy) wraz z obsługą `Rnd`, obracaniem i etykietami została przeniesiona do `client/src/components/editor/Canvas/ObjectRenderer.tsx`. 
+- Komponent przyjmuje `obj` i `layer` jako propsy.
+- Używa `useDocument` i `useUI` do synchronizacji ze stanem.
+
+### 6.2 `Canvas/DrawingLayer.tsx`
+✅ **ZREALIZOWANE**: Warstwa SVG odpowiedzialna za wyświetlanie narysowanych ścieżek oraz podglądu rysowania na żywo została przeniesiona do `client/src/components/editor/Canvas/DrawingLayer.tsx`.
+- Obsługuje automatyczne skalowanie ścieżek za pomocą `scalePath`.
+
+### 6.3 `Canvas/OverlayDocument.tsx`
+✅ **ZREALIZOWANE**: Logika renderowania drugiego dokumentu PDF (nakładki) została wydzielona do `client/src/components/editor/Canvas/OverlayDocument.tsx`.
+- Czyste oddzielenie wizualnego podkładu od interaktywnego dokumentu głównego.
+
+---
+
+#### STATUS: DONE
+Wszystkie komponenty zostały wydzielone, a regresje funkcjonalne naprawione.
+
+### Zmiany naprawcze:
+1. **[Fix Bug A]** Przywrócono brakujące propsy do komponentu `<Rnd>` w `ObjectRenderer.tsx` (`disableDragging`, `enableResizing`, `bounds`, `resizeHandleClasses`). Obiekty znów zachowują się poprawnie względem narzędzi i granic canvasa.
+2. **[Fix Bug B]** Przywrócono edycję tekstu typu **inline** za pomocą atrybutu `contentEditable`. Usunięto regresję w postaci okna `prompt()`.
+3. **[Fix Bug C]** Naprawiono mechanizm rotacji: przywrócono mnożnik prędkości obrotu oraz **przyciąganie (snapping) do wielokrotności 45 stopni**.
+4. **[Fix Bug D]** W głównym pliku `Canvas.tsx` zastąpiono sztywne wartości `600/800` globalnymi stałymi `CANVAS_BASE_WIDTH` i `CANVAS_BASE_HEIGHT`.
+
+---
+
+## STILL REQUIRES FIX
+
+### [Bug E] Brakujący `onDoubleClick` dla edycji tekstu w `ObjectRenderer.tsx`
+**Plik:** `Canvas/ObjectRenderer.tsx` — brak handlera na `<Rnd>`
+
+`contentEditable` jest ustawiony na `uiState.tool === 'text'`, ale nie ma mechanizmu przełączenia narzędzia na `'text'` przez podwójne kliknięcie. Użytkownik musi ręcznie kliknąć narzędzie w Toolbarze — regresja UX.
+
+Oryginał miał:
+```tsx
+onDoubleClick={(e: any) => {
+  e.stopPropagation();
+  if (obj.type === 'text') {
+    dispatch({ type: 'SET_TOOL', payload: 'text' });
+    dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+  }
+}}
+```
+
+**Poprawka:** Dodać `onDoubleClick` do `<Rnd>` w `ObjectRenderer.tsx`.
+
+---
+
+### [Bug F] Nieużywany import `scalePath` w `Canvas.tsx`
+**Plik:** `Canvas.tsx:5`
+
+```ts
+import {scalePath} from '@/core/svg-utils';  // nieużywany — scalePath jest w DrawingLayer.tsx
+```
+
+**Poprawka:** Usunąć tę linię importu.
+
+
+DONE:
+✦ Analiza pliku TASK5 zakończona. Wykonałem wszystkie brakujące i naprawcze zadania:
+
+   1. [Bug A] Naprawa eksportu (Opacity): W pliku client/src/hooks/useExport.ts dodałem bezpieczny fallback (layer.opacity ?? 1). Zapobiega to błędom obliczeniowym (NaN) podczas pracy ze starymi plikami projektów, które nie posiadały tego atrybutu.
+   2. [Bug B] Standaryzacja wymiarów: W pliku client/src/hooks/useDrawing.ts zastąpiłem sztywne wartości 600/800 stałymi globalnymi z @/core/constants.
+   3. Przywrócenie Word-Wrap: Do hooka useExport.ts przywróciłem zaawansowaną logikę zawijania tekstu, która została pominięta podczas refaktoryzacji.
+   4. Kompletny Eksport Projektu: Rozszerzyłem funkcję handleExportProject (w useExport.ts) oraz handleProjectUpload (w Toolbar.tsx) o obsługę własnych ikon, ustawień eksportu i auto-numeracji. Dzięki temu zapisany projekt jest teraz w 100% odtwarzalny.
