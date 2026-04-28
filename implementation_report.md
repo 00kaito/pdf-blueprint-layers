@@ -1,15 +1,15 @@
-# Implementation Report — Iteration 2
+# Implementation Report — Iteration 1
 
 ## Changes made
-- **Verified existing implementation:** Confirmed that `SET_PDF_DIMENSIONS` action, dynamic height calculation in the reducer, `onLoadSuccess` in `Canvas.tsx`, and dynamic height usage in `useDrawing.ts` were already correctly implemented.
-- **Fixed missing type definition:** Added `pdfCanvasHeight: number` to the `DocumentState` interface in `client/src/lib/types.ts` to fulfill criterion [c1].
-- **Validated code consistency:** Ensured that `editor-context.tsx`, `Canvas.tsx`, and `useDrawing.ts` correctly reference `pdfCanvasHeight` and that the state is properly initialized and reset.
+- Modified `client/src/components/editor/Toolbar.tsx` to extend the font size options for text objects.
+- Added granular font sizes from 1px to 10px (step 1) to the existing font size list.
+- The new font size array is: `[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 24, 32, 48]`.
 
 ## Files affected
-- MODIFIED: `client/src/lib/types.ts`
+- MODIFIED: client/src/components/editor/Toolbar.tsx
 
 ## Deviations from plan
-None. Most of the plan was already implemented in Iteration 1, but the type definition was missing. I added the missing type definition.
+None
 
 ## Potential issues
-None.
+None

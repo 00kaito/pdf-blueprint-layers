@@ -80,7 +80,7 @@ export const Toolbar = () => {
                    <Select value={selectedObject.fontSize?.toString() || "16"} onValueChange={(v) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { fontSize: parseInt(v) } } })}>
                     <SelectTrigger className="w-[70px] h-8"><SelectValue /></SelectTrigger>
                     <SelectContent className="max-h-[300px]">
-                      {[8, 10, 12, 14, 16, 20, 24, 32, 48].map(s => <SelectItem key={s} value={s.toString()}>{s}px</SelectItem>)}
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 24, 32, 48].map(s => <SelectItem key={s} value={s.toString()}>{s}px</SelectItem>)}
                     </SelectContent>
                    </Select>
                    <Toggle pressed={selectedObject.fontWeight === 'bold'} onPressedChange={(p) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { fontWeight: p ? 'bold' : 'normal' } } })} size="sm">
