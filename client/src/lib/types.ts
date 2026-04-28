@@ -92,4 +92,5 @@ export type EditorAction =
   | { type: 'INCREMENT_COUNTER' }
   | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<DocumentState['exportSettings']> }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
-  | { type: 'DELETE_CUSTOM_ICON'; payload: string };
+  | { type: 'DELETE_CUSTOM_ICON'; payload: string }
+  | { type: 'SET_PDF_DIMENSIONS'; payload: { width: number; height: number } };

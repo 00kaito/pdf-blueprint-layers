@@ -4,6 +4,7 @@ import {useDocument, useUI} from '@/lib/editor-context';
 import {Document, Page, pdfjs} from 'react-pdf';
 import {debounce} from '@/lib/utils';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
+import {getVisualDimensions} from '@/core/pdf-math';
 import {Upload} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {useDrawing} from '@/hooks/useDrawing';
@@ -75,10 +76,24 @@ export const Canvas = () => {
     <div className="flex-1 bg-muted/30 overflow-auto relative select-none" onMouseDown={handleMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onScroll={handleScroll}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}>
       <div className="min-w-full min-h-full flex p-8">
-        <div ref={containerRef} className="relative shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: CANVAS_BASE_HEIGHT * state.scale }}>
+        <div ref={containerRef} className="relative shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: docState.pdfCanvasHeight * state.scale }}>
           {state.pdfFile ? (
             <Document file={state.pdfFile} onLoadSuccess={({numPages}) => setNumPages(numPages)} className="border border-border bg-white">
-              <Page pageNumber={state.currentPage} renderTextLayer={false} renderAnnotationLayer={false} width={CANVAS_BASE_WIDTH} scale={state.scale} />
+              <Page 
+                pageNumber={state.currentPage} 
+                renderTextLayer={false} 
+                renderAnnotationLayer={false} 
+                width={CANVAS_BASE_WIDTH} 
+                scale={state.scale} 
+                onLoadSuccess={(page) => {
+                  const [x1, y1, x2, y2] = page.view;
+                  const pdfW = x2 - x1;
+                  const pdfH = y2 - y1;
+                  const rotation = page.rotate || 0;
+                  const { vW, vH } = getVisualDimensions(pdfW, pdfH, rotation);
+                  dispatch({ type: 'SET_PDF_DIMENSIONS', payload: { width: vW, height: vH } });
+                }}
+              />
             </Document>
           ) : (
              <div className="bg-white flex flex-col gap-4 items-center justify-center text-muted-foreground border border-dashed border-border relative" style={{ width: CANVAS_BASE_WIDTH * state.scale, height: CANVAS_BASE_HEIGHT * state.scale }}>

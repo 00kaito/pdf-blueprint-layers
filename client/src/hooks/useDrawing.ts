@@ -1,10 +1,10 @@
 import {useCallback, useState} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {v4 as uuidv4} from 'uuid';
-import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
+import {CANVAS_BASE_WIDTH} from '@/core/constants';
 
 export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
-  const { dispatch } = useDocument();
+  const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const [drawingPath, setDrawingPath] = useState('');
   const [isDrawing, setIsDrawing] = useState(false);
@@ -49,14 +49,14 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
           type: 'ADD_OBJECT',
           payload: {
             id: uuidv4(), type: 'path', name: '', x: 0, y: 0, 
-            width: CANVAS_BASE_WIDTH, height: CANVAS_BASE_HEIGHT,
+            width: CANVAS_BASE_WIDTH, height: docState.pdfCanvasHeight,
             layerId: uiState.activeLayerId, pathData: drawingPath, color: '#000000', strokeWidth: 2
           }
         });
       }
       setDrawingPath('');
     }
-  }, [isDrawing, uiState.activeLayerId, drawingPath, dispatch]);
+  }, [isDrawing, uiState.activeLayerId, drawingPath, dispatch, docState.pdfCanvasHeight]);
 
   return { drawingPath, isDrawing, onMouseDown, onMouseMove, onMouseUp };
 };
