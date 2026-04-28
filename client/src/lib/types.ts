@@ -54,6 +54,7 @@ export type DocumentState = {
     labelFontSize: number;
   };
   customIcons: { id: string; url: string; name: string }[];
+  pdfCanvasHeight: number;
 };
 
 export type UIState = {
