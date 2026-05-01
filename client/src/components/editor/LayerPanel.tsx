@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {
     ArrowRight,
+    CheckCircle2,
     ChevronDown,
     ChevronRight,
     Circle,
@@ -26,6 +27,7 @@ import {Button} from '@/components/ui/button';
 import {ScrollArea} from '@/components/ui/scroll-area';
 import {Input} from "@/components/ui/input";
 import {Slider} from "@/components/ui/slider";
+import {Progress} from "@/components/ui/progress";
 import {cn} from '@/lib/utils';
 
 const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
@@ -130,6 +132,15 @@ export const LayerPanel = () => {
     }
   };
 
+  const trackableObjects = state.objects.filter(obj => obj.type !== 'path');
+  const counts = {
+    planned: trackableObjects.filter(o => o.status === 'planned').length,
+    'in-progress': trackableObjects.filter(o => o.status === 'in-progress').length,
+    completed: trackableObjects.filter(o => o.status === 'completed').length,
+    total: trackableObjects.length
+  };
+  const progressPercent = counts.total > 0 ? (counts.completed / counts.total) * 100 : 0;
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Overlay Blueprint Section */}
@@ -189,6 +200,37 @@ export const LayerPanel = () => {
           </div>
         )}
       </div>
+
+      {state.layers.length > 0 && (
+        <div className="p-4 border-b border-border bg-muted/10">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 font-medium text-sm">
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              Progress
+            </div>
+            <span className="text-xs font-bold text-primary">
+              {counts.completed}/{counts.total}
+            </span>
+          </div>
+          
+          <Progress value={progressPercent} className="h-2 mb-3" />
+          
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
+              <span className="text-[10px] font-bold text-gray-500 uppercase">Planned</span>
+              <span className="text-xs font-mono">{counts.planned}</span>
+            </div>
+            <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
+              <span className="text-[10px] font-bold text-amber-500 uppercase">Active</span>
+              <span className="text-xs font-mono">{counts['in-progress']}</span>
+            </div>
+            <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
+              <span className="text-[10px] font-bold text-green-500 uppercase">Done</span>
+              <span className="text-xs font-mono">{counts.completed}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2 font-medium text-sm">

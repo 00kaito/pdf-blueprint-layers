@@ -32,6 +32,7 @@ export type EditorObject = {
   opacity?: number;
   rotation?: number; // Rotation in degrees
   photos?: string[];
+  status?: 'planned' | 'in-progress' | 'completed';
 };
 
 export type DocumentState = {

@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-D66932",
+  "description": "progress tracking:",
+  "title": "progress tracking:",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "EditorObject interface in types.ts contains field `status?: 'planned' | 'in-progress' | 'completed'`",
+      "how_to_verify": "Read client/src/lib/types.ts and confirm the status field exists on EditorObject with the exact union type.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "PropertiesPanel renders a Select with options 'Planned', 'In Progress', 'Completed' when at least one object is selected",
+      "how_to_verify": "Read PropertiesPanel.tsx and confirm a Select component exists whose onValueChange calls handleUpdate({ status: value }) with one of the three string literals.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "PropertiesPanel status Select shows empty/mixed placeholder when multiple selected objects have differing status values",
+      "how_to_verify": "Read PropertiesPanel.tsx and confirm the Select value prop evaluates to '' or undefined when selectedObjects have non-uniform status values.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "ObjectRenderer renders a status dot only when obj.status is defined; dot colour is gray for 'planned', amber for 'in-progress', green for 'completed'",
+      "how_to_verify": "Read ObjectRenderer.tsx and confirm a conditional element exists that maps the three status values to Tailwind colour classes bg-gray-400 / bg-amber-400 / bg-green-500.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "LayerPanel computes completedCount and totalCount from docState.objects filtering out type === 'path', and passes completedCount/totalCount * 100 to a Progress component",
+      "how_to_verify": "Read LayerPanel.tsx and confirm the computation and the Progress component import/usage exist.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c6",
+      "description": "LayerPanel progress section is not rendered when docState.layers is empty (no project loaded)",
+      "how_to_verify": "Read LayerPanel.tsx and confirm the progress section is inside a conditional that checks docState.layers.length > 0.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c7",
+      "description": "TypeScript compiler finds no new errors in the four modified files (types.ts, PropertiesPanel.tsx, ObjectRenderer.tsx, LayerPanel.tsx)",
+      "how_to_verify": "Run `npx tsc --noEmit` from the project root and confirm zero errors attributable to the changed files.",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Add per-object completion status ('planned' | 'in-progress' | 'completed') to track infrastructure passportization work. Status is stored on EditorObject, edited via PropertiesPanel, visualised as a colour-coded dot on the canvas object, and summarised as a progress bar in LayerPanel.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Extend EditorObject type with status field\",\n      \"description\": \"Add optional `status?: 'planned' | 'in-progress' | 'completed'` field to the `EditorObject` interface. No reducer change needed — existing UPDATE_OBJECT and UPDATE_OBJECTS actions already accept Partial<EditorObject>.\",\n      \"files_affected\": [\n        \"client/src/lib/types.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Status selector in PropertiesPanel\",\n      \"description\": \"Add a Select (Planned / In Progress / Completed) under the Identification section, between 'Device Type' and 'Switch ID'. Use handleMetadataChange-style logic but dispatch via handleUpdate({ status: value }) instead. Show mixed-value placeholder when multi-selecting objects with differing statuses. Import CheckCircle2 from lucide-react for the section icon.\",\n      \"files_affected\": [\n        \"client/src/components/editor/PropertiesPanel.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Status indicator dot on canvas objects\",\n      \"description\": \"In ObjectRenderer, render a small filled circle (8×8 px, absolute bottom-right of the Rnd container, z-50) with colour determined by status: no status → hidden, planned → bg-gray-400, in-progress → bg-amber-400, completed → bg-green-500. The dot sits outside the rotation div so it is always axis-aligned. Render only when obj.status is defined, regardless of selection state.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Canvas/ObjectRenderer.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 4,\n      \"title\": \"Progress summary bar in LayerPanel\",\n      \"description\": \"Add a collapsible 'Progress' section at the top of LayerPanel (above the layers list). Compute counts from docState.objects: total non-path objects (paths are lines, not trackable points), and counts per status. Render three inline badges (planned/in-progress/completed with counts) and a Shadcn Progress bar showing completed/total. Import Progress from '@/components/ui/progress'. Only render this section when there is at least one layer.\",\n      \"files_affected\": [\n        \"client/src/components/editor/LayerPanel.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"EditorObject interface in types.ts contains field `status?: 'planned' | 'in-progress' | 'completed'`\",\n      \"how_to_verify\": \"Read client/src/lib/types.ts and confirm the status field exists on EditorObject with the exact union type.\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"PropertiesPanel renders a Select with options 'Planned', 'In Progress', 'Completed' when at least one object is selected\",\n      \"how_to_verify\": \"Read PropertiesPanel.tsx and confirm a Select component exists whose onValueChange calls handleUpdate({ status: value }) with one of the three string literals.\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"PropertiesPanel status Select shows empty/mixed placeholder when multiple selected objects have differing status values\",\n      \"how_to_verify\": \"Read PropertiesPanel.tsx and confirm the Select value prop evaluates to '' or undefined when selectedObjects have non-uniform status values.\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"ObjectRenderer renders a status dot only when obj.status is defined; dot colour is gray for 'planned', amber for 'in-progress', green for 'completed'\",\n      \"how_to_verify\": \"Read ObjectRenderer.tsx and confirm a conditional element exists that maps the three status values to Tailwind colour classes bg-gray-400 / bg-amber-400 / bg-green-500.\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"LayerPanel computes completedCount and totalCount from docState.objects filtering out type === 'path', and passes completedCount/totalCount * 100 to a Progress component\",\n      \"how_to_verify\": \"Read LayerPanel.tsx and confirm the computation and the Progress component import/usage exist.\"\n    },\n    {\n      \"id\": \"c6\",\n      \"description\": \"LayerPanel progress section is not rendered when docState.layers is empty (no project loaded)\",\n      \"how_to_verify\": \"Read LayerPanel.tsx and confirm the progress section is inside a conditional that checks docState.layers.length > 0.\"\n    },\n    {\n      \"id\": \"c7\",\n      \"description\": \"TypeScript compiler finds no new errors in the four modified files (types.ts, PropertiesPanel.tsx, ObjectRenderer.tsx, LayerPanel.tsx)\",\n      \"how_to_verify\": \"Run `npx tsc --noEmit` from the project root and confirm zero errors attributable to the changed files.\"\n    }\n  ],\n  \"risks\": [\n    \"Existing saved project JSON files have no 'status' field on objects — the optional type means they deserialise as undefined and default to 'no status', which is the intended behaviour, but the progress bar total will silently include these legacy objects in its denominator.\",\n    \"The Progress component from '@/components/ui/progress' is already in the codebase (client/src/components/ui/progress.tsx) but should be verified it accepts a numeric 'value' prop (0–100) before use.\",\n    \"LayerPanel already imports many lucide icons; adding more (e.g. CheckCircle2) increases the icon bundle slightly — acceptable but worth noting if bundle size is a concern.\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "f4600f0af1bc9efaa537531785f62567873af43e",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777664792.038186,
+  "updated_at": 1777664931.2887094
+}

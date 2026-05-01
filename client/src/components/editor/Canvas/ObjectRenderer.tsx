@@ -154,6 +154,18 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
           )}
       </div>
 
+      {obj.status && (
+        <div 
+          className={cn(
+            "absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white shadow-sm z-50",
+            obj.status === 'planned' && "bg-gray-400",
+            obj.status === 'in-progress' && "bg-amber-400",
+            obj.status === 'completed' && "bg-green-500"
+          )}
+          title={`Status: ${obj.status}`}
+        />
+      )}
+
       <div 
         className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/80 border border-border px-1.5 py-0.5 rounded text-[10px] font-medium pointer-events-none shadow-sm"
         style={{ transform: `translateX(-50%)` }}

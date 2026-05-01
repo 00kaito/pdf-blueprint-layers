@@ -6,7 +6,7 @@ import {Label} from '@/components/ui/label';
 import {Slider} from '@/components/ui/slider';
 import {Separator} from '@/components/ui/separator';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
-import {Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
+import {CheckCircle2, Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {ObjectPhotoGallery} from './ObjectPhotoGallery';
 
@@ -109,6 +109,26 @@ export const PropertiesPanel = () => {
                     <SelectItem value="CAM">CAM</SelectItem>
                     <SelectItem value="TV">TV</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="obj-status" className="text-xs font-medium">Progress Status</Label>
+                <Select 
+                  value={selectedObjects.every(o => o.status === firstObject.status) ? (firstObject.status || '') : ''} 
+                  onValueChange={(v) => handleUpdate({ status: v as any })}
+                >
+                  <SelectTrigger id="obj-status" className="h-8 text-xs">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      <SelectValue placeholder={isMultiSelect ? "Mixed status" : "Select status"} />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planned">Planned</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
