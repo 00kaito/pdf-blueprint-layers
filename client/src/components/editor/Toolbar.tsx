@@ -10,34 +10,17 @@ import {Input} from "@/components/ui/input";
 import {Slider} from '@/components/ui/slider';
 import {Label} from "@/components/ui/label";
 import {useExport} from '@/hooks/useExport';
+import {useImport} from '@/hooks/useImport';
 
 export const Toolbar = () => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const { handleFlattenAndDownload, handleExportProject } = useExport();
+  const { handleFileImport } = useImport();
+  const dirInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleProjectUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.layers && json.objects) {
-          dispatch({ 
-            type: 'IMPORT_PROJECT', 
-            payload: { 
-              layers: json.layers, 
-              objects: json.objects,
-              customIcons: json.customIcons || [],
-              exportSettings: json.exportSettings || docState.exportSettings,
-              autoNumbering: json.autoNumbering || docState.autoNumbering
-            } 
-          });
-        }
-      } catch (error) { console.error('Parse fail', error); }
-    };
-    reader.readAsText(file);
+  const onProjectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await handleFileImport(e.target.files);
     e.target.value = '';
   };
 
@@ -136,9 +119,20 @@ export const Toolbar = () => {
         <Button variant="outline" size="sm" asChild>
           <label htmlFor="project-upload" className="cursor-pointer">
             <FolderOpen className="w-4 h-4 mr-2" />Open
-            <input type="file" accept=".json" className="hidden" id="project-upload" onChange={handleProjectUpload} />
+            <input type="file" accept=".json,.zip" className="hidden" id="project-upload" onChange={onProjectUpload} />
           </label>
         </Button>
+        <Button variant="outline" size="sm" onClick={() => dirInputRef.current?.click()}>
+          <FolderOpen className="w-4 h-4 mr-2" />Open Folder
+        </Button>
+        <input
+          type="file"
+          ref={dirInputRef}
+          multiple
+          {...{ webkitdirectory: "", directory: "" } as any}
+          onChange={onProjectUpload}
+          className="hidden"
+        />
 
         <Popover>
           <PopoverTrigger asChild>

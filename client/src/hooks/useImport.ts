@@ -1,0 +1,186 @@
+import {useDocument} from '@/lib/editor-context';
+import JSZip from 'jszip';
+
+export const useImport = () => {
+  const { dispatch } = useDocument();
+
+  const getMimeType = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'png': return 'image/png';
+      case 'jpg':
+      case 'jpeg': return 'image/jpeg';
+      case 'svg': return 'image/svg+xml';
+      default: return 'application/octet-stream';
+    }
+  };
+
+  const fileToDataUrl = (file: File | Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleZipImport = async (zipFile: File) => {
+    try {
+      const zip = await JSZip.loadAsync(zipFile);
+      const jsonFile = zip.file('project.json');
+      if (!jsonFile) {
+        alert("Invalid project ZIP: project.json not found");
+        return;
+      }
+
+      const projectData = JSON.parse(await jsonFile.async('string'));
+      
+      // Load PDF if exists
+      let pdfFile: File | null = null;
+      const pdfEntry = zip.file('document.pdf');
+      if (pdfEntry) {
+        const pdfBlob = await pdfEntry.async('blob');
+        pdfFile = new File([pdfBlob], 'document.pdf', { type: 'application/pdf' });
+      }
+
+      // Load Overlay PDF if exists
+      let overlayPdfFile: File | null = null;
+      const overlayPdfEntry = zip.file('overlay.pdf');
+      if (overlayPdfEntry) {
+        const overlayPdfBlob = await overlayPdfEntry.async('blob');
+        overlayPdfFile = new File([overlayPdfBlob], 'overlay.pdf', { type: 'application/pdf' });
+      }
+
+      // Resolve assets in objects
+      const resolvedObjects = await Promise.all((projectData.objects || []).map(async (obj: any) => {
+        if (obj.type === 'image' && obj.content && obj.content.startsWith('assets/')) {
+          const assetEntry = zip.file(obj.content);
+          if (assetEntry) {
+            const base64 = await assetEntry.async('base64');
+            const mime = getMimeType(obj.content);
+            return { ...obj, content: `data:${mime};base64,${base64}` };
+          }
+        }
+        return obj;
+      }));
+
+      // Resolve assets in custom icons
+      const resolvedCustomIcons = await Promise.all((projectData.customIcons || []).map(async (icon: any) => {
+        if (icon.url && icon.url.startsWith('assets/')) {
+          const assetEntry = zip.file(icon.url);
+          if (assetEntry) {
+            const base64 = await assetEntry.async('base64');
+            const mime = getMimeType(icon.url);
+            return { ...icon, url: `data:${mime};base64,${base64}` };
+          }
+        }
+        return icon;
+      }));
+
+      dispatch({ 
+        type: 'IMPORT_PROJECT', 
+        payload: { 
+          ...projectData, 
+          pdfFile: pdfFile || projectData.pdfFile,
+          overlayPdfFile: overlayPdfFile || projectData.overlayPdfFile,
+          objects: resolvedObjects, 
+          customIcons: resolvedCustomIcons 
+        } 
+      });
+    } catch (error) {
+      console.error("Error importing ZIP:", error);
+      alert("Failed to import project ZIP");
+    }
+  };
+
+  const handleDirectoryImport = async (files: FileList | File[]) => {
+    try {
+      const fileArray = Array.from(files);
+      const jsonFile = fileArray.find(f => f.name === 'project.json' || f.webkitRelativePath.endsWith('/project.json'));
+      if (!jsonFile) {
+        alert("project.json not found in selected directory");
+        return;
+      }
+
+      const projectData = JSON.parse(await jsonFile.text());
+      
+      // Find PDF
+      const pdfFile = fileArray.find(f => f.name === 'document.pdf' || f.webkitRelativePath.endsWith('/document.pdf'));
+      
+      // Find Overlay PDF
+      const overlayPdfFile = fileArray.find(f => f.name === 'overlay.pdf' || f.webkitRelativePath.endsWith('/overlay.pdf'));
+
+      // Resolve assets in objects
+      const resolvedObjects = await Promise.all((projectData.objects || []).map(async (obj: any) => {
+        if (obj.type === 'image' && obj.content && obj.content.startsWith('assets/')) {
+          const assetFilename = obj.content.split('/').pop();
+          const assetFile = fileArray.find(f => f.webkitRelativePath.endsWith(obj.content) || f.name === assetFilename);
+          if (assetFile) {
+            const dataUrl = await fileToDataUrl(assetFile);
+            return { ...obj, content: dataUrl };
+          }
+        }
+        return obj;
+      }));
+
+      // Resolve assets in custom icons
+      const resolvedCustomIcons = await Promise.all((projectData.customIcons || []).map(async (icon: any) => {
+        if (icon.url && icon.url.startsWith('assets/')) {
+          const assetFilename = icon.url.split('/').pop();
+          const assetFile = fileArray.find(f => f.webkitRelativePath.endsWith(icon.url) || f.name === assetFilename);
+          if (assetFile) {
+            const dataUrl = await fileToDataUrl(assetFile);
+            return { ...icon, url: dataUrl };
+          }
+        }
+        return icon;
+      }));
+
+      dispatch({ 
+        type: 'IMPORT_PROJECT', 
+        payload: { 
+          ...projectData, 
+          pdfFile: pdfFile || projectData.pdfFile || null,
+          overlayPdfFile: overlayPdfFile || projectData.overlayPdfFile || null,
+          objects: resolvedObjects, 
+          customIcons: resolvedCustomIcons 
+        } 
+      });
+    } catch (error) {
+      console.error("Error importing directory:", error);
+      alert("Failed to import project directory");
+    }
+  };
+
+  const handleFileImport = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const firstFile = files[0];
+
+    // Check if it's a directory upload (multiple files from a directory)
+    if (files.length > 1 && !firstFile.name.endsWith('.pdf') && !firstFile.name.endsWith('.zip') && !firstFile.name.endsWith('.json')) {
+      await handleDirectoryImport(files);
+      return;
+    }
+
+    // Handle single file uploads
+    if (firstFile.name.endsWith('.pdf')) {
+      dispatch({ type: 'SET_PDF', payload: firstFile });
+    } else if (firstFile.name.endsWith('.json')) {
+      try {
+        const text = await firstFile.text();
+        const projectData = JSON.parse(text);
+        dispatch({ type: 'IMPORT_PROJECT', payload: projectData });
+      } catch (e) {
+        alert("Invalid project JSON");
+      }
+    } else if (firstFile.name.endsWith('.zip')) {
+      await handleZipImport(firstFile);
+    } else if ((files[0] as any).webkitRelativePath && (files[0] as any).webkitRelativePath.includes('/')) {
+        // This is likely a directory upload triggered via directory input
+        await handleDirectoryImport(files);
+    }
+  };
+
+  return { handleZipImport, handleDirectoryImport, handleFileImport };
+};

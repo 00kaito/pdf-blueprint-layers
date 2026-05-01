@@ -1,6 +1,7 @@
 import {useCallback} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {saveAs} from 'file-saver';
+import JSZip from 'jszip';
 import {
     degrees,
     PDFDocument,
@@ -19,16 +20,72 @@ export const useExport = () => {
   const { state: docState } = useDocument();
   const { state: uiState } = useUI();
 
-  const handleExportProject = useCallback(() => {
+  const handleExportProject = useCallback(async () => {
+    const zip = new JSZip();
+    const assetsFolder = zip.folder("assets")!;
+    
+    const processedObjects = [...docState.objects];
+    const processedCustomIcons = [...docState.customIcons];
+
+    // Helper to process data URL and add to zip
+    const processAsset = (content: string, prefix: string, id: string) => {
+        if (!content || !content.startsWith('data:')) return content;
+        
+        const [header, base64] = content.split(',');
+        const mimeMatch = header.match(/:(.*?);/);
+        if (!mimeMatch) return content;
+        
+        const mime = mimeMatch[1];
+        const ext = mime.split('/')[1] || 'bin';
+        const filename = `${prefix}_${id}.${ext}`;
+        
+        assetsFolder.file(filename, base64, { base64: true });
+        return `assets/${filename}`;
+    };
+
+    // Process images in objects
+    const finalObjects = processedObjects.map(obj => {
+        if (obj.type === 'image' && obj.content) {
+            return {
+                ...obj,
+                content: processAsset(obj.content, 'img', obj.id)
+            };
+        }
+        return obj;
+    });
+
+    // Process custom icons
+    const finalCustomIcons = processedCustomIcons.map(icon => {
+        if (icon.url) {
+            return {
+                ...icon,
+                url: processAsset(icon.url, 'icon', icon.id)
+            };
+        }
+        return icon;
+    });
+
     const projectData = JSON.stringify({
       layers: docState.layers,
-      objects: docState.objects,
-      customIcons: docState.customIcons,
+      objects: finalObjects,
+      customIcons: finalCustomIcons,
       exportSettings: docState.exportSettings,
       autoNumbering: docState.autoNumbering,
-    });
-    const blob = new Blob([projectData], { type: 'application/json' });
-    saveAs(blob, 'project.json');
+      overlayOpacity: docState.overlayOpacity,
+    }, null, 2);
+
+    zip.file('project.json', projectData);
+
+    if (docState.pdfFile) {
+        zip.file('document.pdf', docState.pdfFile);
+    }
+
+    if (docState.overlayPdfFile) {
+        zip.file('overlay.pdf', docState.overlayPdfFile);
+    }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    saveAs(content, 'project-bundle.zip');
   }, [docState]);
 
   const handleFlattenAndDownload = useCallback(async () => {
