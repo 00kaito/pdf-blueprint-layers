@@ -24,13 +24,18 @@ export const useExport = () => {
     const zip = new JSZip();
     const assetsFolder = zip.folder("assets")!;
     
-    const processedObjects = [...docState.objects];
-    const processedCustomIcons = [...docState.customIcons];
+    // Cache to prevent duplicate files for the same asset content
+    const assetCache = new Map<string, string>();
 
     // Helper to process data URL or blob URL and add to zip
     const processAsset = async (content: string, prefix: string, id: string) => {
         if (!content) return content;
         
+        // If we've already processed this exact URL, reuse the ZIP path
+        if (assetCache.has(content)) {
+            return assetCache.get(content)!;
+        }
+
         if (content.startsWith('blob:')) {
             try {
                 const response = await fetch(content);
@@ -38,7 +43,9 @@ export const useExport = () => {
                 const ext = blob.type.split('/')[1] || 'bin';
                 const filename = `${prefix}_${id}.${ext}`;
                 assetsFolder.file(filename, blob);
-                return `assets/${filename}`;
+                const zipPath = `assets/${filename}`;
+                assetCache.set(content, zipPath);
+                return zipPath;
             } catch (e) {
                 console.error("Failed to fetch blob", e);
                 return content;
@@ -56,11 +63,13 @@ export const useExport = () => {
         const filename = `${prefix}_${id}.${ext}`;
         
         assetsFolder.file(filename, base64, { base64: true });
-        return `assets/${filename}`;
+        const zipPath = `assets/${filename}`;
+        assetCache.set(content, zipPath);
+        return zipPath;
     };
 
     // Process images in objects
-    const finalObjects = await Promise.all(processedObjects.map(async obj => {
+    const finalObjects = await Promise.all(docState.objects.map(async obj => {
         if (obj.type === 'image' && obj.content) {
             return {
                 ...obj,
@@ -71,7 +80,7 @@ export const useExport = () => {
     }));
 
     // Process custom icons
-    const finalCustomIcons = await Promise.all(processedCustomIcons.map(async icon => {
+    const finalCustomIcons = await Promise.all(docState.customIcons.map(async icon => {
         if (icon.url) {
             return {
                 ...icon,

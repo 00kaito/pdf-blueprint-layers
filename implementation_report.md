@@ -1,20 +1,18 @@
-# Implementation Report — Iteration 3
+# Implementation Report — Iteration 4
 
 ## Changes made
-- **Enhanced ZIP Export Logic**: Updated `useExport.ts` to handle both Data URLs and Blob URLs. The `processAsset` function is now asynchronous and fetches Blob content when necessary to ensure assets are correctly bundled into the `assets/` directory of the ZIP file.
-- **Improved Import Asset Resolution**: Updated `useImport.ts` to use Blob URLs (`URL.createObjectURL`) instead of Base64 Data URLs for imported assets, improving memory efficiency and performance.
-- **Robust Path Matching**: Implemented a `findFileByPath` helper in `handleDirectoryImport` that correctly matches relative paths (e.g., `assets/image.png`) by checking if the file path ends with the relative path, effectively ignoring arbitrary root directory prefixes added by browsers during directory uploads.
-- **Library Icon Resolution**: Fixed a bug where custom icons in the icon library were not being resolved during import. Both canvas objects and custom icons now correctly resolve their relative paths to Blob URLs.
-- **PDF Handling**: Ensured that `document.pdf` and `overlay.pdf` are correctly loaded and associated with the project state during both ZIP and directory imports.
-- **Backward Compatibility**: Maintained support for legacy standalone `.json` files containing embedded Base64 assets.
+- **Implemented Asset Deduplication in Export**: Updated `useExport.ts` to use an `assetCache` (Map). This ensures that if the same image or custom icon is used multiple times in a project, it is only stored once in the `assets/` folder of the ZIP bundle, reducing file size and redundancy.
+- **Enhanced Asset Rehydration in Import**: Refined the `useImport.ts` hook to robustly resolve relative asset paths (starting with `assets/`) back into Blob URLs.
+- **Added Asset Caching during Import**: Implemented a cache in `useImport.ts` to ensure that multiple references to the same asset path resolve to the same Blob URL, improving memory efficiency and state consistency.
+- **Improved Directory Import Robustness**: Updated `findFileByPath` in `useImport.ts` to better handle path normalization and matching across different operating systems and browser behaviors (handling backslashes and directory prefixes).
+- **Custom Icon Support**: Ensured that the `customIcons` library state is fully rehydrated with valid Blob URLs during import, maintaining the "My Icons" gallery functionality.
 
 ## Files affected
 - MODIFIED: `client/src/hooks/useExport.ts`
 - MODIFIED: `client/src/hooks/useImport.ts`
 
 ## Deviations from plan
-None. The implementation follows both the original plan and the specific fix steps provided.
+None. The implementation follows the fix plan's recommendations for asset deduplication and icon rehydration.
 
 ## Potential issues
-- **Blob URL Lifecycle**: Blob URLs created during import are not explicitly revoked. In a long-running session with many imports, this could lead to increased memory usage, though it is likely negligible for typical project sizes.
-- **Browser Support**: Directory upload (`webkitdirectory`) support varies by browser, but the current implementation provides a fallback to ZIP and single file uploads.
+None identified. The changes maintain backward compatibility with legacy JSON-only projects containing Base64 data.

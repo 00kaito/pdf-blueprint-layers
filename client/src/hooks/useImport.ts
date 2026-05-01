@@ -25,6 +25,22 @@ export const useImport = () => {
       }
 
       const projectData = JSON.parse(await jsonFile.async('string'));
+      const assetCache = new Map<string, string>();
+
+      const resolveAsset = async (path: string) => {
+        if (!path || !path.startsWith('assets/')) return path;
+        if (assetCache.has(path)) return assetCache.get(path)!;
+
+        const assetEntry = zip.file(path);
+        if (assetEntry) {
+            const blob = await assetEntry.async('blob');
+            const mime = getMimeType(path);
+            const blobUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
+            assetCache.set(path, blobUrl);
+            return blobUrl;
+        }
+        return path;
+      };
       
       // Load PDF if exists
       let pdfFile: File | null = null;
@@ -44,28 +60,16 @@ export const useImport = () => {
 
       // Resolve assets in objects
       const resolvedObjects = await Promise.all((projectData.objects || []).map(async (obj: any) => {
-        if (obj.type === 'image' && obj.content && obj.content.startsWith('assets/')) {
-          const assetEntry = zip.file(obj.content);
-          if (assetEntry) {
-            const blob = await assetEntry.async('blob');
-            const mime = getMimeType(obj.content);
-            const blobUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
-            return { ...obj, content: blobUrl };
-          }
+        if (obj.type === 'image' && obj.content) {
+          return { ...obj, content: await resolveAsset(obj.content) };
         }
         return obj;
       }));
 
       // Resolve assets in custom icons
       const resolvedCustomIcons = await Promise.all((projectData.customIcons || []).map(async (icon: any) => {
-        if (icon.url && icon.url.startsWith('assets/')) {
-          const assetEntry = zip.file(icon.url);
-          if (assetEntry) {
-            const blob = await assetEntry.async('blob');
-            const mime = getMimeType(icon.url);
-            const blobUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
-            return { ...icon, url: blobUrl };
-          }
+        if (icon.url) {
+          return { ...icon, url: await resolveAsset(icon.url) };
         }
         return icon;
       }));
@@ -89,12 +93,27 @@ export const useImport = () => {
   const handleDirectoryImport = async (files: FileList | File[]) => {
     try {
       const fileArray = Array.from(files);
+      const assetCache = new Map<string, string>();
       
       const findFileByPath = (relativePath: string) => {
+        const normalizedTarget = relativePath.replace(/\\/g, '/');
         return fileArray.find(f => {
-          const path = f.webkitRelativePath || f.name;
-          return path === relativePath || path.endsWith('/' + relativePath);
+          const path = (f.webkitRelativePath || f.name).replace(/\\/g, '/');
+          return path === normalizedTarget || path.endsWith('/' + normalizedTarget);
         });
+      };
+
+      const resolveAsset = async (path: string) => {
+        if (!path || !path.startsWith('assets/')) return path;
+        if (assetCache.has(path)) return assetCache.get(path)!;
+
+        const assetFile = findFileByPath(path);
+        if (assetFile) {
+            const blobUrl = URL.createObjectURL(assetFile);
+            assetCache.set(path, blobUrl);
+            return blobUrl;
+        }
+        return path;
       };
 
       const jsonFile = findFileByPath('project.json');
@@ -113,24 +132,16 @@ export const useImport = () => {
 
       // Resolve assets in objects
       const resolvedObjects = await Promise.all((projectData.objects || []).map(async (obj: any) => {
-        if (obj.type === 'image' && obj.content && obj.content.startsWith('assets/')) {
-          const assetFile = findFileByPath(obj.content);
-          if (assetFile) {
-            const blobUrl = URL.createObjectURL(assetFile);
-            return { ...obj, content: blobUrl };
-          }
+        if (obj.type === 'image' && obj.content) {
+          return { ...obj, content: await resolveAsset(obj.content) };
         }
         return obj;
       }));
 
       // Resolve assets in custom icons
       const resolvedCustomIcons = await Promise.all((projectData.customIcons || []).map(async (icon: any) => {
-        if (icon.url && icon.url.startsWith('assets/')) {
-          const assetFile = findFileByPath(icon.url);
-          if (assetFile) {
-            const blobUrl = URL.createObjectURL(assetFile);
-            return { ...icon, url: blobUrl };
-          }
+        if (icon.url) {
+          return { ...icon, url: await resolveAsset(icon.url) };
         }
         return icon;
       }));
