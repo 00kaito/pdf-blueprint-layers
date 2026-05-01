@@ -46,3 +46,115 @@
 
 ---
 
+## IMPLEMENTING — iter 1 — 2026-05-01 13:58:51
+
+### Gemini (Programista)
+
+**Open criteria do adresowania:**
+- `[c1]` EditorObject in client/src/lib/types.ts has optional field `photos?: string[]`
+- `[c2]` EditorAction union in types.ts includes both ADD_OBJECT_PHOTO (payload: {id: string; photoDataUrl: string}) and REMOVE_OBJECT_PHOTO (payload: {id: string; index: number})
+- `[c3]` editorReducer in editor-context.tsx handles ADD_OBJECT_PHOTO by appending photoDataUrl to the matching object's photos array, and REMOVE_OBJECT_PHOTO by filtering out the photo at the given index
+- `[c4]` File client/src/core/image-compress.ts exists and exports a function `compressImage` with signature `(file: File) => Promise<string>`
+- `[c5]` File client/src/components/editor/ObjectPhotoGallery.tsx exists and accepts props { objectId: string; photos: string[] }
+- `[c6]` PropertiesPanel.tsx renders ObjectPhotoGallery when exactly one object is selected (isMultiSelect is false), passing firstObject.id and firstObject.photos
+- `[c7]` handleExportProject in useExport.ts iterates obj.photos and calls toDataUrl on each item, replacing any blob: URLs with data URLs before JSON serialization
+- `[c8]` IMPORT_PROJECT reducer case in editor-context.tsx already spreads the full payload including objects with their photos arrays — no additional import-side code needed
+
+**Git diff:** .orchestrator/orchestrator.db                    | Bin 49152 -> 81920 bytes
+ .orchestrator/runs/TASK-93AED0/conversation.md   | 104 +++++++++++++++++++++++
+ .orchestrator/runs/TASK-93AED0/orchestrator.log  |   6 ++
+ .orchestrator/runs/TASK-93AED0/state.json        |  48 ++++++-----
+ client/src/components/editor/PropertiesPanel.tsx |  11 +++
+ client/src/hooks/useExport.ts                    |  19 +++--
+ client/src/lib/editor-context.tsx                |  18 ++++
+ client/src/lib/types.ts                          |   5 +-
+ implementation_report.md                         |  31 +++----
+ 9 files changed, 198 insertions(+), 44 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- **Extended EditorObject type**: Added optional `photos?: string[]` field to store compressed base64 data URLs.
+- **Updated EditorAction union**: Added `ADD_OBJECT_PHOTO` and `REMOVE_OBJECT_PHOTO` action types.
+- **Added Reducer Cases**: Implemented logic in `editorReducer` to handle adding and removing photos from objects immutably.
+- **Created Image Compression Utility**: Added `client/src/core/image-compress.ts` to resize and compress uploaded images to JPEG (max 1200px width, 0.75 quality).
+- **Developed ObjectPhotoGallery Component**: Created a new component to manage and display photos, including:
+    - Multiple file upload with automatic compression.
+    - Thumbnail grid with delete functionality.
+    - Full-screen lightbox with previous/next navigation and delete option.
+- **Integrated Gallery into PropertiesPanel**: Added the gallery section to the object properties panel, visible when a single object is selected.
+- **Enhanced Export Logic**: Updated `useExport.ts` to ensure all photos (including potential `blob:` URLs) are converted to data URLs before project serialization.
+
+## Files affected
+- CREATED: `client/src/core/image-compress.ts`
+- CREATED: `client/src/components/editor/ObjectPhotoGallery.tsx`
+- MODIFIED: `client/src/lib/types.ts`
+- MODIFIED: `client/src/lib/editor-context.tsx`
+- MODIFIED: `client/src/components/editor/PropertiesPanel.tsx`
+- MODIFIED: `client/src/hooks/useExport.ts`
+
+## Deviations from plan
+None
+
+## Potential issues
+None. The image compression significantly reduces the impact on project file size, though very large numbers of photos will still increase the size of the `project.json` within the exported bundle.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have successfully implemented the photo gallery feature for objects in the blueprint editor. This allows users to upload, view, and manage location photos directly within the object properties panel.
+
+### Key Features Implemented:
+- **Compressed Photo Storage**: Photos are automatically resized to 1200px (preserving aspect ratio) and compressed to JPEG (0.75 quality) to optimize project size.
+- **Integrated Gallery UI**: A new gallery section in the `PropertiesPanel` displays thumbnails for the selected object.
+- **Lightbox Viewer**: Clicking a thumbnail opens a full-screen viewer with navigation (prev/next) for easy browsing.
+- **Full Persistence**: Photos are included in the project export and correctly restored during import.
+
+### Implementation Summary:
+1.  **Types & State**: Extended `EditorObject` to include a `photos` array and added `ADD_OBJECT_PHOTO`/`REMOVE_OBJECT_PHOTO` actions.
+2.  **Compression Utility**: Created `image-compress.ts` using Canvas API for client-side image processing.
+3.  **UI Components**: Developed `ObjectPhotoGallery.tsx` utilizing shadcn/ui `Dialog` for the lightbox and Lucide icons for management.
+4.  **Export Logic**: Enhanced `useExport.ts` to ensure all photos are correctly serialized into the `project.json` bundle.
+
+The detailed implementation report can be found in `implementation_report.md`.
+```
+</details>
+
+---
+
+## REVIEWING — iter 1 — 2026-05-01 13:59:14
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — client/src/lib/types.ts:31: `photos?: string[];` added to EditorObject type.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — client/src/lib/types.ts:105-106: Both actions added to EditorAction union with correct payloads.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — client/src/lib/editor-context.tsx:234-250: Implemented cases for both actions using immutable map and filter/spread operations.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — client/src/core/image-compress.ts:5: `export async function compressImage(file: File): Promise<string>` implemented with canvas resizing (1200px max) and quality 0.75 JPEG export.  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — client/src/components/editor/ObjectPhotoGallery.tsx:17: `export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId, photos }) => ...`  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — client/src/components/editor/PropertiesPanel.tsx:191-197: Gallery rendered conditionally under `!isMultiSelect` with correct props.  
+  *confidence:* HIGH
+- ✅ `[c7]` **DONE** — client/src/hooks/useExport.ts:66-68: `updatedObj.photos = await Promise.all(obj.photos.map(photo => toDataUrl(photo)));` within the finalObjects map.  
+  *confidence:* HIGH
+- ✅ `[c8]` **DONE** — client/src/lib/editor-context.tsx:183: `case 'IMPORT_PROJECT': return { ...state, ...action.payload };` properly handles state restoration.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 Consider adding a loading state during image compression if multiple large photos are uploaded at once, although for current max-width and quality settings it should be fast.
+- 💡 The lightbox navigation currently wraps around using modulo; consider adding visual indicators for first/last if you prefer a non-wrapping UX, but current implementation is functional.
+
+---
+
