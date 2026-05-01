@@ -11,6 +11,15 @@ A specialized React-based application designed for infrastructure workers and IT
   - **Purpose**: Categorize points (Data, Mic, CAM, TV).
 - **Object Labels**: Permanent visibility of object names on the canvas for easy identification.
 
+### 📊 Construction Progress Tracking
+- **Status Life Cycle**: Track the installation progress of every point:
+  - `Planned` -> `Cable Pulled` -> `Terminated` -> `Tested` -> `Approved`
+  - `Issue`: Mark and describe problems (e.g., blocked cable runs).
+- **Visual Progress Map**: Toggle **Color by status** to transform the blueprint into a live "heat map" of project completion.
+- **Progress Dashboard**: Real-time stats showing completion percentage and issue counts.
+- **Audit Trail**: Every status change automatically records the technician's name and a timestamp.
+- **Photo Documentation**: Attach multiple photos to any object for visual proof of installation or to document site issues.
+
 ### ⚡ Productivity Tools
 - **Auto-Numbering System**: 
   - Toggle `#` mode to automatically increment labels.
@@ -18,6 +27,7 @@ A specialized React-based application designed for infrastructure workers and IT
   - Supports efficient click-to-place workflow for rapid deployment.
 - **Deep Zoom**: Zoom up to 1000% for precise placement on detailed technical drawings.
 - **Shortcuts**: Standard Copy (`Ctrl+C`) and Paste (`Ctrl+V`) with smart offset positioning.
+- **Technician Identification**: Simple name-based login for tracking field updates without complex auth.
 
 ### 🛠️ Editing Capabilities
 - **Layer Management**: Organize complex plans with multiple layers (create, lock, hide, reorder).
