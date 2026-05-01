@@ -6,6 +6,7 @@ import {TooltipProvider} from "@/components/ui/tooltip";
 import {EditorProvider} from "@/lib/editor-context";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import {UserIdentificationModal} from "@/components/UserIdentificationModal";
 
 function Router() {
   return (
@@ -21,6 +22,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <EditorProvider>
         <TooltipProvider>
+          <UserIdentificationModal />
           <Toaster />
           <Router />
         </TooltipProvider>

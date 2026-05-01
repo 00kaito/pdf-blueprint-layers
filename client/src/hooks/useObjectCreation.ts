@@ -30,7 +30,8 @@ export const useObjectCreation = () => {
       payload: {
         id: uuidv4(), type: 'text', name: '', x, y, width, height,
         layerId: uiState.activeLayerId, content: 'Double click to edit',
-        fontSize: 16 / uiState.scale, color: '#000000', rotation: 0
+        fontSize: 16 / uiState.scale, color: '#000000', rotation: 0,
+        status: 'PLANNED'
       }
     });
     dispatch({ type: 'SET_TOOL', payload: 'select' });
@@ -54,7 +55,8 @@ export const useObjectCreation = () => {
       type: 'ADD_OBJECT',
       payload: {
         id: uuidv4(), type: 'icon', name: '', x, y, width: size, height: size,
-        layerId: uiState.activeLayerId, color: '#ef4444', content: iconType, rotation: 0
+        layerId: uiState.activeLayerId, color: '#ef4444', content: iconType, rotation: 0,
+        status: 'PLANNED'
       }
     });
     dispatch({ type: 'SET_TOOL', payload: 'select' });
@@ -73,7 +75,8 @@ export const useObjectCreation = () => {
         type: 'ADD_OBJECT',
         payload: {
           id: uuidv4(), type: 'image', name: '', x, y, width: size, height: size,
-          layerId: uiState.activeLayerId!, content: url, rotation: 0
+          layerId: uiState.activeLayerId!, content: url, rotation: 0,
+          status: 'PLANNED'
         }
       });
     };

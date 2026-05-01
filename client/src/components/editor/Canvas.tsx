@@ -22,7 +22,7 @@ export const Canvas = () => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const containerRef = useRef<HTMLDivElement>(null);
-  const { drawingPath, isDrawing, onMouseDown, onMouseMove, onMouseUp } = useDrawing(containerRef);
+  const { drawingPath, isDrawing, onMouseDown, onMouseMove, onMouseUp } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const [, setNumPages] = useState<number>(0);
 
   const state = { ...docState, ...uiState };
@@ -58,7 +58,20 @@ export const Canvas = () => {
           const name = `${state.autoNumbering.prefix}${state.autoNumbering.counter.toString().padStart(2, '0')}`;
           dispatch({
             type: 'ADD_OBJECT',
-            payload: { id: uuidv4(), type: template.type, name, x: x - size/2, y: y - size/2, width: size, height: size, layerId: state.activeLayerId, content: template.content, color: template.color, rotation: 0 }
+            payload: { 
+              id: uuidv4(), 
+              type: template.type, 
+              name, 
+              x: x - size/2, 
+              y: y - size/2, 
+              width: size, 
+              height: size, 
+              layerId: state.activeLayerId, 
+              content: template.content, 
+              color: template.color, 
+              rotation: 0,
+              status: 'PLANNED'
+            }
           });
           dispatch({ type: 'INCREMENT_COUNTER' });
        }
@@ -86,7 +99,21 @@ export const Canvas = () => {
         const width = baseW / state.scale, height = baseH / state.scale;
         dispatch({
           type: 'ADD_OBJECT',
-          payload: { id: uuidv4(), type: type as any, name: '', x: x - width/2, y: y - height/2, width, height, layerId: state.activeLayerId, content: content || (type === 'text' ? 'Double click to edit' : ''), color: type === 'icon' ? '#ef4444' : '#000000', rotation: 0, fontSize: 16 / state.scale }
+          payload: { 
+            id: uuidv4(), 
+            type: type as any, 
+            name: '', 
+            x: x - width/2, 
+            y: y - height/2, 
+            width, 
+            height, 
+            layerId: state.activeLayerId, 
+            content: content || (type === 'text' ? 'Double click to edit' : ''), 
+            color: type === 'icon' ? '#ef4444' : '#000000', 
+            rotation: 0, 
+            fontSize: 16 / state.scale,
+            status: 'PLANNED'
+          }
         });
         dispatch({ type: 'SET_TOOL', payload: 'select' });
       }

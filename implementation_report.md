@@ -1,20 +1,33 @@
-# Implementation Report — Iteration 1
+# Implementation Report — Iteration 2
 
 ## Changes made
-- **Extend EditorObject type**: Added optional `status?: 'planned' | 'in-progress' | 'completed'` field to the `EditorObject` interface in `client/src/lib/types.ts`.
-- **Status selector in PropertiesPanel**: Added a `Select` component in `client/src/components/editor/PropertiesPanel.tsx` to allow setting the status of selected objects. Included mixed-value handling for multi-selection.
-- **Status indicator dot on canvas**: Modified `client/src/components/editor/Canvas/ObjectRenderer.tsx` to render a color-coded dot (gray, amber, green) at the bottom-right of objects based on their status.
-- **Progress summary bar in LayerPanel**: Added a new "Progress" section at the top of `client/src/components/editor/LayerPanel.tsx` that displays a summary of object statuses and a progress bar showing the percentage of completed objects (excluding 'path' objects).
+- **Updated `EditorObject` type**: Replaced the simplified status union with the comprehensive 6-status model (`PLANNED`, `CABLE_PULLED`, `TERMINATED`, `TESTED`, `APPROVED`, `ISSUE`) and added metadata fields (`statusUpdatedAt`, `statusUpdatedBy`, `issueDescription`) in `client/src/lib/types.ts`.
+- **Implemented `UserIdentificationModal`**: Created a new component to capture the technician's name and store it in `localStorage`. Integrated this modal into `client/src/App.tsx` to ensure it appears on app launch if no name is found.
+- **Refactored `PropertiesPanel`**:
+    - Replaced the status dropdown with a grid of dedicated status buttons for quick access.
+    - Updated the update logic to automatically record the timestamp and technician's name on every status change.
+    - Added a conditional `issueDescription` text area that appears when the `ISSUE` status is active.
+    - Displayed "Last updated" metadata for the selected object.
+- **Enhanced `ObjectRenderer`**:
+    - Implemented status-based colorization for all objects (icons, text, and images).
+    - Mapped statuses to specific colors (e.g., `TESTED` -> Jasnozielony/Green 400).
+    - Removed the previous absolute-positioned status dot in favor of direct object colorization.
+- **Set Default Status**: Updated `useObjectCreation.ts` and `Canvas.tsx` to ensure all newly created objects (via toolbar, stamp tool, or drag-and-drop) default to the `PLANNED` status.
+- **Updated `LayerPanel` Statistics**: Refactored the progress summary to display 'Total', 'Completed' (TESTED/APPROVED), and 'Issues' counts, providing a clearer project overview.
+- **Fixed TypeScript Error**: Resolved a `RefObject` type mismatch in `Canvas.tsx` that was preventing the project from building.
 
 ## Files affected
+- CREATED: `client/src/components/UserIdentificationModal.tsx`
 - MODIFIED: `client/src/lib/types.ts`
+- MODIFIED: `client/src/App.tsx`
 - MODIFIED: `client/src/components/editor/PropertiesPanel.tsx`
 - MODIFIED: `client/src/components/editor/Canvas/ObjectRenderer.tsx`
+- MODIFIED: `client/src/hooks/useObjectCreation.ts`
 - MODIFIED: `client/src/components/editor/LayerPanel.tsx`
+- MODIFIED: `client/src/components/editor/Canvas.tsx`
 
 ## Deviations from plan
 None.
 
 ## Potential issues
-- Existing project files will have `undefined` status for objects, which correctly results in no status dot and being counted as 'not completed' in the progress bar.
-- One pre-existing TypeScript error was found in `client/src/components/editor/Canvas.tsx:25` during validation, but it is unrelated to the changes made in this iteration.
+None.

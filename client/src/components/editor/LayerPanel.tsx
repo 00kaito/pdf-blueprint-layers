@@ -134,10 +134,10 @@ export const LayerPanel = () => {
 
   const trackableObjects = state.objects.filter(obj => obj.type !== 'path');
   const counts = {
-    planned: trackableObjects.filter(o => o.status === 'planned').length,
-    'in-progress': trackableObjects.filter(o => o.status === 'in-progress').length,
-    completed: trackableObjects.filter(o => o.status === 'completed').length,
-    total: trackableObjects.length
+    total: trackableObjects.length,
+    completed: trackableObjects.filter(o => o.status === 'TESTED' || o.status === 'APPROVED').length,
+    issues: trackableObjects.filter(o => o.status === 'ISSUE').length,
+    other: trackableObjects.filter(o => o.status && !['TESTED', 'APPROVED', 'ISSUE'].includes(o.status)).length
   };
   const progressPercent = counts.total > 0 ? (counts.completed / counts.total) * 100 : 0;
 
@@ -217,16 +217,16 @@ export const LayerPanel = () => {
           
           <div className="flex items-center justify-between gap-1">
             <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-gray-500 uppercase">Planned</span>
-              <span className="text-xs font-mono">{counts.planned}</span>
-            </div>
-            <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-amber-500 uppercase">Active</span>
-              <span className="text-xs font-mono">{counts['in-progress']}</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase">Total</span>
+              <span className="text-xs font-mono">{counts.total}</span>
             </div>
             <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
               <span className="text-[10px] font-bold text-green-500 uppercase">Done</span>
               <span className="text-xs font-mono">{counts.completed}</span>
+            </div>
+            <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
+              <span className="text-[10px] font-bold text-red-500 uppercase">Issues</span>
+              <span className="text-xs font-mono">{counts.issues}</span>
             </div>
           </div>
         </div>

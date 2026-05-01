@@ -24,10 +24,24 @@ const IconRenderer = ({ iconType, color }: { iconType: string, color?: string })
   }
 };
 
+const getStatusColor = (status?: string) => {
+  switch (status) {
+    case 'PLANNED': return '#64748b'; // Slate 500
+    case 'CABLE_PULLED': return '#3b82f6'; // Blue 500
+    case 'TERMINATED': return '#a855f7'; // Purple 500
+    case 'TESTED': return '#4ade80'; // Green 400 (Jasnozielony)
+    case 'APPROVED': return '#16a34a'; // Green 600
+    case 'ISSUE': return '#ef4444'; // Red 500
+    default: return null;
+  }
+};
+
 export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
   const { dispatch } = useDocument();
   const { state: uiState } = useUI();
   const [isRotating, setIsRotating] = useState(false);
+
+  const displayColor = getStatusColor(obj.status) || obj.color || '#000000';
 
   const handleRotationMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -120,7 +134,7 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
           {obj.type === 'text' && (
             <div 
               className={cn("w-full h-full p-1 break-words overflow-hidden outline-none", obj.fontWeight === 'bold' ? 'font-bold' : '')} 
-              style={{ fontSize: (obj.fontSize || 16) * uiState.scale, color: obj.color }}
+              style={{ fontSize: (obj.fontSize || 16) * uiState.scale, color: displayColor }}
               contentEditable={uiState.tool === 'text'}
               suppressContentEditableWarning
               onBlur={(e) => dispatch({ 
@@ -131,13 +145,13 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
               {obj.content}
             </div>
           )}
-          {obj.type === 'icon' && <IconRenderer iconType={obj.content || 'square'} color={obj.color} />}
+          {obj.type === 'icon' && <IconRenderer iconType={obj.content || 'square'} color={displayColor} />}
           {obj.type === 'image' && obj.content && (
-            obj.color ? (
+            displayColor ? (
               <div 
                 className="w-full h-full"
                 style={{ 
-                  backgroundColor: obj.color,
+                  backgroundColor: displayColor,
                   maskImage: `url(${obj.content})`,
                   maskRepeat: 'no-repeat',
                   maskPosition: 'center',
@@ -153,18 +167,6 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
             )
           )}
       </div>
-
-      {obj.status && (
-        <div 
-          className={cn(
-            "absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white shadow-sm z-50",
-            obj.status === 'planned' && "bg-gray-400",
-            obj.status === 'in-progress' && "bg-amber-400",
-            obj.status === 'completed' && "bg-green-500"
-          )}
-          title={`Status: ${obj.status}`}
-        />
-      )}
 
       <div 
         className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/80 border border-border px-1.5 py-0.5 rounded text-[10px] font-medium pointer-events-none shadow-sm"

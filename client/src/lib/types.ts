@@ -32,7 +32,10 @@ export type EditorObject = {
   opacity?: number;
   rotation?: number; // Rotation in degrees
   photos?: string[];
-  status?: 'planned' | 'in-progress' | 'completed';
+  status?: 'PLANNED' | 'CABLE_PULLED' | 'TERMINATED' | 'TESTED' | 'APPROVED' | 'ISSUE';
+  statusUpdatedAt?: string;
+  statusUpdatedBy?: string;
+  issueDescription?: string;
 };
 
 export type DocumentState = {

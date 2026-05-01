@@ -1,13 +1,15 @@
 import React from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
+import {cn} from '@/lib/utils';
 import {Card, CardContent} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Slider} from '@/components/ui/slider';
 import {Separator} from '@/components/ui/separator';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
-import {CheckCircle2, Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
+import {CheckCircle2, AlertCircle, Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {Textarea} from '@/components/ui/textarea';
 import {ObjectPhotoGallery} from './ObjectPhotoGallery';
 
 export const PropertiesPanel = () => {
@@ -27,11 +29,18 @@ export const PropertiesPanel = () => {
   }
 
   const handleUpdate = (updates: Partial<typeof firstObject>) => {
+    const finalUpdates = { ...updates };
+    
+    if (updates.status) {
+      finalUpdates.statusUpdatedAt = new Date().toISOString();
+      finalUpdates.statusUpdatedBy = localStorage.getItem('technician_name') || 'Unknown';
+    }
+
     dispatch({
       type: 'UPDATE_OBJECTS',
       payload: {
         ids: selectedObjects.map(o => o.id),
-        updates
+        updates: finalUpdates
       }
     });
   };
@@ -113,25 +122,55 @@ export const PropertiesPanel = () => {
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="obj-status" className="text-xs font-medium">Progress Status</Label>
-                <Select 
-                  value={selectedObjects.every(o => o.status === firstObject.status) ? (firstObject.status || '') : ''} 
-                  onValueChange={(v) => handleUpdate({ status: v as any })}
-                >
-                  <SelectTrigger id="obj-status" className="h-8 text-xs">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      <SelectValue placeholder={isMultiSelect ? "Mixed status" : "Select status"} />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="planned">Planned</SelectItem>
-                    <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Progress Status</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'PLANNED', label: 'Planned', color: 'bg-slate-500' },
+                    { id: 'CABLE_PULLED', label: 'Cable Pulled', color: 'bg-blue-500' },
+                    { id: 'TERMINATED', label: 'Terminated', color: 'bg-purple-500' },
+                    { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
+                    { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
+                    { id: 'ISSUE', label: 'Issue', color: 'bg-red-500' },
+                  ].map((s) => (
+                    <Button
+                      key={s.id}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-8 text-[10px] px-1 justify-start gap-1.5 font-semibold",
+                        selectedObjects.every(o => o.status === s.id) ? "ring-2 ring-primary ring-offset-1" : ""
+                      )}
+                      onClick={() => handleUpdate({ status: s.id as any })}
+                    >
+                      <div className={cn("w-2 h-2 rounded-full", s.color)} />
+                      {s.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
+
+              {selectedObjects.some(o => o.status === 'ISSUE') && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="obj-issue" className="text-xs font-medium text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Issue Description
+                  </Label>
+                  <Textarea
+                    id="obj-issue"
+                    placeholder="Describe the issue..."
+                    value={selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || '') : ''}
+                    onChange={(e) => handleUpdate({ issueDescription: e.target.value })}
+                    className="text-xs min-h-[60px]"
+                  />
+                </div>
+              )}
+
+              {firstObject.statusUpdatedAt && !isMultiSelect && (
+                <div className="text-[10px] text-muted-foreground italic px-1">
+                  Last updated: {new Date(firstObject.statusUpdatedAt).toLocaleString()} by {firstObject.statusUpdatedBy}
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label htmlFor="obj-switch" className="text-xs font-medium">Switch ID</Label>
