@@ -1,0 +1,60 @@
+{
+  "task_id": "TASK-20B63E",
+  "description": "w trybie na telefon umozliw tylko zmiane label oraz dodawanie zdjec do obiektow (bez mozliwosci dodawania i usuwania obiektow)",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "W MobileBottomBar.tsx nie ma importu useObjectCreation ani żadnego wywołania handleAddIcon lub handleAddText",
+      "how_to_verify": "Grep po 'useObjectCreation', 'handleAddIcon', 'handleAddText' w MobileBottomBar.tsx zwraca 0 wyników",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "W MobileBottomBar.tsx nie ma sekcji JSX z nagłówkiem 'Add Object' ani przyciskami tworzącymi obiekty (circle, camera, square, triangle, hexagon, arrow-right, text)",
+      "how_to_verify": "Grep po 'Add Object' oraz 'handleAddIcon' w MobileBottomBar.tsx zwraca 0 wyników",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "W MobileBottomBar.tsx nie ma przycisku usuwającego obiekt (variant='destructive' z DELETE_OBJECTS dispatch)",
+      "how_to_verify": "Grep po 'DELETE_OBJECTS' w MobileBottomBar.tsx zwraca 0 wyników",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "W trybie 'edit' MobileBottomBar nadal renderuje Input do edycji name oraz komponent ObjectPhotoGallery",
+      "how_to_verify": "W MobileBottomBar.tsx istnieje blok JSX z tagiem Input (onChange z UPDATE_OBJECTS) oraz ObjectPhotoGallery w gałęzi mode === 'edit'",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "W trybie 'list' MobileBottomBar nadal renderuje listę obiektów (Layer Objects) umożliwiającą ich zaznaczenie",
+      "how_to_verify": "W MobileBottomBar.tsx istnieje blok JSX z 'Layer Objects' oraz docState.objects.map z onClick SELECT_OBJECT",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c6",
+      "description": "Nieużywane importy ikon (Circle, Square, Triangle, Hexagon, Camera, ArrowRight, Trash2) zostały usunięte z MobileBottomBar.tsx",
+      "how_to_verify": "Grep po 'import.*Circle\\|import.*Trash2\\|import.*Camera' w MobileBottomBar.tsx zwraca 0 wyników dla tych symboli",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Ograniczyć tryb mobilny wyłącznie do edycji etykiety (name) i dodawania zdjęć do obiektów. Usunąć z MobileBottomBar sekcję 'Add Object' w trybie listy oraz przycisk 'Delete Object' w trybie edycji.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Usuń sekcję dodawania obiektów i przycisk usuwania z MobileBottomBar\",\n      \"description\": \"W pliku MobileBottomBar.tsx:\\n1. Usuń cały blok 'Add Object' (div z h3 'Add Object', rząd przycisków ikon/tekstu oraz Separator po nim) z trybu 'list'.\\n2. Usuń przycisk 'Delete Object' (Button variant='destructive' z DELETE_OBJECTS dispatch i Separator przed nim) z trybu 'edit'.\\n3. Usuń nieużywane importy ikon: Circle, Square, Triangle, Hexagon, Camera, ArrowRight, Trash2.\\n4. Usuń import useObjectCreation oraz destrukturyzację handleAddIcon, handleAddText (linia 27).\",\n      \"files_affected\": [\n        \"client/src/components/editor/MobileBottomBar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"W MobileBottomBar.tsx nie ma importu useObjectCreation ani żadnego wywołania handleAddIcon lub handleAddText\",\n      \"how_to_verify\": \"Grep po 'useObjectCreation', 'handleAddIcon', 'handleAddText' w MobileBottomBar.tsx zwraca 0 wyników\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"W MobileBottomBar.tsx nie ma sekcji JSX z nagłówkiem 'Add Object' ani przyciskami tworzącymi obiekty (circle, camera, square, triangle, hexagon, arrow-right, text)\",\n      \"how_to_verify\": \"Grep po 'Add Object' oraz 'handleAddIcon' w MobileBottomBar.tsx zwraca 0 wyników\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"W MobileBottomBar.tsx nie ma przycisku usuwającego obiekt (variant='destructive' z DELETE_OBJECTS dispatch)\",\n      \"how_to_verify\": \"Grep po 'DELETE_OBJECTS' w MobileBottomBar.tsx zwraca 0 wyników\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"W trybie 'edit' MobileBottomBar nadal renderuje Input do edycji name oraz komponent ObjectPhotoGallery\",\n      \"how_to_verify\": \"W MobileBottomBar.tsx istnieje blok JSX z tagiem Input (onChange z UPDATE_OBJECTS) oraz ObjectPhotoGallery w gałęzi mode === 'edit'\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"W trybie 'list' MobileBottomBar nadal renderuje listę obiektów (Layer Objects) umożliwiającą ich zaznaczenie\",\n      \"how_to_verify\": \"W MobileBottomBar.tsx istnieje blok JSX z 'Layer Objects' oraz docState.objects.map z onClick SELECT_OBJECT\"\n    },\n    {\n      \"id\": \"c6\",\n      \"description\": \"Nieużywane importy ikon (Circle, Square, Triangle, Hexagon, Camera, ArrowRight, Trash2) zostały usunięte z MobileBottomBar.tsx\",\n      \"how_to_verify\": \"Grep po 'import.*Circle\\\\|import.*Trash2\\\\|import.*Camera' w MobileBottomBar.tsx zwraca 0 wyników dla tych symboli\"\n    }\n  ],\n  \"risks\": [\n    \"Jeśli w przyszłości zostaną dodane nowe przyciski akcji do MobileBottomBar, trzeba pamiętać o tym ograniczeniu i nie wprowadzać ich bez celowego decyzji projektowej\",\n    \"Użytkownicy mobilni nie będą mogli dodawać ani usuwać obiektów — jeśli wymagane jest awaryjne obejście, trzeba by dodać oddzielny tryb uprawnień lub flagę\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "4c5923f43d6c98034fbe49e2c6fb0ce9443ec255",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777660625.8183527,
+  "updated_at": 1777660681.5250797
+}

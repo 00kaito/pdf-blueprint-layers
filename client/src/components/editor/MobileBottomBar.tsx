@@ -1,20 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useDocument, useUI } from '@/lib/editor-context';
-import { useObjectCreation } from '@/hooks/useObjectCreation';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
 import { 
   ChevronUp, 
   ChevronDown, 
   ChevronLeft, 
-  Trash2, 
   Plus, 
-  Type,
-  Circle,
-  Square,
-  Triangle,
-  Hexagon,
-  Camera,
-  ArrowRight
+  Type
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +16,6 @@ import { Separator } from '@/components/ui/separator';
 export const MobileBottomBar: React.FC = () => {
   const { state: docState, dispatch: docDispatch } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
-  const { handleAddIcon, handleAddText } = useObjectCreation();
 
   const [mode, setMode] = useState<'list' | 'edit'>('list');
   const [isBarVisible, setIsBarVisible] = useState(true);
@@ -86,43 +77,6 @@ export const MobileBottomBar: React.FC = () => {
         <div className="p-4 space-y-6">
           {mode === 'list' ? (
             <>
-              {/* Add Objects Section */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Add Object</h3>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  <Button variant="outline" className="shrink-0 flex-col gap-1 h-16 w-16 min-h-[44px]" onClick={() => handleAddIcon('circle')}>
-                    <Circle className="h-5 w-5" />
-                    <span className="text-[10px]">Circle</span>
-                  </Button>
-                  <Button variant="outline" className="shrink-0 flex-col gap-1 h-16 w-16 min-h-[44px]" onClick={() => handleAddIcon('camera')}>
-                    <Camera className="h-5 w-5" />
-                    <span className="text-[10px]">Camera</span>
-                  </Button>
-                  <Button variant="outline" className="shrink-0 flex-col gap-1 h-16 w-16 min-h-[44px]" onClick={() => handleAddIcon('square')}>
-                    <Square className="h-5 w-5" />
-                    <span className="text-[10px]">Square</span>
-                  </Button>
-                  <Button variant="outline" className="shrink-0 flex-col gap-1 h-16 w-16 min-h-[44px]" onClick={() => handleAddIcon('triangle')}>
-                    <Triangle className="h-5 w-5" />
-                    <span className="text-[10px]">Triangle</span>
-                  </Button>
-                  <Button variant="outline" className="shrink-0 flex-col gap-1 h-16 w-16 min-h-[44px]" onClick={() => handleAddIcon('hexagon')}>
-                    <Hexagon className="h-5 w-5" />
-                    <span className="text-[10px]">Hexagon</span>
-                  </Button>
-                  <Button variant="outline" className="shrink-0 flex-col gap-1 h-16 w-16 min-h-[44px]" onClick={() => handleAddIcon('arrow-right')}>
-                    <ArrowRight className="h-5 w-5" />
-                    <span className="text-[10px]">Arrow</span>
-                  </Button>
-                  <Button variant="outline" className="shrink-0 flex-col gap-1 h-16 w-16 min-h-[44px]" onClick={handleAddText}>
-                    <Type className="h-5 w-5" />
-                    <span className="text-[10px]">Text</span>
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
               {/* Object List Section */}
               <div className="space-y-3 pb-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Layer Objects</h3>
@@ -177,20 +131,6 @@ export const MobileBottomBar: React.FC = () => {
                     objectId={selectedObject.id} 
                     photos={selectedObject.photos || []} 
                   />
-
-                  <Separator />
-
-                  <Button 
-                    variant="destructive" 
-                    className="w-full gap-2 min-h-[44px]"
-                    onClick={() => {
-                      docDispatch({ type: 'DELETE_OBJECTS', payload: [selectedObject.id] });
-                      handleBackToList();
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete Object
-                  </Button>
                 </div>
               ) : (
                 <div className="text-center py-8">
