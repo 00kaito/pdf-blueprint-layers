@@ -1,26 +1,27 @@
 # Implementation Report — Iteration 1
 
 ## Changes made
-- **Modified `client/src/hooks/useExport.ts`**:
-    - Replaced the `processAsset` helper function with `toDataUrl`.
-    - `toDataUrl` converts `blob:` URLs to base64 `data:` URLs using `FileReader`.
-    - Updated `handleExportProject` to use `toDataUrl` for:
-        - Image type objects.
-        - Icon type objects whose content is a URL (starts with `data:` or `blob:`).
-        - Custom icon URLs.
-    - Removed `assetsFolder` creation and any file writing to the `assets/` subfolder in the ZIP.
-- **Modified `client/src/hooks/useImport.ts`**:
-    - Updated `handleZipImport` to resolve assets for `icon` type objects if their content starts with `assets/`.
-    - Updated `handleDirectoryImport` to resolve assets for `icon` type objects if their content starts with `assets/`.
-    - This ensures backward compatibility with older project exports that stored icon assets in the `assets/` folder.
+- **Extended EditorObject type**: Added optional `photos?: string[]` field to store compressed base64 data URLs.
+- **Updated EditorAction union**: Added `ADD_OBJECT_PHOTO` and `REMOVE_OBJECT_PHOTO` action types.
+- **Added Reducer Cases**: Implemented logic in `editorReducer` to handle adding and removing photos from objects immutably.
+- **Created Image Compression Utility**: Added `client/src/core/image-compress.ts` to resize and compress uploaded images to JPEG (max 1200px width, 0.75 quality).
+- **Developed ObjectPhotoGallery Component**: Created a new component to manage and display photos, including:
+    - Multiple file upload with automatic compression.
+    - Thumbnail grid with delete functionality.
+    - Full-screen lightbox with previous/next navigation and delete option.
+- **Integrated Gallery into PropertiesPanel**: Added the gallery section to the object properties panel, visible when a single object is selected.
+- **Enhanced Export Logic**: Updated `useExport.ts` to ensure all photos (including potential `blob:` URLs) are converted to data URLs before project serialization.
 
 ## Files affected
+- CREATED: `client/src/core/image-compress.ts`
+- CREATED: `client/src/components/editor/ObjectPhotoGallery.tsx`
+- MODIFIED: `client/src/lib/types.ts`
+- MODIFIED: `client/src/lib/editor-context.tsx`
+- MODIFIED: `client/src/components/editor/PropertiesPanel.tsx`
 - MODIFIED: `client/src/hooks/useExport.ts`
-- MODIFIED: `client/src/hooks/useImport.ts`
 
 ## Deviations from plan
 None
 
 ## Potential issues
-- **JSON file size increase**: Embedding large images as base64 data URLs will significantly increase the size of `project.json`. This may affect performance for very large projects with many high-resolution images.
-- **Blob URL lifetime**: If a `blob:` URL is revoked before export, `fetch()` inside `toDataUrl` will fail. The implementation handles this gracefully by returning the original string.
+None. The image compression significantly reduces the impact on project file size, though very large numbers of photos will still increase the size of the `project.json` within the exported bundle.

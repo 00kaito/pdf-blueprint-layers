@@ -43,3 +43,107 @@
 
 ---
 
+## IMPLEMENTING — iter 1 — 2026-05-01 12:47:26
+
+### Gemini (Programista)
+
+**Open criteria do adresowania:**
+- `[c1]` In handleExportProject, no call to zip.folder('assets') exists and no files are written to an assets subfolder inside the ZIP
+- `[c2]` A toDataUrl (or equivalent named) async function exists inside handleExportProject in useExport.ts that accepts a string and returns Promise<string>, handling blob:, data:, and plain strings
+- `[c3]` In handleExportProject, finalObjects processing applies toDataUrl to both image type objects and icon type objects whose content is a URL (starts with 'data:' or 'blob:')
+- `[c4]` In handleExportProject, finalCustomIcons processing applies toDataUrl to each icon's url field instead of processAsset
+- `[c5]` In handleZipImport in useImport.ts, the resolvedObjects map handles both image type objects and icon type objects with assets/ content paths
+- `[c6]` In handleDirectoryImport in useImport.ts, the resolvedObjects map handles both image type objects and icon type objects with assets/ content paths
+- `[c7]` The generated project.json inside the ZIP contains no strings starting with 'assets/' — all image and custom icon data is stored as data: URL strings
+
+**Git diff:** .orchestrator/orchestrator.db                   | Bin 49152 -> 49152 bytes
+ .orchestrator/runs/TASK-2098D4/conversation.md  | 104 ++++++++++++++++++++++++
+ .orchestrator/runs/TASK-2098D4/orchestrator.log |  16 ++++
+ .orchestrator/runs/TASK-2098D4/state.json       |  33 +++++---
+ client/src/hooks/useExport.ts                   |  47 +++++------
+ client/src/hooks/useImport.ts                   |   4 +-
+ implementation_report.md                        |  24 ++++--
+ 7 files changed, 180 insertions(+), 48 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- **Modified `client/src/hooks/useExport.ts`**:
+    - Replaced the `processAsset` helper function with `toDataUrl`.
+    - `toDataUrl` converts `blob:` URLs to base64 `data:` URLs using `FileReader`.
+    - Updated `handleExportProject` to use `toDataUrl` for:
+        - Image type objects.
+        - Icon type objects whose content is a URL (starts with `data:` or `blob:`).
+        - Custom icon URLs.
+    - Removed `assetsFolder` creation and any file writing to the `assets/` subfolder in the ZIP.
+- **Modified `client/src/hooks/useImport.ts`**:
+    - Updated `handleZipImport` to resolve assets for `icon` type objects if their content starts with `assets/`.
+    - Updated `handleDirectoryImport` to resolve assets for `icon` type objects if their content starts with `assets/`.
+    - This ensures backward compatibility with older project exports that stored icon assets in the `assets/` folder.
+
+## Files affected
+- MODIFIED: `client/src/hooks/useExport.ts`
+- MODIFIED: `client/src/hooks/useImport.ts`
+
+## Deviations from plan
+None
+
+## Potential issues
+- **JSON file size increase**: Embedding large images as base64 data URLs will significantly increase the size of `project.json`. This may affect performance for very large projects with many high-resolution images.
+- **Blob URL lifetime**: If a `blob:` URL is revoked before export, `fetch()` inside `toDataUrl` will fail. The implementation handles this gracefully by returning the original string.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have completed the requested changes to the export and import logic. 
+
+**Summary of changes:**
+1.  **Modified `client/src/hooks/useExport.ts`**:
+    *   Replaced the `processAsset` helper with `toDataUrl`, which converts `blob:` URLs to base64 `data:` URLs.
+    *   Updated `handleExportProject` to embed all image and icon assets (including custom icons) directly as data URLs within `project.json`.
+    *   Removed the creation of the `assets/` folder in the exported ZIP file.
+2.  **Modified `client/src/hooks/useImport.ts`**:
+    *   Updated both `handleZipImport` and `handleDirectoryImport` to support resolving icon type objects that reference the `assets/` folder.
+    *   This ensures that older project ZIPs still import correctly while newly exported projects work seamlessly with embedded data.
+
+All acceptance criteria have been met. The implementation report has been written to `implementation_report.md`.
+```
+</details>
+
+---
+
+## REVIEWING — iter 1 — 2026-05-01 12:48:10
+
+### Claude (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — useExport.ts lines 97-104: zip only gets zip.file('project.json'), zip.file('document.pdf'), zip.file('overlay.pdf'). No zip.folder('assets') call and no assetsFolder variable anywhere in handleExportProject.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — useExport.ts lines 30-59: async toDataUrl(content: string) defined inside handleExportProject. blob: handled via fetch+FileReader (lines 38-55), data: and plain strings fall through to return content (line 58).  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — useExport.ts lines 63-73: condition for image (obj.type === 'image' && obj.content) and condition for icon (obj.type === 'icon' && obj.content && (obj.content.startsWith('data:') || obj.content.startsWith('blob:'))) both call toDataUrl(obj.content).  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — useExport.ts lines 78-86: finalCustomIcons map calls toDataUrl(icon.url) at line 82. No processAsset function exists anywhere in the file.  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — useImport.ts line 63: condition is (obj.type === 'image' || (obj.type === 'icon' && obj.content.startsWith('assets/'))) — both image and icon types are covered.  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — useImport.ts line 135: identical condition (obj.type === 'image' || (obj.type === 'icon' && obj.content.startsWith('assets/'))) present in handleDirectoryImport.  
+  *confidence:* HIGH
+- ✅ `[c7]` **DONE** — useExport.ts: no code writes assets/ paths into projectData. toDataUrl only outputs data: URLs (from blob: conversion) or passes data:/plain strings through unchanged — never produces an assets/ path. projectData is assembled from finalObjects and finalCustomIcons, both processed by toDataUrl. Cannot runtime-verify without actual execution.  
+  *confidence:* MEDIUM
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 c7 confidence is MEDIUM because it cannot be verified without actually running an export — consider a manual smoke test: export a project with a custom icon, unzip, grep project.json for 'assets/'.
+- 💡 toDataUrl silently swallows fetch errors for revoked blob: URLs (lines 52-54) and returns the dead blob: URL — downstream PDF embed will then fail silently too; consider logging a user-visible warning.
+- 💡 handleFileImport (useImport.ts line 171) uses an ad-hoc heuristic (length > 1 and not pdf/zip/json) to detect directory uploads — a renamed single non-pdf/zip/json file would incorrectly trigger handleDirectoryImport.
+
+---
+

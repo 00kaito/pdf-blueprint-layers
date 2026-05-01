@@ -8,6 +8,7 @@ import {Separator} from '@/components/ui/separator';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {ObjectPhotoGallery} from './ObjectPhotoGallery';
 
 export const PropertiesPanel = () => {
   const { state: docState, dispatch } = useDocument();
@@ -223,6 +224,16 @@ export const PropertiesPanel = () => {
                 </div>
               )}
             </div>
+
+            {!isMultiSelect && (
+              <>
+                <Separator />
+                <ObjectPhotoGallery
+                  objectId={firstObject.id}
+                  photos={firstObject.photos ?? []}
+                />
+              </>
+            )}
 
             <Separator />
 

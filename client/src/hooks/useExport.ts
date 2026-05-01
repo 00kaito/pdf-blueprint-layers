@@ -60,18 +60,19 @@ export const useExport = () => {
 
     // Process images in objects
     const finalObjects = await Promise.all(docState.objects.map(async obj => {
+        let updatedObj = { ...obj };
+        
         if (obj.type === 'image' && obj.content) {
-            return {
-                ...obj,
-                content: await toDataUrl(obj.content)
-            };
+            updatedObj.content = await toDataUrl(obj.content);
         } else if (obj.type === 'icon' && obj.content && (obj.content.startsWith('data:') || obj.content.startsWith('blob:'))) {
-            return {
-                ...obj,
-                content: await toDataUrl(obj.content)
-            };
+            updatedObj.content = await toDataUrl(obj.content);
         }
-        return obj;
+        
+        if (obj.photos && obj.photos.length > 0) {
+            updatedObj.photos = await Promise.all(obj.photos.map(photo => toDataUrl(photo)));
+        }
+        
+        return updatedObj;
     }));
 
     // Process custom icons

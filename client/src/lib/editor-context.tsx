@@ -215,6 +215,24 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         ...state,
         customIcons: state.customIcons.filter(icon => icon.id !== action.payload)
       };
+    case 'ADD_OBJECT_PHOTO':
+      return {
+        ...state,
+        objects: state.objects.map((o) =>
+          o.id === action.payload.id
+            ? { ...o, photos: [...(o.photos || []), action.payload.photoDataUrl] }
+            : o
+        ),
+      };
+    case 'REMOVE_OBJECT_PHOTO':
+      return {
+        ...state,
+        objects: state.objects.map((o) =>
+          o.id === action.payload.id
+            ? { ...o, photos: (o.photos || []).filter((_, i) => i !== action.payload.index) }
+            : o
+        ),
+      };
     default:
       return state;
   }

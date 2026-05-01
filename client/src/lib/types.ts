@@ -31,6 +31,7 @@ export type EditorObject = {
   fontWeight?: string; // 'normal' | 'bold'
   opacity?: number;
   rotation?: number; // Rotation in degrees
+  photos?: string[];
 };
 
 export type DocumentState = {
@@ -98,4 +99,6 @@ export type EditorAction =
   | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<DocumentState['exportSettings']> }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }
-  | { type: 'SET_PDF_DIMENSIONS'; payload: { width: number; height: number } };
+  | { type: 'SET_PDF_DIMENSIONS'; payload: { width: number; height: number } }
+  | { type: 'ADD_OBJECT_PHOTO'; payload: { id: string; photoDataUrl: string } }
+  | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } };
