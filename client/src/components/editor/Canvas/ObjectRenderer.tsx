@@ -36,12 +36,28 @@ const getStatusColor = (status?: string) => {
   }
 };
 
+const getStatusCategoryColor = (status?: string) => {
+  switch (status) {
+    case 'PLANNED': return '#f87171'; // Red 400
+    case 'CABLE_PULLED':
+    case 'TERMINATED': return '#fbbf24'; // Amber 400
+    case 'TESTED':
+    case 'APPROVED': return '#22c55e'; // Green 500
+    case 'ISSUE': return '#dc2626'; // Red 600
+    default: return null;
+  }
+};
+
 export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
   const { dispatch } = useDocument();
   const { state: uiState } = useUI();
   const [isRotating, setIsRotating] = useState(false);
 
-  const displayColor = getStatusColor(obj.status) || obj.color || '#000000';
+  const displayColor = uiState.showStatusColors 
+    ? (getStatusCategoryColor(obj.status) || obj.color || '#000000')
+    : (obj.color || '#000000');
+  
+  const indicatorColor = getStatusColor(obj.status);
 
   const handleRotationMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -165,6 +181,13 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
             ) : (
               <img src={obj.content} alt="" className="w-full h-full object-contain pointer-events-none" />
             )
+          )}
+
+          {indicatorColor && (
+            <div 
+              className="absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white shadow-sm z-50"
+              style={{ backgroundColor: indicatorColor }}
+            />
           )}
       </div>
 

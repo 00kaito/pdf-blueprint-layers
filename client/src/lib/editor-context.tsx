@@ -29,7 +29,8 @@ const initialUIState: UIState = {
   currentPage: 1,
   scale: 1,
   scrollPos: { x: 0, y: 0 },
-  tool: 'select'
+  tool: 'select',
+  showStatusColors: false
 };
 
 const initialState: EditorState = {
@@ -233,6 +234,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
             : o
         ),
       };
+    case 'TOGGLE_STATUS_COLORS':
+      return { ...state, showStatusColors: !state.showStatusColors };
     default:
       return state;
   }
@@ -275,9 +278,10 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       scale: state.scale,
       scrollPos: state.scrollPos,
       tool: state.tool,
+      showStatusColors: state.showStatusColors,
     },
     dispatch
-  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, dispatch]);
+  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, dispatch]);
 
   return (
     <DocumentContext.Provider value={documentValue}>

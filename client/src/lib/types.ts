@@ -69,6 +69,7 @@ export type UIState = {
   scale: number;
   scrollPos: { x: number; y: number };
   tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp';
+  showStatusColors: boolean;
 };
 
 export type EditorState = DocumentState & UIState;
@@ -105,4 +106,5 @@ export type EditorAction =
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }
   | { type: 'SET_PDF_DIMENSIONS'; payload: { width: number; height: number } }
   | { type: 'ADD_OBJECT_PHOTO'; payload: { id: string; photoDataUrl: string } }
-  | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } };
+  | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } }
+  | { type: 'TOGGLE_STATUS_COLORS' };

@@ -28,6 +28,8 @@ import {ScrollArea} from '@/components/ui/scroll-area';
 import {Input} from "@/components/ui/input";
 import {Slider} from "@/components/ui/slider";
 import {Progress} from "@/components/ui/progress";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Label} from "@/components/ui/label";
 import {cn} from '@/lib/utils';
 
 const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
@@ -135,9 +137,10 @@ export const LayerPanel = () => {
   const trackableObjects = state.objects.filter(obj => obj.type !== 'path');
   const counts = {
     total: trackableObjects.length,
+    planned: trackableObjects.filter(o => o.status === 'PLANNED').length,
+    inProgress: trackableObjects.filter(o => o.status === 'CABLE_PULLED' || o.status === 'TERMINATED').length,
     completed: trackableObjects.filter(o => o.status === 'TESTED' || o.status === 'APPROVED').length,
-    interventions: trackableObjects.filter(o => o.status === 'ISSUE' || o.status === 'PLANNED').length,
-    other: trackableObjects.filter(o => o.status && !['TESTED', 'APPROVED', 'ISSUE', 'PLANNED'].includes(o.status)).length
+    issue: trackableObjects.filter(o => o.status === 'ISSUE').length
   };
   const progressPercent = counts.total > 0 ? (counts.completed / counts.total) * 100 : 0;
 
@@ -215,19 +218,37 @@ export const LayerPanel = () => {
           
           <Progress value={progressPercent} className="h-2 mb-3" />
           
-          <div className="flex items-center justify-between gap-1">
-            <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">Total</span>
-              <span className="text-xs font-mono">{counts.total}</span>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
+              <span className="text-[10px] font-bold text-red-400 uppercase">Planned</span>
+              <span className="text-xs font-mono">{counts.planned}</span>
             </div>
-            <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-green-500 uppercase">Done</span>
+            <div className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
+              <span className="text-[10px] font-bold text-amber-400 uppercase">In Progress</span>
+              <span className="text-xs font-mono">{counts.inProgress}</span>
+            </div>
+            <div className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
+              <span className="text-[10px] font-bold text-green-500 uppercase">Completed</span>
               <span className="text-xs font-mono">{counts.completed}</span>
             </div>
-            <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-red-500 uppercase">Interventions</span>
-              <span className="text-xs font-mono">{counts.interventions}</span>
+            <div className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
+              <span className="text-[10px] font-bold text-red-600 uppercase">Issues</span>
+              <span className="text-xs font-mono">{counts.issue}</span>
             </div>
+          </div>
+
+          <div className="flex items-center space-x-2 px-1">
+            <Checkbox 
+              id="color-by-status" 
+              checked={state.showStatusColors}
+              onCheckedChange={() => dispatch({ type: 'TOGGLE_STATUS_COLORS' })}
+            />
+            <Label 
+              htmlFor="color-by-status" 
+              className="text-xs font-medium cursor-pointer"
+            >
+              Color by status
+            </Label>
           </div>
         </div>
       )}
