@@ -1,22 +1,36 @@
 import React, { Suspense, lazy } from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {PDFUploader} from '@/components/editor/PDFUploader';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Canvas = lazy(() => import('@/components/editor/Canvas').then(module => ({ default: module.Canvas })));
 const Toolbar = lazy(() => import('@/components/editor/Toolbar').then(module => ({ default: module.Toolbar })));
 const ObjectToolbar = lazy(() => import('@/components/editor/ObjectToolbar').then(module => ({ default: module.ObjectToolbar })));
 const LayerPanel = lazy(() => import('@/components/editor/LayerPanel').then(module => ({ default: module.LayerPanel })));
 const PropertiesPanel = lazy(() => import('@/components/editor/PropertiesPanel').then(module => ({ default: module.PropertiesPanel })));
+const MobileBottomBar = lazy(() => import('@/components/editor/MobileBottomBar').then(module => ({ default: module.MobileBottomBar })));
 
 const Home = () => {
   const { state: docState } = useDocument();
   const { state: uiState } = useUI();
+  const isMobile = useIsMobile();
 
   if (!docState.pdfFile) {
     return <PDFUploader />;
   }
 
   const hasSelectedObject = uiState.selectedObjectIds.length > 0;
+
+  if (isMobile) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
+        <div className="flex flex-col h-screen overflow-hidden bg-background relative">
+          <Canvas />
+          <MobileBottomBar />
+        </div>
+      </Suspense>
+    );
+  }
 
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>

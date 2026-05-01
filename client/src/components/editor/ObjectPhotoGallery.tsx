@@ -95,6 +95,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           accept="image/*"
           multiple
           onChange={handleFileChange}
+          {...({ capture: 'environment' } as any)}
         />
       </div>
 

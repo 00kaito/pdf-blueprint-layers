@@ -1,17 +1,28 @@
 # Implementation Report — Iteration 1
 
 ## Changes made
-- **Lazy-loaded editor components in `home.tsx`**: Replaced static imports for `Canvas`, `Toolbar`, `ObjectToolbar`, `LayerPanel`, and `PropertiesPanel` with `React.lazy()` dynamic imports. This prevents heavy dependencies like `pdfjs-dist` and `pdf-lib` from being loaded on the initial page load.
-- **Added `React.Suspense`**: Wrapped the editor-rendering branch in `home.tsx` with a `Suspense` component and a centered spinner fallback to provide visual feedback while the async chunks are loading.
-- **Configured local PDF worker in `Canvas.tsx`**: Replaced the external CDN worker URL from `unpkg.com` with a local Vite asset URL using the `?url` import suffix. This eliminates the dependency on an external network for the worker script and improves reliability.
-- **Verified Build Chunking**: Ran `npm run build` and confirmed that the editor components and the pdfjs worker are now emitted as separate async chunks in the `dist/public/assets` directory.
+- **Step 1: Create MobileBottomBar component**
+    - Created `client/src/components/editor/MobileBottomBar.tsx`.
+    - Implemented `mode` switching ('list' vs 'edit') based on `selectedObjectIds`.
+    - Added an object creation row with icons (circle, camera, square, triangle, hexagon, arrow-right) and text.
+    - Implemented a scrollable list of existing objects in 'list' mode.
+    - Implemented object editing in 'edit' mode (name/label input, photo gallery, delete button).
+    - Added a show/hide toggle for the bar with a floating pill button when hidden.
+- **Step 2: Modify home.tsx for conditional mobile/desktop layout**
+    - Updated `client/src/pages/home.tsx` to use `useIsMobile`.
+    - Implemented a streamlined mobile layout that renders only `Canvas` and `MobileBottomBar` on small screens.
+- **Step 3: Add camera capture support to ObjectPhotoGallery**
+    - Updated `client/src/components/editor/ObjectPhotoGallery.tsx` to include `capture="environment"` on the file input, enabling direct access to the native camera on mobile devices.
 
 ## Files affected
+- CREATED: `client/src/components/editor/MobileBottomBar.tsx`
 - MODIFIED: `client/src/pages/home.tsx`
-- MODIFIED: `client/src/components/editor/Canvas.tsx`
+- MODIFIED: `client/src/components/editor/ObjectPhotoGallery.tsx`
 
 ## Deviations from plan
 None
 
 ## Potential issues
-None. The browser freeze is resolved as the heavy lifting is deferred until after the user selects a PDF file.
+- **Safari/iOS Camera Support:** Safari on iOS might have specific behaviors regarding the `capture` attribute combined with `multiple`. If `multiple` prevents the camera from opening directly, it might need to be removed conditionally for mobile.
+- **Z-Index:** Set `z-[100]` for the mobile bar to ensure it stays above the canvas objects.
+- **Canvas Interaction:** Users can hide the bar to view/interact with objects covered by the bar's 50vh height.
