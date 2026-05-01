@@ -35,3 +35,95 @@
 
 ---
 
+## IMPLEMENTING — iter 1 — 2026-05-01 14:09:10
+
+### Gemini (Programista)
+
+**Open criteria do adresowania:**
+- `[c1]` home.tsx contains no static import statements for Canvas, Toolbar, ObjectToolbar, LayerPanel, or PropertiesPanel — each is declared via React.lazy(() => import(...))
+- `[c2]` home.tsx wraps the editor-branch JSX (rendered when pdfFile is not null) in <React.Suspense> with a non-null fallback prop
+- `[c3]` PDFUploader remains a static import in home.tsx (not lazy)
+- `[c4]` Canvas.tsx sets pdfjs.GlobalWorkerOptions.workerSrc using a local ?url import, not a string referencing unpkg.com or any other CDN
+- `[c5]` Running `npm run build` produces a separate JS chunk containing pdfjs-dist that is NOT part of the main entry chunk
+
+**Git diff:** .orchestrator/orchestrator.db                   | Bin 81920 -> 106496 bytes
+ .orchestrator/runs/TASK-1BE28E/conversation.md  | 112 ++++++++++++++++++++++++
+ .orchestrator/runs/TASK-1BE28E/orchestrator.log |   6 ++
+ .orchestrator/runs/TASK-1BE28E/state.json       |  52 ++++++-----
+ client/src/components/editor/Canvas.tsx         |   5 +-
+ client/src/pages/home.tsx                       |  51 ++++++-----
+ implementation_report.md                        |  24 ++---
+ 7 files changed, 186 insertions(+), 64 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- **Lazy-loaded editor components in `home.tsx`**: Replaced static imports for `Canvas`, `Toolbar`, `ObjectToolbar`, `LayerPanel`, and `PropertiesPanel` with `React.lazy()` dynamic imports. This prevents heavy dependencies like `pdfjs-dist` and `pdf-lib` from being loaded on the initial page load.
+- **Added `React.Suspense`**: Wrapped the editor-rendering branch in `home.tsx` with a `Suspense` component and a centered spinner fallback to provide visual feedback while the async chunks are loading.
+- **Configured local PDF worker in `Canvas.tsx`**: Replaced the external CDN worker URL from `unpkg.com` with a local Vite asset URL using the `?url` import suffix. This eliminates the dependency on an external network for the worker script and improves reliability.
+- **Verified Build Chunking**: Ran `npm run build` and confirmed that the editor components and the pdfjs worker are now emitted as separate async chunks in the `dist/public/assets` directory.
+
+## Files affected
+- MODIFIED: `client/src/pages/home.tsx`
+- MODIFIED: `client/src/components/editor/Canvas.tsx`
+
+## Deviations from plan
+None
+
+## Potential issues
+None. The browser freeze is resolved as the heavy lifting is deferred until after the user selects a PDF file.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have successfully implemented the performance fix to prevent browser freezing during initial page load.
+
+### Summary of Changes
+1.  **Lazy Loading**: In `home.tsx`, I replaced static imports for the five heavy editor components (`Canvas`, `Toolbar`, `ObjectToolbar`, `LayerPanel`, and `PropertiesPanel`) with `React.lazy()` dynamic imports. This ensures that `pdfjs-dist`, `pdf-lib`, and other large libraries are only loaded when needed (i.e., after a PDF is uploaded).
+2.  **Loading State**: I wrapped the editor component branch in `home.tsx` with a `React.Suspense` component and a centered spinner fallback to provide a smooth user experience while the async chunks are being fetched.
+3.  **Local PDF Worker**: In `Canvas.tsx`, I switched the `pdfjs` worker source from a CDN (`unpkg.com`) to a local Vite asset using the `?url` import suffix. This eliminates external network dependencies and speeds up the worker initialization.
+4.  **Build Verification**: I ran `npm run build` and verified that the components and the worker script are correctly emitted as separate, hashed chunks in the `dist/public/assets` directory.
+
+These changes significantly reduce the initial bundle size and eliminate the synchronous execution of heavy libraries on the main thread during page load, resolving the freezing issue.
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- **Lazy-loaded editor components in `home.tsx`**: Replaced static imports for `Canvas`, `Toolbar`, `ObjectToolbar`, `LayerPanel`, and `PropertiesPanel` with `React.lazy()` dynamic imports. This prevents heavy dependencies like `pdfjs-dist` and `pdf-lib` from being loaded on the initial page load.
+- **Added `React.Suspense`**: Wrapped the editor-rendering branch in `home.tsx` with a `Suspense` component and a centered spinner fallback to provide visual feedback while the async chunks are loading.
+- **Configured local PDF worker in `Canvas.tsx`**: Replaced the external CDN worker URL from `unpkg.com` with a local Vite as
+*(truncated)*
+```
+</details>
+
+---
+
+## REVIEWING — iter 1 — 2026-05-01 14:09:54
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — Verified in client/src/pages/home.tsx lines 5-9: all five components are declared using React.lazy with named export mapping.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — Verified in client/src/pages/home.tsx lines 20-41: The main editor UI is wrapped in <Suspense fallback={<div...><div className="animate-spin...">...</div></div>}>.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — Verified in client/src/pages/home.tsx line 3: import {PDFUploader} from '@/components/editor/PDFUploader';  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — Verified in client/src/components/editor/Canvas.tsx lines 18-21: import pdfjsWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'; and pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — Ran npm run build. Output shows separate chunks: pdf.worker.min-*.mjs (1,046 kB) and Canvas-*.js (481 kB). The main index-*.js chunk is 441 kB.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 The spinner in Suspense fallback is centered on the whole screen. It might be better to have a fallback that matches the editor layout to prevent layout shift, but for performance improvement this is sufficient.
+
+---
+
