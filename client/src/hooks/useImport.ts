@@ -15,15 +15,6 @@ export const useImport = () => {
     }
   };
 
-  const fileToDataUrl = (file: File | Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleZipImport = async (zipFile: File) => {
     try {
       const zip = await JSZip.loadAsync(zipFile);
@@ -56,9 +47,10 @@ export const useImport = () => {
         if (obj.type === 'image' && obj.content && obj.content.startsWith('assets/')) {
           const assetEntry = zip.file(obj.content);
           if (assetEntry) {
-            const base64 = await assetEntry.async('base64');
+            const blob = await assetEntry.async('blob');
             const mime = getMimeType(obj.content);
-            return { ...obj, content: `data:${mime};base64,${base64}` };
+            const blobUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
+            return { ...obj, content: blobUrl };
           }
         }
         return obj;
@@ -69,9 +61,10 @@ export const useImport = () => {
         if (icon.url && icon.url.startsWith('assets/')) {
           const assetEntry = zip.file(icon.url);
           if (assetEntry) {
-            const base64 = await assetEntry.async('base64');
+            const blob = await assetEntry.async('blob');
             const mime = getMimeType(icon.url);
-            return { ...icon, url: `data:${mime};base64,${base64}` };
+            const blobUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
+            return { ...icon, url: blobUrl };
           }
         }
         return icon;
@@ -96,7 +89,15 @@ export const useImport = () => {
   const handleDirectoryImport = async (files: FileList | File[]) => {
     try {
       const fileArray = Array.from(files);
-      const jsonFile = fileArray.find(f => f.name === 'project.json' || f.webkitRelativePath.endsWith('/project.json'));
+      
+      const findFileByPath = (relativePath: string) => {
+        return fileArray.find(f => {
+          const path = f.webkitRelativePath || f.name;
+          return path === relativePath || path.endsWith('/' + relativePath);
+        });
+      };
+
+      const jsonFile = findFileByPath('project.json');
       if (!jsonFile) {
         alert("project.json not found in selected directory");
         return;
@@ -105,19 +106,18 @@ export const useImport = () => {
       const projectData = JSON.parse(await jsonFile.text());
       
       // Find PDF
-      const pdfFile = fileArray.find(f => f.name === 'document.pdf' || f.webkitRelativePath.endsWith('/document.pdf'));
+      const pdfFile = findFileByPath('document.pdf');
       
       // Find Overlay PDF
-      const overlayPdfFile = fileArray.find(f => f.name === 'overlay.pdf' || f.webkitRelativePath.endsWith('/overlay.pdf'));
+      const overlayPdfFile = findFileByPath('overlay.pdf');
 
       // Resolve assets in objects
       const resolvedObjects = await Promise.all((projectData.objects || []).map(async (obj: any) => {
         if (obj.type === 'image' && obj.content && obj.content.startsWith('assets/')) {
-          const assetFilename = obj.content.split('/').pop();
-          const assetFile = fileArray.find(f => f.webkitRelativePath.endsWith(obj.content) || f.name === assetFilename);
+          const assetFile = findFileByPath(obj.content);
           if (assetFile) {
-            const dataUrl = await fileToDataUrl(assetFile);
-            return { ...obj, content: dataUrl };
+            const blobUrl = URL.createObjectURL(assetFile);
+            return { ...obj, content: blobUrl };
           }
         }
         return obj;
@@ -126,11 +126,10 @@ export const useImport = () => {
       // Resolve assets in custom icons
       const resolvedCustomIcons = await Promise.all((projectData.customIcons || []).map(async (icon: any) => {
         if (icon.url && icon.url.startsWith('assets/')) {
-          const assetFilename = icon.url.split('/').pop();
-          const assetFile = fileArray.find(f => f.webkitRelativePath.endsWith(icon.url) || f.name === assetFilename);
+          const assetFile = findFileByPath(icon.url);
           if (assetFile) {
-            const dataUrl = await fileToDataUrl(assetFile);
-            return { ...icon, url: dataUrl };
+            const blobUrl = URL.createObjectURL(assetFile);
+            return { ...icon, url: blobUrl };
           }
         }
         return icon;

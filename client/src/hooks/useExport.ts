@@ -27,9 +27,25 @@ export const useExport = () => {
     const processedObjects = [...docState.objects];
     const processedCustomIcons = [...docState.customIcons];
 
-    // Helper to process data URL and add to zip
-    const processAsset = (content: string, prefix: string, id: string) => {
-        if (!content || !content.startsWith('data:')) return content;
+    // Helper to process data URL or blob URL and add to zip
+    const processAsset = async (content: string, prefix: string, id: string) => {
+        if (!content) return content;
+        
+        if (content.startsWith('blob:')) {
+            try {
+                const response = await fetch(content);
+                const blob = await response.blob();
+                const ext = blob.type.split('/')[1] || 'bin';
+                const filename = `${prefix}_${id}.${ext}`;
+                assetsFolder.file(filename, blob);
+                return `assets/${filename}`;
+            } catch (e) {
+                console.error("Failed to fetch blob", e);
+                return content;
+            }
+        }
+
+        if (!content.startsWith('data:')) return content;
         
         const [header, base64] = content.split(',');
         const mimeMatch = header.match(/:(.*?);/);
@@ -44,26 +60,26 @@ export const useExport = () => {
     };
 
     // Process images in objects
-    const finalObjects = processedObjects.map(obj => {
+    const finalObjects = await Promise.all(processedObjects.map(async obj => {
         if (obj.type === 'image' && obj.content) {
             return {
                 ...obj,
-                content: processAsset(obj.content, 'img', obj.id)
+                content: await processAsset(obj.content, 'img', obj.id)
             };
         }
         return obj;
-    });
+    }));
 
     // Process custom icons
-    const finalCustomIcons = processedCustomIcons.map(icon => {
+    const finalCustomIcons = await Promise.all(processedCustomIcons.map(async icon => {
         if (icon.url) {
             return {
                 ...icon,
-                url: processAsset(icon.url, 'icon', icon.id)
+                url: await processAsset(icon.url, 'icon', icon.id)
             };
         }
         return icon;
-    });
+    }));
 
     const projectData = JSON.stringify({
       layers: docState.layers,
