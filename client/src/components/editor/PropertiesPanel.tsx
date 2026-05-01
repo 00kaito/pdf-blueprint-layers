@@ -126,12 +126,12 @@ export const PropertiesPanel = () => {
                 <Label className="text-xs font-medium">Progress Status</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { id: 'PLANNED', label: 'Planned', color: 'bg-slate-500' },
+                    { id: 'PLANNED', label: 'Planned', color: 'bg-red-400' },
                     { id: 'CABLE_PULLED', label: 'Cable Pulled', color: 'bg-blue-500' },
                     { id: 'TERMINATED', label: 'Terminated', color: 'bg-purple-500' },
                     { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
                     { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
-                    { id: 'ISSUE', label: 'Issue', color: 'bg-red-500' },
+                    { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
                   ].map((s) => (
                     <Button
                       key={s.id}

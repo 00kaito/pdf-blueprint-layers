@@ -136,8 +136,8 @@ export const LayerPanel = () => {
   const counts = {
     total: trackableObjects.length,
     completed: trackableObjects.filter(o => o.status === 'TESTED' || o.status === 'APPROVED').length,
-    issues: trackableObjects.filter(o => o.status === 'ISSUE').length,
-    other: trackableObjects.filter(o => o.status && !['TESTED', 'APPROVED', 'ISSUE'].includes(o.status)).length
+    interventions: trackableObjects.filter(o => o.status === 'ISSUE' || o.status === 'PLANNED').length,
+    other: trackableObjects.filter(o => o.status && !['TESTED', 'APPROVED', 'ISSUE', 'PLANNED'].includes(o.status)).length
   };
   const progressPercent = counts.total > 0 ? (counts.completed / counts.total) * 100 : 0;
 
@@ -225,8 +225,8 @@ export const LayerPanel = () => {
               <span className="text-xs font-mono">{counts.completed}</span>
             </div>
             <div className="flex flex-col items-center flex-1 p-1 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-red-500 uppercase">Issues</span>
-              <span className="text-xs font-mono">{counts.issues}</span>
+              <span className="text-[10px] font-bold text-red-500 uppercase">Interventions</span>
+              <span className="text-xs font-mono">{counts.interventions}</span>
             </div>
           </div>
         </div>

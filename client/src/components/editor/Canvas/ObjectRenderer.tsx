@@ -26,12 +26,12 @@ const IconRenderer = ({ iconType, color }: { iconType: string, color?: string })
 
 const getStatusColor = (status?: string) => {
   switch (status) {
-    case 'PLANNED': return '#64748b'; // Slate 500
+    case 'PLANNED': return '#f87171'; // Red 400
     case 'CABLE_PULLED': return '#3b82f6'; // Blue 500
     case 'TERMINATED': return '#a855f7'; // Purple 500
     case 'TESTED': return '#4ade80'; // Green 400 (Jasnozielony)
     case 'APPROVED': return '#16a34a'; // Green 600
-    case 'ISSUE': return '#ef4444'; // Red 500
+    case 'ISSUE': return '#dc2626'; // Red 600
     default: return null;
   }
 };
