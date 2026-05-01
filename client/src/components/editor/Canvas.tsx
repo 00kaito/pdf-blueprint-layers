@@ -1,4 +1,4 @@
-import React, {useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {v4 as uuidv4} from 'uuid';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {Document, Page, pdfjs} from 'react-pdf';
@@ -25,6 +25,26 @@ export const Canvas = () => {
   const [, setNumPages] = useState<number>(0);
 
   const state = { ...docState, ...uiState };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't delete if user is typing in an input or contentEditable
+      if (
+        e.target instanceof HTMLInputElement || 
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedObjectIds.length > 0) {
+        dispatch({ type: 'DELETE_OBJECTS', payload: state.selectedObjectIds });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.selectedObjectIds, dispatch]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (state.tool === 'draw') { onMouseDown(e); }

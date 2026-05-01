@@ -28,8 +28,18 @@ export const DrawingLayer = ({ drawingPath, isDrawing }: DrawingLayerProps) => {
               strokeLinecap="round" 
               strokeLinejoin="round" 
               style={{ opacity: obj.opacity ?? 1 }} 
-              className={cn("cursor-pointer pointer-events-auto transition-colors", uiState.selectedObjectId === obj.id ? "stroke-primary" : "stroke-black hover:stroke-primary/50")} 
-              onClick={(e: any) => { e.stopPropagation(); dispatch({ type: 'SELECT_OBJECT', payload: obj.id }); }} 
+              className={cn(
+                "cursor-pointer pointer-events-auto transition-colors", 
+                uiState.selectedObjectIds.includes(obj.id) ? "stroke-primary" : "stroke-black hover:stroke-primary/50"
+              )} 
+              onClick={(e: any) => { 
+                e.stopPropagation(); 
+                if (e.ctrlKey || e.metaKey) {
+                  dispatch({ type: 'TOGGLE_OBJECT_SELECTION', payload: obj.id });
+                } else {
+                  dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+                }
+              }} 
             />
           );
         })}

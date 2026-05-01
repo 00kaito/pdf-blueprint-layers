@@ -42,23 +42,24 @@ export const Toolbar = () => {
   };
 
   const handleDelete = () => {
-    if (uiState.selectedObjectId) {
-      dispatch({ type: 'DELETE_OBJECT', payload: uiState.selectedObjectId });
+    if (uiState.selectedObjectIds.length > 0) {
+      dispatch({ type: 'DELETE_OBJECTS', payload: uiState.selectedObjectIds });
     }
   };
 
   const handleMoveToLayer = (layerId: string) => {
-    if (uiState.selectedObjectId) {
-      dispatch({ type: 'UPDATE_OBJECT', payload: { id: uiState.selectedObjectId, updates: { layerId } } });
+    if (uiState.selectedObjectIds.length > 0) {
+      dispatch({ type: 'UPDATE_OBJECTS', payload: { ids: uiState.selectedObjectIds, updates: { layerId } } });
     }
   };
 
-  const selectedObject = docState.objects.find(o => o.id === uiState.selectedObjectId);
+  const selectedObjects = docState.objects.filter(o => uiState.selectedObjectIds.includes(o.id));
+  const firstObject = selectedObjects[0];
 
   return (
     <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-between shrink-0">
       <div className="flex items-center gap-2">
-        {selectedObject && (
+        {selectedObjects.length > 0 && (
           <>
              <div className="flex items-center gap-2 mx-2">
                {/* Universal Label Editor for all objects */}
@@ -66,45 +67,55 @@ export const Toolbar = () => {
                  <span className="text-[10px] uppercase font-bold text-muted-foreground mr-1">Label</span>
                  <Input 
                    className="w-[100px] h-7 text-xs border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0" 
-                   value={selectedObject.name || ''} 
-                   onChange={(e) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { name: e.target.value } } })}
-                   placeholder="No label"
+                   value={selectedObjects.every(o => o.name === firstObject.name) ? (firstObject.name || '') : ''} 
+                   onChange={(e) => dispatch({ type: 'UPDATE_OBJECTS', payload: { ids: uiState.selectedObjectIds, updates: { name: e.target.value } } })}
+                   placeholder={selectedObjects.length > 1 ? "Mixed..." : "No label"}
                  />
                </div>
 
                <Separator orientation="vertical" className="h-6" />
 
-               {selectedObject.type === 'text' && (
+               {selectedObjects.length === 1 && firstObject.type === 'text' && (
                  <>
-                   <Input className="w-[200px] h-8" value={selectedObject.content} onChange={(e) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { content: e.target.value } } })} />
-                   <Select value={selectedObject.fontSize?.toString() || "16"} onValueChange={(v) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { fontSize: parseInt(v) } } })}>
+                   <Input className="w-[200px] h-8" value={firstObject.content} onChange={(e) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: firstObject.id, updates: { content: e.target.value } } })} />
+                   <Select value={firstObject.fontSize?.toString() || "16"} onValueChange={(v) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: firstObject.id, updates: { fontSize: parseInt(v) } } })}>
                     <SelectTrigger className="w-[70px] h-8"><SelectValue /></SelectTrigger>
                     <SelectContent className="max-h-[300px]">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 24, 32, 48].map(s => <SelectItem key={s} value={s.toString()}>{s}px</SelectItem>)}
                     </SelectContent>
                    </Select>
-                   <Toggle pressed={selectedObject.fontWeight === 'bold'} onPressedChange={(p) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { fontWeight: p ? 'bold' : 'normal' } } })} size="sm">
+                   <Toggle pressed={firstObject.fontWeight === 'bold'} onPressedChange={(p) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: firstObject.id, updates: { fontWeight: p ? 'bold' : 'normal' } } })} size="sm">
                       <Bold className="w-4 h-4" />
                    </Toggle>
                  </>
                )}
-               {(selectedObject.type === 'text' || selectedObject.type === 'icon' || selectedObject.type === 'path' || selectedObject.type === 'image') && (
-                 <input type="color" value={selectedObject.color || "#000000"} onChange={(e) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { color: e.target.value } } })} className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer" />
-               )}
-               {selectedObject.type === 'path' && (
+               
+               <input 
+                 type="color" 
+                 value={selectedObjects.every(o => o.color === firstObject.color) ? (firstObject.color || "#000000") : "#000000"} 
+                 onChange={(e) => dispatch({ type: 'UPDATE_OBJECTS', payload: { ids: uiState.selectedObjectIds, updates: { color: e.target.value } } })} 
+                 className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer" 
+               />
+
+               {selectedObjects.length === 1 && firstObject.type === 'path' && (
                  <>
                    <Separator orientation="vertical" className="h-6 mx-1" />
                    <div className="w-24 flex items-center gap-2">
                      <Slider
-                        value={[selectedObject.strokeWidth || 2]}
+                        value={[firstObject.strokeWidth || 2]}
                         min={1} max={20} step={1}
-                        onValueChange={([val]) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { strokeWidth: val } } })}
+                        onValueChange={([val]) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: firstObject.id, updates: { strokeWidth: val } } })}
                      />
                    </div>
                  </>
                )}
-               <Select value={selectedObject.layerId} onValueChange={handleMoveToLayer}>
-                <SelectTrigger className="w-[120px] h-8"><SelectValue /></SelectTrigger>
+               <Select 
+                 value={selectedObjects.every(o => o.layerId === firstObject.layerId) ? firstObject.layerId : undefined} 
+                 onValueChange={handleMoveToLayer}
+               >
+                <SelectTrigger className="w-[120px] h-8">
+                  <SelectValue placeholder="Mixed layers" />
+                </SelectTrigger>
                 <SelectContent>{docState.layers.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
                </Select>
              </div>

@@ -52,9 +52,11 @@ export const useExport = () => {
       (layerOrderById[a.layerId] ?? 0) - (layerOrderById[b.layerId] ?? 0)
     );
 
+    // Pass 1: Draw non-text objects (images, icons, paths)
     for (const obj of sortedObjects) {
        const layer = docState.layers.find(l => l.id === obj.layerId);
        if (!layer?.visible) continue;
+       if (obj.type === 'text') continue; // Handle text in second pass
 
        const scaleFactor = vW / CANVAS_BASE_WIDTH;
        const scaledWidth = obj.width * scaleFactor;
@@ -95,48 +97,7 @@ export const useExport = () => {
          translate(-scaledWidth / 2, -scaledHeight / 2)
        );
        
-       const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
-
-       if (obj.type === 'text' && obj.content) {
-          const padding = 4 * scaleFactor;
-          const textColor = obj.color ? hexToRgb(obj.color) : hexToRgb('#000000');
-          const font = obj.fontWeight === 'bold' ? helveticaBoldFont : helveticaFont;
-          
-          const maxWidth = scaledWidth - (padding * 2);
-          const words = obj.content.split(' ');
-          const lines = [];
-          let currentLine = '';
-
-          // Simple word wrap logic
-          for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const width = font.widthOfTextAtSize(testLine, scaledFontSize);
-            if (width <= maxWidth) {
-              currentLine = testLine;
-            } else {
-              if (currentLine) lines.push(currentLine);
-              currentLine = word;
-            }
-          }
-          if (currentLine) lines.push(currentLine);
-
-          // Draw each line
-          lines.forEach((line, index) => {
-            const yPos = scaledHeight - padding - (index + 1) * scaledFontSize;
-            // Only draw if within bounding box height
-            if (yPos >= 0) {
-              page.drawText(line, {
-                x: padding,
-                y: yPos, 
-                size: scaledFontSize,
-                font: font,
-                color: textColor,
-                rotate: degrees(0),
-                opacity: (obj.opacity ?? 1) * (layer.opacity ?? 1),
-              });
-            }
-          });
-       } else if (obj.type === 'image' && obj.content) {
+       if (obj.type === 'image' && obj.content) {
           try {
             let contentToEmbed = obj.content;
             if (obj.content.startsWith('data:image/svg+xml')) {
@@ -190,6 +151,63 @@ export const useExport = () => {
              x: pLx - textWidth / 2, y: pLy, size: labelFontSize, font: helveticaFont, color: hexToRgb('#000000'), rotate: degrees(pageRotation),
           });
        }
+    }
+
+    // Pass 2: Draw Text objects on top of everything
+    for (const obj of sortedObjects) {
+       if (obj.type !== 'text' || !obj.content) continue;
+       const layer = docState.layers.find(l => l.id === obj.layerId);
+       if (!layer?.visible) continue;
+
+       const scaleFactor = vW / CANVAS_BASE_WIDTH;
+       const scaledWidth = obj.width * scaleFactor;
+       const scaledHeight = obj.height * scaleFactor;
+       const totalRotation = pageRotation - (obj.rotation || 0);
+       const scaledFontSize = (obj.fontSize || 16) * scaleFactor;
+
+       const padding = 4 * scaleFactor;
+       const textColor = obj.color ? hexToRgb(obj.color) : hexToRgb('#000000');
+       const font = obj.fontWeight === 'bold' ? helveticaBoldFont : helveticaFont;
+       
+       const maxWidth = scaledWidth - (padding * 2);
+       const words = obj.content.split(' ');
+       const lines = [];
+       let currentLine = '';
+
+       for (const word of words) {
+         const testLine = currentLine ? `${currentLine} ${word}` : word;
+         const width = font.widthOfTextAtSize(testLine, scaledFontSize);
+         if (width <= maxWidth) {
+           currentLine = testLine;
+         } else {
+           if (currentLine) lines.push(currentLine);
+           currentLine = word;
+         }
+       }
+       if (currentLine) lines.push(currentLine);
+
+       lines.forEach((line, index) => {
+         // Adjusting yOffset to match browser rendering more closely
+         // Changing 0.85 to 0.75 to lift the text slightly
+         const yOffset = padding + (index + 0.75) * scaledFontSize;
+         if (yOffset <= scaledHeight + scaledFontSize) { 
+           const { x: pLx, y: pLy } = getPhysicalCoords(
+             (obj.x * scaleFactor) + padding,
+             (obj.y * scaleFactor) + yOffset,
+             pW, pH, pageRotation
+           );
+
+           page.drawText(line, {
+             x: pLx,
+             y: pLy, 
+             size: scaledFontSize,
+             font: font,
+             color: textColor,
+             rotate: degrees(totalRotation),
+             opacity: (obj.opacity ?? 1) * (layer.opacity ?? 1),
+           });
+         }
+       });
     }
 
     const pdfBytes = await pdfDoc.save();

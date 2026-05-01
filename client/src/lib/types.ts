@@ -58,7 +58,7 @@ export type DocumentState = {
 };
 
 export type UIState = {
-  selectedObjectId: string | null;
+  selectedObjectIds: string[];
   activeLayerId: string | null;
   currentPage: number;
   scale: number;
@@ -79,8 +79,12 @@ export type EditorAction =
   | { type: 'DELETE_LAYER'; payload: string } // id
   | { type: 'ADD_OBJECT'; payload: EditorObject }
   | { type: 'UPDATE_OBJECT'; payload: { id: string; updates: Partial<EditorObject> } }
+  | { type: 'UPDATE_OBJECTS'; payload: { ids: string[]; updates: Partial<EditorObject> } }
   | { type: 'DELETE_OBJECT'; payload: string }
+  | { type: 'DELETE_OBJECTS'; payload: string[] }
   | { type: 'SELECT_OBJECT'; payload: string | null }
+  | { type: 'TOGGLE_OBJECT_SELECTION'; payload: string }
+  | { type: 'SET_SELECTION'; payload: string[] }
   | { type: 'SET_TOOL'; payload: UIState['tool'] }
   | { type: 'SET_PAGE'; payload: number }
   | { type: 'SET_SCALE'; payload: number }

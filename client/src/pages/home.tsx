@@ -15,7 +15,7 @@ const Home = () => {
     return <PDFUploader />;
   }
 
-  const hasSelectedObject = !!uiState.selectedObjectId;
+  const hasSelectedObject = uiState.selectedObjectIds.length > 0;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">

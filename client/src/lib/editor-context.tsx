@@ -24,7 +24,7 @@ const initialDocumentState: DocumentState = {
 };
 
 const initialUIState: UIState = {
-  selectedObjectId: null,
+  selectedObjectIds: [],
   activeLayerId: null,
   currentPage: 1,
   scale: 1,
@@ -96,20 +96,17 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         newActiveLayerId = remainingLayers.length > 0 ? remainingLayers[0].id : null;
       }
       
-      let newSelectedObjectId = state.selectedObjectId;
-      if (state.selectedObjectId) {
-         const selectedObject = state.objects.find(o => o.id === state.selectedObjectId);
-         if (selectedObject && selectedObject.layerId === layerId) {
-             newSelectedObjectId = null;
-         }
-      }
+      const newSelectedObjectIds = state.selectedObjectIds.filter(id => {
+         const obj = state.objects.find(o => o.id === id);
+         return obj && obj.layerId !== layerId;
+      });
 
       return {
         ...state,
         layers: remainingLayers,
         objects: remainingObjects,
         activeLayerId: newActiveLayerId,
-        selectedObjectId: newSelectedObjectId
+        selectedObjectIds: newSelectedObjectIds
       };
     }
     case 'ADD_OBJECT':
@@ -121,16 +118,38 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
           o.id === action.payload.id ? { ...o, ...action.payload.updates } : o
         ),
       };
+    case 'UPDATE_OBJECTS':
+      return {
+        ...state,
+        objects: state.objects.map((o) =>
+          action.payload.ids.includes(o.id) ? { ...o, ...action.payload.updates } : o
+        ),
+      };
     case 'DELETE_OBJECT':
       return {
         ...state,
         objects: state.objects.filter((o) => o.id !== action.payload),
-        selectedObjectId: null,
+        selectedObjectIds: state.selectedObjectIds.filter(id => id !== action.payload),
+      };
+    case 'DELETE_OBJECTS':
+      return {
+        ...state,
+        objects: state.objects.filter((o) => !action.payload.includes(o.id)),
+        selectedObjectIds: state.selectedObjectIds.filter(id => !action.payload.includes(id)),
       };
     case 'SELECT_OBJECT':
-      return { ...state, selectedObjectId: action.payload };
+      return { ...state, selectedObjectIds: action.payload ? [action.payload] : [] };
+    case 'TOGGLE_OBJECT_SELECTION':
+      return {
+        ...state,
+        selectedObjectIds: state.selectedObjectIds.includes(action.payload)
+          ? state.selectedObjectIds.filter(id => id !== action.payload)
+          : [...state.selectedObjectIds, action.payload]
+      };
+    case 'SET_SELECTION':
+      return { ...state, selectedObjectIds: action.payload };
     case 'SET_TOOL':
-      return { ...state, tool: action.payload, selectedObjectId: null };
+      return { ...state, tool: action.payload, selectedObjectIds: [] };
     case 'SET_PAGE':
       return { ...state, currentPage: action.payload };
     case 'SET_SCALE':
@@ -147,8 +166,9 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, layers: result };
     }
     case 'COPY_OBJECT': {
-      if (!state.selectedObjectId) return state;
-      const objectToCopy = state.objects.find(o => o.id === state.selectedObjectId);
+      if (state.selectedObjectIds.length === 0) return state;
+      // For now, only copy the last selected object
+      const objectToCopy = state.objects.find(o => o.id === state.selectedObjectIds[state.selectedObjectIds.length - 1]);
       if (!objectToCopy) return state;
       return { ...state, clipboardObject: { ...objectToCopy } };
     }
@@ -167,7 +187,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return {
         ...state,
         objects: [...state.objects, newObject],
-        selectedObjectId: newId
+        selectedObjectIds: [newId]
       };
     }
     case 'SET_AUTO_NUMBERING':
@@ -231,7 +251,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
 
   const uiValue = useMemo(() => ({
     state: {
-      selectedObjectId: state.selectedObjectId,
+      selectedObjectIds: state.selectedObjectIds,
       activeLayerId: state.activeLayerId,
       currentPage: state.currentPage,
       scale: state.scale,
@@ -239,7 +259,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       tool: state.tool,
     },
     dispatch
-  }), [state.selectedObjectId, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, dispatch]);
+  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, dispatch]);
 
   return (
     <DocumentContext.Provider value={documentValue}>

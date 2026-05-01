@@ -207,19 +207,24 @@ export const LayerPanel = () => {
             const isExpanded = expandedLayers[layer.id] ?? true;
 
             return (
-              <div key={layer.id} className="space-y-1">
+              <div 
+                key={layer.id} 
+                className={cn(
+                  "space-y-1 rounded-md transition-colors pb-1",
+                  dragOverLayerId === layer.id && "bg-primary/5 ring-1 ring-primary/20"
+                )}
+                onDragOver={(e) => handleLayerDragOver(e, layer.id)}
+                onDragLeave={() => setDragOverLayerId(null)}
+                onDrop={(e) => handleLayerDrop(e, layer.id)}
+              >
                 <div
                   className={cn(
                     "flex items-center justify-between p-2 rounded-md text-sm cursor-pointer transition-colors group",
                     state.activeLayerId === layer.id
                       ? "bg-primary/10 text-primary font-medium"
-                      : "hover:bg-accent",
-                    dragOverLayerId === layer.id && "bg-primary/20 ring-2 ring-primary ring-inset"
+                      : "hover:bg-accent"
                   )}
                   onClick={() => dispatch({ type: 'SELECT_LAYER', payload: layer.id })}
-                  onDragOver={(e) => handleLayerDragOver(e, layer.id)}
-                  onDragLeave={() => setDragOverLayerId(null)}
-                  onDrop={(e) => handleLayerDrop(e, layer.id)}
                 >
                   <div className="flex items-center gap-2 truncate">
                     <button
@@ -292,48 +297,78 @@ export const LayerPanel = () => {
                         draggable
                         onDragStart={(e) => handleObjectDragStart(e, obj.id)}
                         className={cn(
-                          "flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors cursor-grab active:cursor-grabbing",
-                          state.selectedObjectId === obj.id
+                          "flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors cursor-grab active:cursor-grabbing group",
+                          state.selectedObjectIds.includes(obj.id)
                             ? "bg-primary/20 text-primary"
                             : "hover:bg-accent text-muted-foreground"
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
-                          dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
-                          // Also ensure layer is active if we select object? 
-                          // Maybe not strictly required but good UX
+                          if (e.ctrlKey || e.metaKey) {
+                            dispatch({ type: 'TOGGLE_OBJECT_SELECTION', payload: obj.id });
+                          } else if (e.shiftKey && state.selectedObjectIds.length > 0) {
+                            // Find all objects between the last selected and current
+                            const allLayerObjects = state.layers.slice().reverse().flatMap(l => 
+                              state.objects.filter(o => o.layerId === l.id)
+                            );
+                            const lastSelectedId = state.selectedObjectIds[state.selectedObjectIds.length - 1];
+                            const lastIdx = allLayerObjects.findIndex(o => o.id === lastSelectedId);
+                            const currentIdx = allLayerObjects.findIndex(o => o.id === obj.id);
+                            
+                            if (lastIdx !== -1 && currentIdx !== -1) {
+                              const start = Math.min(lastIdx, currentIdx);
+                              const end = Math.max(lastIdx, currentIdx);
+                              const rangeIds = allLayerObjects.slice(start, end + 1).map(o => o.id);
+                              dispatch({ type: 'SET_SELECTION', payload: rangeIds });
+                            }
+                          } else {
+                            dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+                          }
+                          
                           if (state.activeLayerId !== layer.id) {
                              dispatch({ type: 'SELECT_LAYER', payload: layer.id });
                           }
                         }}
                       >
-                        <ObjectIcon type={obj.type} content={obj.content} />
-                        
-                        {editingObjectId === obj.id ? (
-                            <Input 
-                                value={editingObjectName}
-                                onChange={(e) => setEditingObjectName(e.target.value)}
-                                onBlur={saveObjectName}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveObjectName();
-                                }}
-                                className="h-5 py-0 px-1 text-xs w-full bg-white"
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                        ) : (
-                            <span 
-                                className="truncate select-none w-full"
-                                onDoubleClick={(e) => {
-                                    e.stopPropagation();
-                                    startObjectEditing(obj, index);
-                                }}
-                            >
-                              {obj.name || (obj.type === 'text' 
-                                ? (obj.content || 'Text Object') 
-                                : `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} ${index + 1}`)}
-                            </span>
-                        )}
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <ObjectIcon type={obj.type} content={obj.content} />
+                          
+                          {editingObjectId === obj.id ? (
+                              <Input 
+                                  value={editingObjectName}
+                                  onChange={(e) => setEditingObjectName(e.target.value)}
+                                  onBlur={saveObjectName}
+                                  onKeyDown={(e) => {
+                                      if (e.key === 'Enter') saveObjectName();
+                                  }}
+                                  className="h-5 py-0 px-1 text-xs w-full bg-white"
+                                  autoFocus
+                                  onClick={(e) => e.stopPropagation()}
+                              />
+                          ) : (
+                              <span 
+                                  className="truncate select-none w-full"
+                                  onDoubleClick={(e) => {
+                                      e.stopPropagation();
+                                      startObjectEditing(obj, index);
+                                  }}
+                              >
+                                {obj.name || (obj.type === 'text' 
+                                  ? (obj.content || 'Text Object') 
+                                  : `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} ${index + 1}`)}
+                              </span>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dispatch({ type: 'DELETE_OBJECT', payload: obj.id });
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-0.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))}
                     {layerObjects.length === 0 && (

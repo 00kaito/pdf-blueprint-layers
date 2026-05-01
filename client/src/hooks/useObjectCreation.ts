@@ -82,17 +82,20 @@ export const useObjectCreation = () => {
   }, [uiState.activeLayerId, uiState.scale, getCenterPosition, dispatch]);
 
   const handleCustomIconUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      dispatch({
-        type: 'ADD_CUSTOM_ICON',
-        payload: { id: uuidv4(), url: event.target?.result as string, name: file.name }
-      });
-    };
-    reader.readAsDataURL(file);
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        dispatch({
+          type: 'ADD_CUSTOM_ICON',
+          payload: { id: uuidv4(), url: event.target?.result as string, name: file.name }
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+    
     e.target.value = '';
   }, [dispatch]);
 

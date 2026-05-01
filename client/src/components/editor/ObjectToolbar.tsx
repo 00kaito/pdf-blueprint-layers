@@ -2,22 +2,22 @@ import React from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {v4 as uuidv4} from 'uuid';
 import {
-  ArrowRight,
-  Camera,
-  Circle,
-  Hash,
-  Heart,
-  Hexagon,
-  Image as ImageIcon,
-  MousePointer2,
-  Pencil,
-  Plus,
-  Settings2,
-  Square,
-  Star,
-  Triangle,
-  Type,
-  X
+    ArrowRight,
+    Camera,
+    Circle,
+    Hash,
+    Heart,
+    Hexagon,
+    Image as ImageIcon,
+    MousePointer2,
+    Pencil,
+    Plus,
+    Settings2,
+    Square,
+    Star,
+    Triangle,
+    Type,
+    X
 } from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
@@ -124,7 +124,7 @@ export const ObjectToolbar = () => {
                   <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
                     <label htmlFor="custom-icon-upload-sidebar" className="cursor-pointer">
                       <Plus className="h-4 w-4" />
-                      <input type="file" accept="image/*" className="hidden" id="custom-icon-upload-sidebar" onChange={handleCustomIconUpload} />
+                      <input type="file" accept="image/*" multiple className="hidden" id="custom-icon-upload-sidebar" onChange={handleCustomIconUpload} />
                     </label>
                   </Button>
                 </div>

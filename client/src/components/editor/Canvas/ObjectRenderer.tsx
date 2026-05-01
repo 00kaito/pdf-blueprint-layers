@@ -61,8 +61,6 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const isSelected = uiState.selectedObjectId === obj.id;
-
   return (
     <Rnd
       key={obj.id}
@@ -83,12 +81,16 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       })}
       onClick={(e: any) => {
         e.stopPropagation();
-        dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+        if (e.ctrlKey || e.metaKey) {
+          dispatch({ type: 'TOGGLE_OBJECT_SELECTION', payload: obj.id });
+        } else {
+          dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+        }
       }}
       scale={1}
       bounds="parent"
       disableDragging={layer.locked || uiState.tool !== 'select' || isRotating}
-      enableResizing={!layer.locked && isSelected}
+      enableResizing={!layer.locked && uiState.selectedObjectIds.includes(obj.id)}
       resizeHandleClasses={{
         bottomRight: "bg-primary w-2 h-2 rounded-full",
         bottomLeft:  "bg-primary w-2 h-2 rounded-full",
@@ -97,12 +99,12 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       }}
       className={cn(
         "group z-20",
-        isSelected ? "ring-1 ring-primary ring-offset-1" : "",
+        uiState.selectedObjectIds.includes(obj.id) ? "ring-1 ring-primary ring-offset-1" : "",
         layer.locked ? "pointer-events-none" : "cursor-move"
       )}
-      style={{ opacity: obj.opacity ?? 1, zIndex: isSelected ? 30 : 20 }}
+      style={{ opacity: obj.opacity ?? 1, zIndex: uiState.selectedObjectIds.includes(obj.id) ? 30 : 20 }}
     >
-      {isSelected && !layer.locked && (
+      {uiState.selectedObjectIds.includes(obj.id) && !layer.locked && (
         <div 
           className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 hover:scale-110 transition-transform"
           onMouseDown={handleRotationMouseDown}
