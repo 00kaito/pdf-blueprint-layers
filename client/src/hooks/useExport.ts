@@ -22,16 +22,15 @@ export const useExport = () => {
 
   const handleExportProject = useCallback(async () => {
     const zip = new JSZip();
-    const assetsFolder = zip.folder("assets")!;
     
     // Cache to prevent duplicate files for the same asset content
     const assetCache = new Map<string, string>();
 
-    // Helper to process data URL or blob URL and add to zip
-    const processAsset = async (content: string, prefix: string, id: string) => {
+    // Helper to convert blob: or data: URL to embedded data URL
+    const toDataUrl = async (content: string) => {
         if (!content) return content;
         
-        // If we've already processed this exact URL, reuse the ZIP path
+        // If we've already processed this exact URL, reuse the data URL
         if (assetCache.has(content)) {
             return assetCache.get(content)!;
         }
@@ -40,32 +39,23 @@ export const useExport = () => {
             try {
                 const response = await fetch(content);
                 const blob = await response.blob();
-                const ext = blob.type.split('/')[1] || 'bin';
-                const filename = `${prefix}_${id}.${ext}`;
-                assetsFolder.file(filename, blob);
-                const zipPath = `assets/${filename}`;
-                assetCache.set(content, zipPath);
-                return zipPath;
+                return new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const result = reader.result as string;
+                        assetCache.set(content, result);
+                        resolve(result);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
             } catch (e) {
                 console.error("Failed to fetch blob", e);
                 return content;
             }
         }
 
-        if (!content.startsWith('data:')) return content;
-        
-        const [header, base64] = content.split(',');
-        const mimeMatch = header.match(/:(.*?);/);
-        if (!mimeMatch) return content;
-        
-        const mime = mimeMatch[1];
-        const ext = mime.split('/')[1] || 'bin';
-        const filename = `${prefix}_${id}.${ext}`;
-        
-        assetsFolder.file(filename, base64, { base64: true });
-        const zipPath = `assets/${filename}`;
-        assetCache.set(content, zipPath);
-        return zipPath;
+        return content;
     };
 
     // Process images in objects
@@ -73,7 +63,12 @@ export const useExport = () => {
         if (obj.type === 'image' && obj.content) {
             return {
                 ...obj,
-                content: await processAsset(obj.content, 'img', obj.id)
+                content: await toDataUrl(obj.content)
+            };
+        } else if (obj.type === 'icon' && obj.content && (obj.content.startsWith('data:') || obj.content.startsWith('blob:'))) {
+            return {
+                ...obj,
+                content: await toDataUrl(obj.content)
             };
         }
         return obj;
@@ -84,7 +79,7 @@ export const useExport = () => {
         if (icon.url) {
             return {
                 ...icon,
-                url: await processAsset(icon.url, 'icon', icon.id)
+                url: await toDataUrl(icon.url)
             };
         }
         return icon;

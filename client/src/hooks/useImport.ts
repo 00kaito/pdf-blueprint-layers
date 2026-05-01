@@ -60,7 +60,7 @@ export const useImport = () => {
 
       // Resolve assets in objects
       const resolvedObjects = await Promise.all((projectData.objects || []).map(async (obj: any) => {
-        if (obj.type === 'image' && obj.content) {
+        if (obj.content && (obj.type === 'image' || (obj.type === 'icon' && obj.content.startsWith('assets/')))) {
           return { ...obj, content: await resolveAsset(obj.content) };
         }
         return obj;
@@ -132,7 +132,7 @@ export const useImport = () => {
 
       // Resolve assets in objects
       const resolvedObjects = await Promise.all((projectData.objects || []).map(async (obj: any) => {
-        if (obj.type === 'image' && obj.content) {
+        if (obj.content && (obj.type === 'image' || (obj.type === 'icon' && obj.content.startsWith('assets/')))) {
           return { ...obj, content: await resolveAsset(obj.content) };
         }
         return obj;

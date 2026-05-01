@@ -339,3 +339,107 @@ Detailed implementation details can be found in the `implementation
 
 ---
 
+## IMPLEMENTING — iter 4 — 2026-05-01 11:04:11
+
+### Gemini (Programista)
+
+**Fix context przekazany Gemini:**
+```
+Root cause: The export logic in 'useExport.ts' lacks asset deduplication, causing every object instance to create a new file in the ZIP, while 'useImport.ts' fails to correctly rehydrate the 'customIcons' library state with valid Blob URLs, leaving the UI with unrenderable relative paths.
+
+Fix steps:
+  1. In 'useExport.ts', implement an 'assetCache' (Map<string, string>) to track source URLs; if a URL (Data or Blob) has already been processed, reuse its assigned ZIP path instead of creating a duplicate file in the 'assets/' folder. (files: client/src/hooks/useExport.ts)
+  2. Modify 'useImport.ts' to explicitly iterate through the 'customIcons' array in the project JSON and resolve their 'content' paths to Blob URLs, ensuring these updated icons are included in the 'IMPORT_PROJECT' dispatch. (files: client/src/hooks/useImport.ts)
+  3. Refine the 'findFileByPath' helper in 'useImport.ts' to ensure it reliably matches assets regardless of nested directory structures in ZIPs or browser-prefixed paths in directory uploads. (files: client/src/hooks/useImport.ts)
+
+Key fix: Implement asset deduplication during export and ensure the custom icon library is fully rehydrated with Blob URLs during import.
+```
+
+**Git diff:** .orchestrator/orchestrator.db                   | Bin 45056 -> 49152 bytes
+ .orchestrator/runs/TASK-2098D4/conversation.md  | 135 ++++++++++++++++++++++++
+ .orchestrator/runs/TASK-2098D4/orchestrator.log |  14 +++
+ .orchestrator/runs/TASK-2098D4/state.json       |  31 ++++--
+ client/src/hooks/useExport.ts                   |  21 ++--
+ client/src/hooks/useImport.ts                   |  71 +++++++------
+ implementation_report.md                        |  18 ++--
+ taskmanager                                     |   0
+ 8 files changed, 233 insertions(+), 57 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 4
+
+## Changes made
+- **Implemented Asset Deduplication in Export**: Updated `useExport.ts` to use an `assetCache` (Map). This ensures that if the same image or custom icon is used multiple times in a project, it is only stored once in the `assets/` folder of the ZIP bundle, reducing file size and redundancy.
+- **Enhanced Asset Rehydration in Import**: Refined the `useImport.ts` hook to robustly resolve relative asset paths (starting with `assets/`) back into Blob URLs.
+- **Added Asset Caching during Import**: Implemented a cache in `useImport.ts` to ensure that multiple references to the same asset path resolve to the same Blob URL, improving memory efficiency and state consistency.
+- **Improved Directory Import Robustness**: Updated `findFileByPath` in `useImport.ts` to better handle path normalization and matching across different operating systems and browser behaviors (handling backslashes and directory prefixes).
+- **Custom Icon Support**: Ensured that the `customIcons` library state is fully rehydrated with valid Blob URLs during import, maintaining the "My Icons" gallery functionality.
+
+## Files affected
+- MODIFIED: `client/src/hooks/useExport.ts`
+- MODIFIED: `client/src/hooks/useImport.ts`
+
+## Deviations from plan
+None. The implementation follows the fix plan's recommendations for asset deduplication and icon rehydration.
+
+## Potential issues
+None identified. The changes maintain backward compatibility with legacy JSON-only projects containing Base64 data.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have implemented the project bundling feature with asset deduplication and robust rehydration.
+
+### Key Improvements:
+- **Asset Deduplication during Export**: Modified `useExport.ts` to track processed assets using an `assetCache`. If multiple objects or custom icons use the same image, it is stored only once in the `assets/` directory within the ZIP bundle, significantly reducing file size.
+- **Robust Asset Rehydration during Import**: Updated `useImport.ts` to correctly resolve relative paths (e.g., `assets/img_1.png`) back into valid Blob URLs. This ensures that images and custom icons are properly rendered in the editor after importing a ZIP or a directory.
+- **Improved Directory Matching**: Refined the `findFileByPath` helper to handle path normalization (e.g., converting backslashes) and directory prefixes, making directory imports more reliable across different environments.
+- **State Consistency**: Implemented an asset cache during import to ensure that multiple references to the same file path resolve to a single shared Blob URL, optimizing memory usage.
+
+These changes ensure that the project can be exported as a portable bundle and imported seamlessly, while maintaining full compatibility with legacy JSON project files.
+
+For a detailed list of changes, please refer to the `implementation_report.md` in the project root.
+```
+</details>
+
+---
+
+## REVIEWING — iter 4 — 2026-05-01 11:04:55
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — Verified in client/src/hooks/useExport.ts (lines 22-90). The hook uses JSZip to bundle 'project.json', 'document.pdf', 'overlay.pdf', and an 'assets/' folder into a 'project-bundle.zip'.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — Verified in client/src/hooks/useExport.ts. The `processAsset` function (lines 31-65) detects blob/data URLs, saves them to the ZIP's assets folder, and returns a relative path like 'assets/img_...ext' which is then used in the JSON manifest.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — Verified in client/src/hooks/useImport.ts (lines 18-86). The `handleZipImport` function extracts the JSON, PDF, and assets, converting relative paths back to Blob URLs via `URL.createObjectURL` before updating the editor state.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — Verified in client/src/hooks/useImport.ts (lines 88-144). The `handleDirectoryImport` uses a robust `findFileByPath` helper that handles path normalization and directory prefixes (e.g., extracted folder name) to locate assets and the project manifest.  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — Verified in client/src/hooks/useImport.ts (lines 160-166). Single JSON file imports are handled by parsing and dispatching without asset resolution. Additionally, `resolveAsset` (line 33, 98) gracefully returns the original content if it doesn't start with 'assets/'.  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — Verified in client/src/hooks/useImport.ts. Both ZIP and Directory handlers extract 'document.pdf' and include it in the `IMPORT_PROJECT` payload, which is merged into the global state via the reducer in editor-context.tsx.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 The asset cache during import is a great addition for memory efficiency.
+- 💡 Small edge case: `getMimeType` could handle the '.svg+xml' extension specifically (which can occur if `blob.type.split('/')[1]` is used during export) to ensure correct rehydration of SVG assets, though standard '.svg' is already covered.
+
+**Next focus:** Task completed successfully.
+
+---
+
+## FOLLOW-UP INITIATED — 2026-05-01 12:00:36
+
+**User instruction:** Follow-up request: still same problem with object visibility - cant see any imported objects from the bunde project import
+
+---
+

@@ -1,0 +1,101 @@
+{
+  "summary": "Modify handleExportProject in useExport.ts to embed all image and icon assets as inline base64 data-URLs directly in project.json instead of writing them to a separate assets/ folder in the ZIP. This makes project.json self-contained so that importing it standalone (after extracting the ZIP) works without needing any sibling files. Also fix handleZipImport and handleDirectoryImport to resolve assets/ paths for both image and icon type objects for backward compatibility with old ZIPs.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Replace processAsset with toDataUrl in useExport.ts",
+      "description": "Inside handleExportProject, replace the existing processAsset helper function (which saves assets to a ZIP folder and returns an assets/ path) with a new toDataUrl async helper. toDataUrl: for blob: URLs — fetch the blob, read as ArrayBuffer, convert to base64 with btoa, return a data: URL with correct mime type. For data: URLs — return unchanged. For anything else (e.g. built-in icon name strings) — return unchanged. Keep the assetCache Map for deduplication (same blob: URL → same data: URL). Remove the assetsFolder (zip.folder('assets')) creation entirely.",
+      "files_affected": [
+        "client/src/hooks/useExport.ts"
+      ],
+      "symbols_affected": [
+        "handleExportProject",
+        "processAsset"
+      ],
+      "code_hints": "toDataUrl implementation for blob: — use `fetch(content).then(r => r.blob()).then(b => new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.onerror = rej; fr.readAsDataURL(b); }))`. Alternatively use arrayBuffer + btoa: `const buf = await (await fetch(content)).arrayBuffer(); const b64 = btoa(String.fromCharCode(...new Uint8Array(buf))); return 'data:' + mime + ';base64,' + b64`. The assetCache maps original content string → resulting data: URL. Do NOT remove the const zip = new JSZip() line — the ZIP is still used to bundle the PDFs.",
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Update handleExportProject to call toDataUrl for all asset fields",
+      "description": "Replace all three processAsset call sites with toDataUrl: (1) in finalObjects mapping for obj.type === 'image', convert obj.content; (2) in finalCustomIcons mapping, convert icon.url; (3) add a new branch in finalObjects for obj.type === 'icon' where obj.content starts with 'data:' or 'blob:' — convert obj.content (this covers any edge case where an icon type object holds a URL rather than a built-in shape name). Remove the assetsFolder variable and any zip.folder('assets') call.",
+      "files_affected": [
+        "client/src/hooks/useExport.ts"
+      ],
+      "symbols_affected": [
+        "handleExportProject"
+      ],
+      "code_hints": "The finalObjects map condition becomes: `if (obj.type === 'image' && obj.content) { return { ...obj, content: await toDataUrl(obj.content) }; } else if (obj.type === 'icon' && obj.content && (obj.content.startsWith('data:') || obj.content.startsWith('blob:'))) { return { ...obj, content: await toDataUrl(obj.content) }; }`. For customIcons: `if (icon.url) { return { ...icon, url: await toDataUrl(icon.url) }; }`. ZIP now contains only: project.json, document.pdf (if present), overlay.pdf (if present).",
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Fix backward-compat in handleZipImport for icon type objects",
+      "description": "In handleZipImport, extend the resolvedObjects Promise.all map to also resolve icon type objects whose content starts with 'assets/'. Old ZIPs exported before this change stored icon assets in the assets/ folder. New ZIPs will have inline data: URLs so the condition `path.startsWith('assets/')` inside resolveAsset will return false and the data: URL passes through unchanged.",
+      "files_affected": [
+        "client/src/hooks/useImport.ts"
+      ],
+      "symbols_affected": [
+        "handleZipImport"
+      ],
+      "code_hints": "Change the condition in resolvedObjects from `if (obj.type === 'image' && obj.content)` to: `if (obj.content && (obj.type === 'image' || (obj.type === 'icon' && obj.content.startsWith('assets/'))))`. The existing resolveAsset function already handles the lookup and returns unchanged paths that don't start with 'assets/' — so no change to resolveAsset itself is needed.",
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Fix backward-compat in handleDirectoryImport for icon type objects",
+      "description": "Apply the same condition change as step 3 to handleDirectoryImport's resolvedObjects map, so that old project directories with assets/ folders correctly resolve icon type object contents.",
+      "files_affected": [
+        "client/src/hooks/useImport.ts"
+      ],
+      "symbols_affected": [
+        "handleDirectoryImport"
+      ],
+      "code_hints": "Same change as step 3 — the resolveAsset function in handleDirectoryImport uses findFileByPath which already handles the lookup. No other changes needed. The handleFileImport JSON branch requires no changes: raw projectData is dispatched directly and data: URLs in the new JSON format are already usable inline.",
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "In handleExportProject, no call to zip.folder('assets') exists and no files are written to an assets subfolder inside the ZIP",
+      "how_to_verify": "Read client/src/hooks/useExport.ts: grep for 'assetsFolder' and 'assets' — neither should appear in handleExportProject after the change"
+    },
+    {
+      "id": "c2",
+      "description": "A toDataUrl (or equivalent named) async function exists inside handleExportProject in useExport.ts that accepts a string and returns Promise<string>, handling blob:, data:, and plain strings",
+      "how_to_verify": "Read client/src/hooks/useExport.ts: the function body handles the three cases — blob: (fetch+readAsDataURL), data: (return as-is), other (return as-is)"
+    },
+    {
+      "id": "c3",
+      "description": "In handleExportProject, finalObjects processing applies toDataUrl to both image type objects and icon type objects whose content is a URL (starts with 'data:' or 'blob:')",
+      "how_to_verify": "Read client/src/hooks/useExport.ts finalObjects Promise.all map: two conditions present — one for obj.type === 'image', one for obj.type === 'icon' with URL content check"
+    },
+    {
+      "id": "c4",
+      "description": "In handleExportProject, finalCustomIcons processing applies toDataUrl to each icon's url field instead of processAsset",
+      "how_to_verify": "Read client/src/hooks/useExport.ts finalCustomIcons Promise.all map: calls toDataUrl(icon.url) not processAsset"
+    },
+    {
+      "id": "c5",
+      "description": "In handleZipImport in useImport.ts, the resolvedObjects map handles both image type objects and icon type objects with assets/ content paths",
+      "how_to_verify": "Read client/src/hooks/useImport.ts handleZipImport: condition includes obj.type === 'icon' check alongside obj.type === 'image'"
+    },
+    {
+      "id": "c6",
+      "description": "In handleDirectoryImport in useImport.ts, the resolvedObjects map handles both image type objects and icon type objects with assets/ content paths",
+      "how_to_verify": "Read client/src/hooks/useImport.ts handleDirectoryImport: condition includes obj.type === 'icon' check alongside obj.type === 'image'"
+    },
+    {
+      "id": "c7",
+      "description": "The generated project.json inside the ZIP contains no strings starting with 'assets/' — all image and custom icon data is stored as data: URL strings",
+      "how_to_verify": "Export a project with a custom icon, extract the ZIP, open project.json and search for 'assets/' — no matches should exist"
+    }
+  ],
+  "risks": [
+    "JSON file size increase: base64 encoding adds ~33% overhead and large projects with many images may produce a project.json of several MB to tens of MB, potentially causing slow import/export or browser memory pressure",
+    "Blob URL lifetime: if a blob: URL was revoked before export runs (e.g. user replaced a PDF), fetch() inside toDataUrl will fail — handle the fetch error gracefully by falling back to the original string rather than silently breaking the export",
+    "Backward compatibility in import: old ZIPs with assets/ folder must still import correctly — the condition `obj.content.startsWith('assets/')` in the resolvedObjects map is the guard, but it must be tested with an actual pre-change ZIP file to verify the path",
+    "customIcons entries with blob: URLs: if the user uploaded icons in the same session, their blob: URLs should still be alive at export time; but if the page was refreshed or the icon was re-added, the blob may be invalid — the toDataUrl fetch error handling is critical here"
+  ]
+}
