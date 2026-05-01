@@ -20,12 +20,35 @@ function Router() {
 }
 
 function AppContent() {
-  const {data: user, isLoading} = useCurrentUser();
+  const {data: user, isLoading, isError, error, refetch} = useCurrentUser();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+        <h1 className="text-2xl font-bold text-destructive mb-2">Failed to load session</h1>
+        <p className="text-muted-foreground mb-4 max-w-md">
+          Something went wrong while trying to check your login status. 
+          Please try again or check your connection.
+        </p>
+        <div className="bg-muted p-4 rounded-md mb-6 text-left max-w-md w-full overflow-auto">
+          <code className="text-sm">
+            {error instanceof Error ? error.message : "Unknown error"}
+          </code>
+        </div>
+        <button 
+          onClick={() => refetch()}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

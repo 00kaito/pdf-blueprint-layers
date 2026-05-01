@@ -49,12 +49,21 @@ export function configureAuth(app: Express) {
     }),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => {
+    console.log(`[Auth] Serializing user: ${user.username} (id: ${user.id})`);
+    done(null, user.id);
+  });
+
   passport.deserializeUser(async (id: string, done) => {
     try {
+      console.log(`[Auth] Deserializing user id: ${id}`);
       const user = await storage.getUser(id);
+      if (!user) {
+        console.warn(`[Auth] Deserialization failed: User ${id} not found`);
+      }
       done(null, user);
     } catch (err) {
+      console.error(`[Auth] Deserialization error for user ${id}:`, err);
       done(err);
     }
   });
@@ -62,6 +71,7 @@ export function configureAuth(app: Express) {
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
+    console.log(`[Auth] Unauthenticated request to ${req.path}`);
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();

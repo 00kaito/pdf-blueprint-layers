@@ -52,9 +52,11 @@ export async function registerRoutes(
   });
 
   app.get("/api/auth/me", (req, res) => {
+    console.log(`[Auth] GET /api/auth/me - isAuthenticated: ${req.isAuthenticated()}`);
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
+    console.log(`[Auth] Session active for user: ${req.user!.username}`);
     res.json({ id: req.user!.id, username: req.user!.username });
   });
 
