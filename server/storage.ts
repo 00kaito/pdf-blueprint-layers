@@ -1,38 +1,24 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { User, Project, ProjectState, FileMetadata } from "@shared/schema";
+import { FileStorage } from "./fileStorage";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(insertUser: { username: string; passwordHash: string }): Promise<User>;
+  
+  getProject(id: string): Promise<Project | undefined>;
+  listProjectsForUser(userId: string): Promise<Project[]>;
+  createProject(insertProject: { name: string; ownerId: string }): Promise<Project>;
+  updateProject(id: string, partial: Partial<Project>): Promise<Project>;
+  deleteProject(id: string): Promise<void>;
+  
+  getProjectState(id: string): Promise<ProjectState | undefined>;
+  saveProjectState(id: string, state: ProjectState): Promise<void>;
+  
+  saveFile(buffer: Buffer, originalName: string, mimeType: string, ownerId: string, projectId?: string): Promise<FileMetadata>;
+  getFileMeta(fileId: string): Promise<FileMetadata | undefined>;
+  getFileBuffer(fileId: string): Promise<Buffer | undefined>;
+  deleteFile(fileId: string): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
-  }
-}
-
-export const storage = new MemStorage();
+export const storage = new FileStorage();

@@ -1,0 +1,200 @@
+{
+  "summary": "Add server-side auth (express-session + passport-local + bcrypt, file-based JSON store for ≤10 users) and project persistence (state JSON + binary PDF files on disk). Frontend gains a login/register page, a project list replacing the blank PDFUploader, and 2-second debounce auto-save. PDF files are uploaded as binary blobs; project state JSON stores a fileId reference instead of the raw File object. Project sharing is done by username lookup.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Install new server dependencies",
+      "description": "Add bcrypt + @types/bcrypt and multer + @types/multer to package.json dependencies section, then run npm install. bcrypt is needed for password hashing; multer for multipart/form-data file uploads.",
+      "files_affected": [
+        "package.json"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Replace Drizzle schema with plain TypeScript types",
+      "description": "Rewrite shared/schema.ts — remove all drizzle-orm/pg imports. Export plain interfaces: User { id: string; username: string; passwordHash: string; createdAt: string }, Project { id: string; ownerId: string; name: string; sharedWith: string[]; createdAt: string; updatedAt: string }, ProjectState (serializable DocumentState subset: layers, objects, customIcons, exportSettings, autoNumbering, overlayOpacity, pdfFileId?: string, overlayPdfFileId?: string — no File objects), InsertUser { username: string; password: string }, InsertProject { name: string; ownerId: string }. drizzle.config.ts is left untouched (it only runs via CLI, never imported by server).",
+      "files_affected": [
+        "shared/schema.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Create file-based persistence layer",
+      "description": "Create server/fileStorage.ts with a FileStorage class. On construction: ensure directories data/, data/project-states/, data/files/ exist (fs.mkdirSync with recursive). Load data/users.json and data/projects.json into in-memory Maps on startup; flush back to disk after every write using atomic pattern (write to .tmp then fs.renameSync) to avoid corruption. Methods: getUser(id), getUserByUsername(username), createUser({username,passwordHash}), getProject(id), listProjectsForUser(userId) — returns projects where ownerId===userId OR sharedWith.includes(userId), createProject({name,ownerId}), updateProject(id, partial) including sharedWith, deleteProject(id), getProjectState(id) — reads data/project-states/{id}.json, saveProjectState(id, state) — writes data/project-states/{id}.json, saveFile(buffer, originalName, mimeType, ownerId, projectId) — writes binary to data/files/{uuid} and data/files/{uuid}.meta.json, getFileMeta(fileId), getFileBuffer(fileId), deleteFile(fileId).",
+      "files_affected": [
+        "server/fileStorage.ts"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 4,
+      "title": "Update storage interface and singleton",
+      "description": "Rewrite server/storage.ts: update IStorage interface to include all methods from fileStorage.ts (user CRUD + project CRUD + file CRUD). Replace the MemStorage class and export with `import { FileStorage } from './fileStorage'; export const storage = new FileStorage();`. The MemStorage class is removed entirely.",
+      "files_affected": [
+        "server/storage.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 5,
+      "title": "Create auth configuration module",
+      "description": "Create server/auth.ts: import passport, passport-local, bcrypt, express-session, memorystore. Export configureAuth(app: Express): void that installs express-session (MemoryStore, secret=process.env.SESSION_SECRET ?? 'dev-secret-change-in-prod', resave:false, saveUninitialized:false, cookie maxAge 7 days), passport.initialize(), passport.session(). Configure LocalStrategy: load user by username, bcrypt.compare password, done(null, user) or done(null, false). serializeUser stores user.id; deserializeUser calls storage.getUser(id). Export `requireAuth` middleware: if !req.user return res.status(401).json({message:'Unauthorized'}); else next().",
+      "files_affected": [
+        "server/auth.ts"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 6,
+      "title": "Mount session and passport middleware in server entry",
+      "description": "In server/index.ts: import configureAuth from './auth' and call configureAuth(app) immediately after the urlencoded middleware and before registerRoutes. Change express.json limit to '50mb' to handle large project states with embedded image data URLs.",
+      "files_affected": [
+        "server/index.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 7,
+      "title": "Implement all API routes",
+      "description": "Rewrite server/routes.ts with these groups — Auth (no requireAuth): POST /api/auth/register (validate username+password present, check username not taken, bcrypt.hash rounds=10, createUser, req.login, return 201 {id,username}), POST /api/auth/login (passport.authenticate('local'), return 200 {id,username} or 401), POST /api/auth/logout (req.logout, 200), GET /api/auth/me (return req.user ?? 401). Projects (all behind requireAuth): GET /api/projects, POST /api/projects ({name} body → createProject), GET /api/projects/:id (access check: owner or in sharedWith; return state JSON), PUT /api/projects/:id (access check; saveProjectState + updateProject updatedAt), DELETE /api/projects/:id (owner only; deleteProject + deleteFile for pdfFileId/overlayPdfFileId), POST /api/projects/:id/share ({username} body → getUserByUsername → add to sharedWith). Files (behind requireAuth): POST /api/files (multer memoryStorage single field 'file'; saveFile; return {fileId, url:'/api/files/'+fileId}), GET /api/files/:fileId (check caller has access to file's projectId; stream binary with correct Content-Type header).",
+      "files_affected": [
+        "server/routes.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 8,
+      "title": "Add projectId and file reference fields to frontend types",
+      "description": "In client/src/lib/types.ts: add three fields to DocumentState: `projectId: string | null`, `pdfFileId: string | null`, `overlayPdfFileId: string | null`. Add two new action types to EditorAction union: `{ type: 'SET_PROJECT_ID'; payload: string | null }` and `{ type: 'SET_PDF_FILE_IDS'; payload: { pdfFileId: string | null; overlayPdfFileId: string | null } }`.",
+      "files_affected": [
+        "client/src/lib/types.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 9,
+      "title": "Handle new state fields in editor context reducer",
+      "description": "In client/src/lib/editor-context.tsx: add `projectId: null`, `pdfFileId: null`, `overlayPdfFileId: null` to initialDocumentState. In documentReducer (or editorReducer) add cases for SET_PROJECT_ID (sets projectId) and SET_PDF_FILE_IDS (sets both file ids). In IMPORT_PROJECT case: spread projectId, pdfFileId, overlayPdfFileId from payload if present (so loading from server restores these ids).",
+      "files_affected": [
+        "client/src/lib/editor-context.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 10,
+      "title": "Create auth hooks",
+      "description": "Create client/src/hooks/useAuth.ts: export useCurrentUser() using useQuery with key ['currentUser'], getQueryFn({on401:'returnNull'}), url '/api/auth/me'. Export useLogin() as useMutation calling POST /api/auth/login, on success invalidates 'currentUser'. Export useLogout() as useMutation calling POST /api/auth/logout, on success invalidates 'currentUser'. Export useRegister() as useMutation calling POST /api/auth/register, on success invalidates 'currentUser'. All mutations use apiRequest from queryClient.ts.",
+      "files_affected": [
+        "client/src/hooks/useAuth.ts"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 11,
+      "title": "Create login/register page",
+      "description": "Create client/src/pages/AuthPage.tsx: render a centered Card with two tabs — Login and Register. Login tab: username input, password input, submit button; calls useLogin(); on error shows error message from response. Register tab: username input, password input, confirm-password input, submit button; validates passwords match client-side; calls useRegister(). Both forms navigate to '/' on success via wouter useLocation. Page is not wrapped in EditorProvider (move provider out of App if needed — see step 12).",
+      "files_affected": [
+        "client/src/pages/AuthPage.tsx"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 12,
+      "title": "Add auth guard and /auth route to App router",
+      "description": "Update client/src/App.tsx: add useCurrentUser() call. If user data is still loading (isLoading) render a full-screen spinner. If user is null render only a Switch with <Route path='/auth' component={AuthPage}/> and a catch-all redirect to '/auth'. If user is defined render the normal editor Switch. Remove <UserIdentificationModal /> entirely (real auth replaces it). Move <EditorProvider> inside the authenticated branch only so AuthPage does not need editor state.",
+      "files_affected": [
+        "client/src/App.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 13,
+      "title": "Create project API hooks",
+      "description": "Create client/src/hooks/useProjects.ts: export useProjectList() with key ['projects'], GET /api/projects. Export useCreateProject() mutation (POST /api/projects, invalidates 'projects' on success). Export useSaveProject() mutation (PUT /api/projects/:id with state JSON body). Export useDeleteProject() mutation (DELETE /api/projects/:id, invalidates 'projects'). Export useShareProject() mutation (POST /api/projects/:id/share with {username}). Export useUploadFile() mutation (POST /api/files using fetch with FormData — NOT apiRequest — to handle multipart). All use apiRequest or fetch with credentials:'include'.",
+      "files_affected": [
+        "client/src/hooks/useProjects.ts"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 14,
+      "title": "Rewrite PDFUploader to show server project list",
+      "description": "Rewrite client/src/components/editor/PDFUploader.tsx: main view shows useProjectList() result as a list of cards (name, updatedAt, owner badge or 'Shared'). Each card has an Open button: fetch GET /api/projects/:id for state, if state.pdfFileId fetch GET /api/files/:pdfFileId → Blob → new File(...), dispatch IMPORT_PROJECT with the state + SET_PDF with file + SET_PDF_FILE_IDS. Add 'New Project' button opening a Dialog: name input + PDF file input + optional overlay PDF input; on submit call useUploadFile for each PDF, then useCreateProject({name,pdfFileId,overlayPdfFileId}), then dispatch SET_PDF + SET_PROJECT_ID + SET_PDF_FILE_IDS. Add Share icon button per project: opens Dialog with username input calling useShareProject. Keep 'Import from ZIP' as a secondary option for backwards compatibility. Show loading and error states.",
+      "files_affected": [
+        "client/src/components/editor/PDFUploader.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 15,
+      "title": "Create auto-save hook",
+      "description": "Create client/src/hooks/useAutoSave.ts: export useAutoSave(). Inside: const {state: docState} = useDocument(); const saveProject = useSaveProject(); useEffect watching [docState.layers, docState.objects, docState.customIcons, docState.exportSettings, docState.autoNumbering, docState.overlayOpacity] with a 2000ms debounce (use useRef for timeout id). On fire: if docState.projectId is null return early. Build payload: {layers, objects, customIcons, exportSettings, autoNumbering, overlayOpacity, pdfFileId, overlayPdfFileId} — exclude pdfFile and overlayPdfFile File objects. Call saveProject.mutate({id: docState.projectId, state: payload}). Track saving state with a ref and expose {isSaving} so Toolbar can show a save indicator.",
+      "files_affected": [
+        "client/src/hooks/useAutoSave.ts"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 16,
+      "title": "Wire auto-save into home page and show save status",
+      "description": "Update client/src/pages/home.tsx: add `const {isSaving} = useAutoSave();` inside the Home component. Pass isSaving to Toolbar as a prop (or via a new small context). In Toolbar.tsx: show a small 'Saving...' / 'Saved' indicator in the top-right area using isSaving boolean. This is a 1-2 line change in home.tsx and a small UI addition in Toolbar.tsx.",
+      "files_affected": [
+        "client/src/pages/home.tsx",
+        "client/src/components/editor/Toolbar.tsx"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "POST /api/auth/register creates an entry in data/users.json with a bcrypt-hashed passwordHash field (starts with '$2b$') and returns HTTP 201 with {id, username}.",
+      "how_to_verify": "Call endpoint, read data/users.json — passwordHash must start with '$2b$' and not equal the plain-text password sent in the request body."
+    },
+    {
+      "id": "c2",
+      "description": "GET /api/auth/me returns HTTP 401 with no session cookie, and HTTP 200 with {id, username} after POST /api/auth/login with valid credentials sets a session.",
+      "how_to_verify": "Unauthenticated GET /api/auth/me → 401. POST /api/auth/login with correct credentials, reuse Set-Cookie, GET /api/auth/me → 200 with user object."
+    },
+    {
+      "id": "c3",
+      "description": "GET /api/projects as user A does not return user B's project unless B's project has A's userId in its sharedWith array in data/projects.json.",
+      "how_to_verify": "Register two users, each creates a project, each calls GET /api/projects — verify only their own project appears. Then B shares with A; A's list now contains both."
+    },
+    {
+      "id": "c4",
+      "description": "PUT /api/projects/:id writes a valid JSON file to data/project-states/{id}.json containing a 'layers' array key and no 'pdfFile' key.",
+      "how_to_verify": "Create project, PUT a state payload, then JSON.parse(fs.readFileSync('data/project-states/{id}.json')) — must have .layers array, must not have .pdfFile property."
+    },
+    {
+      "id": "c5",
+      "description": "POST /api/files accepts multipart/form-data with field 'file', saves the binary to data/files/{fileId}, writes metadata JSON to data/files/{fileId}.meta.json, and returns {fileId, url}.",
+      "how_to_verify": "Upload a small PDF file; verify data/files/{fileId} binary exists and data/files/{fileId}.meta.json contains mimeType:'application/pdf'."
+    },
+    {
+      "id": "c6",
+      "description": "client/src/App.tsx renders AuthPage when useCurrentUser() returns null and renders the editor Router when user is non-null.",
+      "how_to_verify": "Read App.tsx — must contain a conditional on user===null that renders AuthPage (or the /auth route exclusively) and wraps EditorProvider only in the authenticated branch."
+    },
+    {
+      "id": "c7",
+      "description": "client/src/hooks/useAutoSave.ts exports useAutoSave() that guards on docState.projectId !== null before calling PUT /api/projects/:id, with a debounce delay of 2000ms.",
+      "how_to_verify": "Read useAutoSave.ts — must reference a 2000 (or 2000ms) debounce value and must have an explicit early-return or condition checking projectId before issuing the save mutation."
+    },
+    {
+      "id": "c8",
+      "description": "DocumentState in client/src/lib/types.ts contains projectId: string|null, pdfFileId: string|null, and overlayPdfFileId: string|null fields.",
+      "how_to_verify": "Read types.ts — DocumentState interface must list all three fields with string|null types."
+    }
+  ],
+  "risks": [
+    "bcrypt and multer are not in package.json; if npm install is skipped the server crashes at import — step 1 must run before any other step.",
+    "Concurrent writes to data/users.json or data/projects.json from simultaneous requests can corrupt the file — use atomic write (temp file + rename) in FileStorage; failing to do so risks silent data loss.",
+    "express-session uses MemoryStore which is cleared on server restart — all users are logged out after a restart; acceptable for a small-team setup but worth noting.",
+    "Projects with many base64 photos can produce state JSON >50 MB — the 50 MB express.json limit may still be hit; long-term, photos should also be uploaded as separate files.",
+    "The existing drizzle.config.ts throws if DATABASE_URL is missing when running drizzle-kit CLI commands — it is not imported by the server so runtime is unaffected, but CI pipelines running db:push will fail unless DATABASE_URL is set or the script is skipped.",
+    "PDFUploader is fully rewritten — the old drag-and-drop PDF workflow changes to a named-project creation dialog; test both new-project and ZIP-import flows to avoid regression."
+  ]
+}

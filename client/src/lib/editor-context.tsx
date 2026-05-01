@@ -4,6 +4,9 @@ import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 
 const initialDocumentState: DocumentState = {
+  projectId: null,
+  pdfFileId: null,
+  overlayPdfFileId: null,
   pdfFile: null,
   overlayPdfFile: null,
   overlayOpacity: 0.5,
@@ -40,6 +43,14 @@ const initialState: EditorState = {
 
 const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
   switch (action.type) {
+    case 'SET_PROJECT_ID':
+      return { ...state, projectId: action.payload };
+    case 'SET_PDF_FILE_IDS':
+      return { 
+        ...state, 
+        pdfFileId: action.payload.pdfFileId, 
+        overlayPdfFileId: action.payload.overlayPdfFileId 
+      };
     case 'SET_PDF':
       const defaultLayerId = uuidv4();
       return {
@@ -256,6 +267,9 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
 
   const documentValue = useMemo(() => ({
     state: {
+      projectId: state.projectId,
+      pdfFileId: state.pdfFileId,
+      overlayPdfFileId: state.overlayPdfFileId,
       pdfFile: state.pdfFile,
       overlayPdfFile: state.overlayPdfFile,
       overlayOpacity: state.overlayOpacity,
@@ -268,7 +282,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       pdfCanvasHeight: state.pdfCanvasHeight,
     },
     dispatch
-  }), [state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.layers, state.objects, state.clipboardObject, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight, dispatch]);
+  }), [state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.layers, state.objects, state.clipboardObject, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight, dispatch]);
 
   const uiValue = useMemo(() => ({
     state: {

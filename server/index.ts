@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { configureAuth } from "./auth";
 
 const app = express();
 const httpServer = createServer(app);
@@ -14,6 +15,7 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: "50mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
@@ -21,6 +23,8 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+configureAuth(app);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

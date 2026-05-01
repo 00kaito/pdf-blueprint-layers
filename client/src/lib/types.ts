@@ -39,6 +39,9 @@ export type EditorObject = {
 };
 
 export type DocumentState = {
+  projectId: string | null;
+  pdfFileId: string | null;
+  overlayPdfFileId: string | null;
   pdfFile: File | null;
   overlayPdfFile: File | null;
   overlayOpacity: number;
@@ -75,6 +78,8 @@ export type UIState = {
 export type EditorState = DocumentState & UIState;
 
 export type EditorAction =
+  | { type: 'SET_PROJECT_ID'; payload: string | null }
+  | { type: 'SET_PDF_FILE_IDS'; payload: { pdfFileId: string | null; overlayPdfFileId: string | null } }
   | { type: 'SET_PDF'; payload: File }
   | { type: 'SET_OVERLAY_PDF'; payload: File | null }
   | { type: 'SET_OVERLAY_OPACITY'; payload: number }
