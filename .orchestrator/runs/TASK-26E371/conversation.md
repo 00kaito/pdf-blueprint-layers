@@ -58,3 +58,153 @@
 
 ---
 
+## IMPLEMENTING — iter 1 — 2026-05-01 17:05:48
+
+### Gemini (Programista)
+
+**Open criteria do adresowania:**
+- `[c1]` POST /api/auth/register creates an entry in data/users.json with a bcrypt-hashed passwordHash field (starts with '$2b$') and returns HTTP 201 with {id, username}.
+- `[c2]` GET /api/auth/me returns HTTP 401 with no session cookie, and HTTP 200 with {id, username} after POST /api/auth/login with valid credentials sets a session.
+- `[c3]` GET /api/projects as user A does not return user B's project unless B's project has A's userId in its sharedWith array in data/projects.json.
+- `[c4]` PUT /api/projects/:id writes a valid JSON file to data/project-states/{id}.json containing a 'layers' array key and no 'pdfFile' key.
+- `[c5]` POST /api/files accepts multipart/form-data with field 'file', saves the binary to data/files/{fileId}, writes metadata JSON to data/files/{fileId}.meta.json, and returns {fileId, url}.
+- `[c6]` client/src/App.tsx renders AuthPage when useCurrentUser() returns null and renders the editor Router when user is non-null.
+- `[c7]` client/src/hooks/useAutoSave.ts exports useAutoSave() that guards on docState.projectId !== null before calling PUT /api/projects/:id, with a debounce delay of 2000ms.
+- `[c8]` DocumentState in client/src/lib/types.ts contains projectId: string|null, pdfFileId: string|null, and overlayPdfFileId: string|null fields.
+
+**Git diff:** .orchestrator/orchestrator.db                | Bin 196608 -> 204800 bytes
+ client/src/App.tsx                           |  46 +++-
+ client/src/components/editor/PDFUploader.tsx | 300 +++++++++++++++++++++++----
+ client/src/components/editor/Toolbar.tsx     | 142 +++++++------
+ client/src/lib/editor-context.tsx            |  16 +-
+ client/src/lib/types.ts                      |   5 +
+ client/src/pages/home.tsx                    |   4 +-
+ implementation_report.md                     |  50 +++--
+ package-lock.json                            | 144 +++++++++++--
+ package.json                                 |   4 +
+ server/index.ts                              |   4 +
+ server/routes.ts                             | 156 +++++++++++++-
+ server/storage.ts                            |  50 ++---
+ shared/schema.ts                             |  63 +++++-
+ 14 files changed, 793 insertions(+), 191 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- **Installed dependencies**: Added `bcrypt`, `multer` and their type definitions to support password hashing and file uploads.
+- **Refactored Schema**: Converted `shared/schema.ts` from Drizzle ORM to plain TypeScript interfaces and Zod schemas for file-based persistence.
+- **Created Persistence Layer**: Implemented `server/fileStorage.ts` for managing users, projects, and binary files in a `data/` directory with atomic writes.
+- **Updated Storage Singleton**: Switched `server/storage.ts` to use `FileStorage` instead of `MemStorage`.
+- **Implemented Authentication**: Created `server/auth.ts` using `passport-local` and `express-session` with `memorystore` for session management.
+- **Built API Routes**: Implemented auth (register/login/logout/me), projects (CRUD + sharing), and file (upload/serve) endpoints in `server/routes.ts`.
+- **Updated Frontend State**: Added `projectId`, `pdfFileId`, and `overlayPdfFileId` to `DocumentState` in `client/src/lib/types.ts` and updated the reducer in `editor-context.tsx`.
+- **Created Frontend Hooks**: Added `useAuth.ts` for session management and `useProjects.ts` for server-side project operations.
+- **Built Auth UI**: Created `client/src/pages/AuthPage.tsx` with login/register forms and integrated it into `App.tsx` with an auth guard.
+- **Revamped Project Loading**: Completely rewritten `PDFUploader.tsx` to show a server-side project list, support new project creation with file uploads, and project sharing.
+- **Implemented Auto-save**: Created `useAutoSave.ts` hook with 2-second debounce and integrated it into `Home.tsx`, with a visual "Saving/Saved" indicator in `Toolbar.tsx`.
+
+## Files affected
+- CREATED: `server/fileStorage.ts`
+- CREATED: `server/auth.ts`
+- CREATED: `client/src/hooks/useAuth.ts`
+- CREATED: `client/src/hooks/useProjects.ts`
+- CREATED: `client/src/hooks/useAutoSave.ts`
+- CREATED: `client/src/pages/AuthPage.tsx`
+- MODIFIED: `package.json`
+- MODIFIED: `shared/schema.ts`
+- MODIFIED: `server/storage.ts`
+- MODIFIED: `server/index.ts`
+- MODIFIED: `server/routes.ts`
+- MODIFIED: `client/src/lib/types.ts`
+- MODIFIED: `client/src/lib/editor-context.tsx`
+- MODIFIED: `client/src/App.tsx`
+- MODIFIED: `client/src/components/editor/PDFUploader.tsx`
+- MODIFIED: `client/src/pages/home.tsx`
+- MODIFIED: `client/src/components/editor/Toolbar.tsx`
+
+## Deviations from plan
+- Included `passport` and `express-session` related packages in the initial installation step to ensure all auth dependencies are present.
+- Used `any` for `timeoutRef` in `useAutoSave.ts` to avoid environment-specific type issues with `setTimeout`.
+- Added a `log` function to `server/index.ts` to maintain consistency with existing logging patterns while adding auth middleware.
+
+## Potential issues
+- `express-session` uses `MemoryStore`, which means users will be logged out whenever the server restarts. This is acceptable for the current scale but should be moved to a persistent store if session longevity is critical.
+- Very large projects (many high-res photos) might hit the 50MB limit or be slow to save/load due to the monolithic project state JSON. Moving photos to separate file uploads (similar to PDFs) would be the next logical optimization.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have completed the implementation of TASK-9FB44F, providing server-side authentication and project storage with file-based persistence.
+
+### Summary of Changes
+- **Server-side Auth**: Implemented register/login/logout using `passport-local` and `express-session`.
+- **File Persistence**: Created a `FileStorage` layer that manages users, projects, and binary files (PDFs) in the `data/` directory with atomic writes.
+- **Projects API**: Added endpoints for project CRUD operations, sharing, and binary file management.
+- **Frontend Refactor**:
+    - Replaced the initial PDF uploader with a comprehensive project management dashboard.
+    - Implemented a 2-second debounce auto-save mechanism with a visual "Saved/Saving" status indicator.
+    - Added an authentication guard and a dedicated `AuthPage` for user onboarding.
+- **Data Model**: Updated `DocumentState` to track `projectId` and file references, ensuring cross-device consistency without large base64 overhead in the state JSON.
+
+All acceptance criteria have been met, and a detailed summary of the work can be found in `implementation_report.md`.
+```
+</details>
+
+---
+
+## REVIEWING — iter 1 — 2026-05-01 17:10:25
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — server/routes.ts (lines 18-34) implements the registration logic using bcrypt.hash(password, 10). server/fileStorage.ts (lines 78-89) handles user creation and flushes to data/users.json.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — server/routes.ts (lines 56-61) implements GET /api/auth/me with an isAuthenticated() check. server/auth.ts configures express-session and passport for session management.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — server/fileStorage.ts (lines 95-99) filters projects in listProjectsForUser based on ownerId or sharedWith array membership.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — shared/schema.ts (lines 24-33) defines projectStateSchema with 'layers' and without 'pdfFile'. server/fileStorage.ts (lines 127-133) writes the state to the data/project-states directory.  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — server/routes.ts (lines 121-127) and server/fileStorage.ts (lines 136-150) implement binary file saving and metadata JSON generation.  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — client/src/App.tsx (lines 33-55) contains the conditional rendering logic based on the user object returned by useCurrentUser().  
+  *confidence:* HIGH
+- ✅ `[c7]` **DONE** — client/src/hooks/useAutoSave.ts (line 11) has the projectId guard and (line 32) uses a 2000ms delay in setTimeout.  
+  *confidence:* HIGH
+- ✅ `[c8]` **DONE** — client/src/lib/types.ts (lines 48-50) includes the requested fields with the correct types.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 Consider implementing a more robust session store than MemoryStore for production use, as MemoryStore will cause all users to be logged out on server restart.
+- 💡 Add a file cleanup mechanism for orphaned files in data/files if projects are deleted without their associated files being fully tracked.
+
+---
+
+## FOLLOW-UP INITIATED — 2026-05-01 17:39:18
+
+**User instruction:** Follow-up request: when visiting /auth i can just see thepage loading  spinner, nothing more
+
+---
+
+## HUMAN_FEEDBACK — iter 1 — 2026-05-01 17:40:16
+
+### Gemini (Analiza feedbacku → plan naprawy)
+
+**Root cause:** The `useCurrentUser` hook in `client/src/hooks/useAuth.ts` uses the default `useQuery` configuration, which retries on failure. When a user is not logged in, `/api/auth/me` returns a 401 error, causing `react-query` to retry the request multiple times. During these retries, `isLoading` remains `true`, keeping the app stuck on the loading spinner in `App.tsx` instead of rendering the `AuthPage`.
+
+**Fix steps:**
+1. Modify `client/src/hooks/useAuth.ts` to update the `useCurrentUser` hook: set `retry: false` in the `useQuery` options and wrap the `apiRequest` call in a try/catch block (or use `.catch`) that specifically checks for a 401 status to return `null` instead of throwing an error. This ensures the query resolves immediately when the user is unauthenticated.  
+   *files:* client/src/hooks/useAuth.ts
+
+**Key fix:** Disable retries and explicitly handle 401 errors in the `useCurrentUser` hook to prevent the loading spinner from hanging when no session is active.
+
+---
+

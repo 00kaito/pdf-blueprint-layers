@@ -6,6 +6,7 @@ export function useCurrentUser() {
   return useQuery<User | null>({
     queryKey: ["/api/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: false,
   });
 }
 
