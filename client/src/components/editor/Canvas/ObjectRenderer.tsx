@@ -119,6 +119,7 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
 
     const handleTouchMove = (tE: TouchEvent) => {
       if (tE.touches.length !== 1) return;
+      tE.preventDefault();
       const moveTouch = tE.touches[0];
       const angle = Math.atan2(moveTouch.clientY - centerY, moveTouch.clientX - centerX);
       let degree = (angle * (180 / Math.PI)) + 90;

@@ -148,11 +148,11 @@ export const MobileBottomBar: React.FC = () => {
                  Object not found
               </div>
             )
-          ) : (
+          ) : mode === 'details' ? (
             <div className="pb-6">
               <PropertiesPanel />
             </div>
-          )}
+          ) : null}
         </div>
       </ScrollArea>
     </div>

@@ -339,8 +339,4 @@ export const useEditor = () => {
     dispatch: doc.dispatch
   };
 };
-n {
-    state: { ...doc.state, ...ui.state } as EditorState,
-    dispatch: doc.dispatch
-  };
-};
+
