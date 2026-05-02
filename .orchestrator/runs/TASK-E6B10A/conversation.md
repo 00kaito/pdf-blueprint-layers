@@ -44,3 +44,129 @@
 
 ---
 
+## IMPLEMENTING — iter 1 — 2026-05-02 16:49:09
+
+### Gemini (Programista)
+
+**Open criteria do adresowania:**
+- `[c1]` MobileBottomBar renders a fixed bottom strip of exactly h-12 (48px) containing a Checkbox element wired to uiState.showStatusColors; toggling it dispatches TOGGLE_STATUS_COLORS
+- `[c2]` The fixed 50vh constant is removed from MobileBottomBar.tsx — no h-[50vh] class remains
+- `[c3]` MobileAddObjectPanel.tsx exists and exports a React component accepting an onClose prop; it contains a Select element listing docState.layers and at minimum 7 icon type buttons (camera, square, circle, triangle, star, hexagon, arrow-right)
+- `[c4]` When an object is selected (uiState.selectedObjectIds.length > 0), MobileBottomBar renders an Input whose value is selectedObject.name and whose onChange dispatches UPDATE_OBJECTS
+- `[c5]` MobileBottomBar uses two Sheet components (not a mode state machine with 'list'/'edit'/'details' string literals)
+- `[c6]` The edit Sheet contains an ObjectPhotoGallery component, enabling photo addition on mobile
+- `[c7]` home.tsx mobile layout wrapper div has className including 'pb-12' when isMobile is true
+- `[c8]` MobileAddObjectPanel dispatches SET_ACTIVE_LAYER when layer is changed in the Select, before adding any object
+
+**Git diff:** .orchestrator/orchestrator.db                      | Bin 315392 -> 327680 bytes
+ .orchestrator/runs/TASK-4750FB/conversation.md     |  97 ++++++++
+ .orchestrator/runs/TASK-4750FB/orchestrator.log    |   6 +
+ .orchestrator/runs/TASK-4750FB/state.json          |  44 ++--
+ client/src/components/editor/MobileBottomBar.tsx   | 266 ++++++++++++---------
+ .../src/components/editor/ObjectPhotoGallery.tsx   |   6 +-
+ client/src/hooks/useAutoSave.ts                    |  69 ++++--
+ client/src/lib/editor-context.tsx                  |   1 +
+ client/src/lib/types.ts                            |   1 +
+ client/src/pages/home.tsx                          |   2 +-
+ .../89da2e02-fd47-45fb-9341-41f06c5ff34c.json      |  76 +++---
+ data/projects.json                                 |   5 +-
+ data/users.json                                    |   6 +
+ implementation_report.md                           |  32 ++-
+ server/fileStorage.ts                              |   9 +-
+ server/index.ts                                    |  13 +-
+ server/routes.ts                                   |  18 +-
+ 17 files changed, 435 insertions(+), 216 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- **State Management**: Added `SET_ACTIVE_LAYER` action to `EditorAction` and handled it in `editorReducer` (as an alias to `SELECT_LAYER`) to ensure consistency with the implementation plan.
+- **New Component**: Created `MobileAddObjectPanel.tsx` which provides a compact 4-column grid of icon buttons (camera, square, circle, triangle, star, hexagon, arrow-right), a text button, and an image upload button. It also includes a layer selector to set the active layer before adding objects.
+- **Mobile UI Overhaul**: Completely rewritten `MobileBottomBar.tsx`:
+    - Removed the large `50vh` modal.
+    - Implemented a compact `48px` (h-12) fixed bottom strip.
+    - Added a "By status" toggle checkbox in the strip.
+    - Added contextual middle zone: shows active layer name when no object is selected, and an inline name input when an object is selected.
+    - Added action buttons in the strip: '+' to open the add-object sheet, 'Camera' and 'ChevronUp' to open the edit sheet at specific sections.
+    - Replaced the mode state machine with two shadcn/ui `Sheet` components for adding and editing objects.
+    - The edit sheet includes a status selection grid (6 statuses), `ObjectPhotoGallery` for managing photos, and a scrollable `PropertiesPanel`.
+- **Layout Adjustments**: Added `pb-12` padding to the mobile layout wrapper in `home.tsx` to prevent the new bottom strip from obscuring the canvas content.
+
+## Files affected
+- CREATED: `client/src/components/editor/MobileAddObjectPanel.tsx`
+- MODIFIED: `client/src/lib/types.ts`
+- MODIFIED: `client/src/lib/editor-context.tsx`
+- MODIFIED: `client/src/components/editor/MobileBottomBar.tsx`
+- MODIFIED: `client/src/pages/home.tsx`
+
+## Deviations from plan
+None.
+
+## Potential issues
+- **Nested Scrolling**: The `PropertiesPanel` inside the edit sheet's `ScrollArea` might lead to nested scrolling if `PropertiesPanel` height exceeds the remaining sheet space. However, the sheet's `ScrollArea` should handle the overall content.
+- **Element IDs**: Used `id="photo-gallery-section"` and `id="full-properties-section"` for programmatic scrolling within the edit sheet. Ensure no ID collisions occur (highly unlikely in this context).
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+The mobile UI redesign has been successfully implemented according to the plan.
+
+### Key Accomplishments:
+- **Compact Mobile Strip**: Replaced the bulky `50vh` bottom bar with a sleek `48px` (h-12) strip that remains always visible, maximizing canvas space.
+- **Contextual Editing**:
+    - **No Selection**: Displays the active layer name and a '+' button to open the Add Object sheet.
+    - **Object Selected**: Displays an inline name/label input for quick edits, along with "Camera" and "Expand" buttons to open the Edit sheet.
+- **Enhanced Add Object Panel**: Created a new `MobileAddObjectPanel` with a touch-friendly 4-column grid for adding icons, text, and images, including a layer selector to ensure objects are added to the correct layer.
+- **Contextual Bottom Sheets**:
+    - **Add Sheet**: Compact drawer (38vh) for rapid object creation.
+    - **Edit Sheet**: Versatile drawer (55vh) featuring a status grid, photo gallery, and full properties access with smooth scrolling to specific sections.
+- **Global Visibility Toggle**: Included a "By status" checkbox in the main strip for immediate toggling of color-coded progress viewing.
+- **Layout Optimization**: Added bottom padding to the canvas wrapper on mobile to ensure all content is accessible and not covered by the UI strip.
+
+### Files Created/Modified:
+- **Created**: `client/src/components/editor/MobileAddObjectPanel.tsx`
+- **Modified**: `client/src/components/editor/MobileBottomBar.tsx`, `client/src/pages/home.tsx`, `client/src/lib/types.ts`, `client/src/lib/editor-context.tsx`
+
+The implementation report has been saved to `implementation_report.md` in the project root.
+```
+</details>
+
+---
+
+## REVIEWING — iter 1 — 2026-05-02 16:50:02
+
+### Gemini (Reviewer)
+
+**Overall:** 🔄 CHANGES_REQUESTED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — MobileBottomBar.tsx:79 has className='fixed bottom-0 ... h-12'. Line 83 contains Checkbox with checked={uiState.showStatusColors} and onCheckedChange={() => uiDispatch({ type: 'TOGGLE_STATUS_COLORS' })}.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — Grep for 'h-\[50vh\]' in MobileBottomBar.tsx returned no matches. File now uses max-h-[38vh] (Line 126) and h-[55vh] (Line 134).  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — MobileAddObjectPanel.tsx exists. onClose prop is on Line 24. Select listing layers is on Lines 47-58. Icon buttons for camera (L65), square (L68), circle (L71), triangle (L74), star (L77), hexagon (L80), and arrow-right (L83) are present.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — MobileBottomBar.tsx:95 renders an Input when selectedObject exists. onChange calls handleNameChange (L96), which dispatches UPDATE_OBJECTS (L50).  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — MobileBottomBar.tsx uses two <Sheet> components (L125 and L133) controlled by addSheetOpen and editSheetOpen states. No string literals 'list', 'edit', or 'details' are used for UI modes.  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — MobileBottomBar.tsx:185 renders ObjectPhotoGallery within the second Sheet (editSheetOpen).  
+  *confidence:* HIGH
+- ✅ `[c7]` **DONE** — home.tsx:29 contains <div className='flex flex-col h-screen overflow-hidden bg-background relative pb-12'> within the isMobile branch.  
+  *confidence:* HIGH
+- ✅ `[c8]` **DONE** — MobileAddObjectPanel.tsx:47 Select onValueChange calls handleLayerChange (L40), which dispatches SET_ACTIVE_LAYER. This updates the active layer before any icon buttons (which trigger object creation) are clicked.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+- 🚫 MobileBottomBar.tsx:174 uses 'handleStatusChange(status.value)' but the function 'handleStatusChange' is not defined in the component. This will cause a ReferenceError and crash the application when a user attempts to change an object's status on mobile.
+
+**Suggestions:**
+- 💡 In MobileBottomBar.tsx, implement handleStatusChange similarly to handleNameChange, dispatching UPDATE_OBJECTS with the new status value.
+
+**Next focus:** Define the handleStatusChange function in MobileBottomBar.tsx to allow users to update object status without crashing the app.
+
+---
+

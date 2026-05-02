@@ -42,9 +42,26 @@ export const MobileBottomBar: React.FC = () => {
 
   const handleNameChange = (newName: string) => {
     setLocalName(newName);
+  };
+
+  useEffect(() => {
+    if (!selectedObjectId || !selectedObject || localName === selectedObject.name) return;
+
+    const timer = setTimeout(() => {
+      docDispatch({
+        type: 'UPDATE_OBJECTS',
+        payload: { ids: [selectedObjectId], updates: { name: localName } }
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [localName, selectedObjectId, selectedObject, docDispatch]);
+
+  const handleStatusChange = (status: string) => {
+    if (!selectedObjectId) return;
     docDispatch({
       type: 'UPDATE_OBJECTS',
-      payload: { ids: [selectedObjectId], updates: { name: newName } }
+      payload: { ids: [selectedObjectId], updates: { status } }
     });
   };
 
