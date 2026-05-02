@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {Rnd} from 'react-rnd';
 import {ArrowRight, Camera, Circle, Heart, Hexagon, RotateCw, Square, Star, Triangle} from 'lucide-react';
 import {useDocument, useUI} from '@/lib/editor-context';
+import {useTouchGestures} from '@/hooks/useTouchGestures';
 import {cn} from '@/lib/utils';
 import {EditorObject, Layer} from '@/lib/types';
 

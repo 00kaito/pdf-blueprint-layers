@@ -33,7 +33,8 @@ const initialUIState: UIState = {
   scale: 1,
   scrollPos: { x: 0, y: 0 },
   tool: 'select',
-  showStatusColors: false
+  showStatusColors: false,
+  objectDetailsOpen: false
 };
 
 const initialState: EditorState = {
@@ -166,6 +167,10 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, selectedObjectIds: action.payload };
     case 'SET_TOOL':
       return { ...state, tool: action.payload, selectedObjectIds: [] };
+    case 'OPEN_OBJECT_DETAILS':
+      return { ...state, objectDetailsOpen: true };
+    case 'CLOSE_OBJECT_DETAILS':
+      return { ...state, objectDetailsOpen: false };
     case 'SET_PAGE':
       return { ...state, currentPage: action.payload };
     case 'SET_SCALE':
