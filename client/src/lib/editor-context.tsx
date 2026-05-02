@@ -30,7 +30,7 @@ const initialUIState: UIState = {
   selectedObjectIds: [],
   activeLayerId: null,
   currentPage: 1,
-  scale: 1,
+  scale: 4.1,
   scrollPos: { x: 0, y: 0 },
   tool: 'select',
   showStatusColors: false,

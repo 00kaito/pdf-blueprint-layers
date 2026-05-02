@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDocument, useUI } from '@/lib/editor-context';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
-import { PropertiesPanel } from './PropertiesPanel';
 import { MobileAddObjectPanel } from './MobileAddObjectPanel';
 import { 
   ChevronUp, 
@@ -57,7 +56,7 @@ export const MobileBottomBar: React.FC = () => {
     return () => clearTimeout(timer);
   }, [localName, selectedObjectId, selectedObject, docDispatch]);
 
-  const handleStatusChange = (status: string) => {
+  const handleStatusChange = (status: 'PLANNED' | 'CABLE_PULLED' | 'TERMINATED' | 'TESTED' | 'APPROVED' | 'ISSUE') => {
     if (!selectedObjectId) return;
     docDispatch({
       type: 'UPDATE_OBJECTS',
@@ -88,7 +87,7 @@ export const MobileBottomBar: React.FC = () => {
     );
   }
 
-  const statuses = [
+  const statuses: { value: 'PLANNED' | 'CABLE_PULLED' | 'TERMINATED' | 'TESTED' | 'APPROVED' | 'ISSUE', label: string, color: string }[] = [
     { value: 'PLANNED', label: 'Planned', color: 'bg-[#f87171]' },
     { value: 'CABLE_PULLED', label: 'Pulled', color: 'bg-[#3b82f6]' },
     { value: 'TERMINATED', label: 'Terminated', color: 'bg-[#a855f7]' },
@@ -205,19 +204,6 @@ export const MobileBottomBar: React.FC = () => {
                   />
                 </div>
               )}
-
-              <div className="pt-4 border-t border-border">
-                <Button variant="ghost" className="w-full justify-between h-auto py-2 px-0 hover:bg-transparent" onClick={() => {
-                  const element = document.getElementById('full-properties-section');
-                  element?.scrollIntoView({ behavior: 'smooth' });
-                }}>
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Full Properties</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-                <div id="full-properties-section" className="mt-4">
-                  <PropertiesPanel />
-                </div>
-              </div>
             </div>
           </ScrollArea>
         </SheetContent>

@@ -8,6 +8,7 @@ import {getVisualDimensions} from '@/core/pdf-math';
 import {Upload} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {useDrawing} from '@/hooks/useDrawing';
+import {useTouchGestures} from '@/hooks/useTouchGestures';
 import {ObjectRenderer} from './Canvas/ObjectRenderer';
 import {DrawingLayer} from './Canvas/DrawingLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
@@ -24,6 +25,12 @@ export const Canvas = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { drawingPath, isDrawing, onMouseDown, onMouseMove, onMouseUp } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const [, setNumPages] = useState<number>(0);
+
+  const touchGestures = useTouchGestures({
+    onTap: () => {
+      dispatch({ type: 'SELECT_OBJECT', payload: null });
+    }
+  });
 
   const state = { ...docState, ...uiState };
 
@@ -121,8 +128,11 @@ export const Canvas = () => {
   };
 
   return (
-    <div className="flex-1 bg-muted/30 overflow-auto relative select-none" onMouseDown={handleMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onScroll={handleScroll}
-      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}>
+    <div className="flex-1 bg-muted/30 overflow-auto relative select-none" 
+      onMouseDown={handleMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onScroll={handleScroll}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
+      {...touchGestures}
+    >
       <div className="min-w-full min-h-full flex p-8">
         <div ref={containerRef} className="relative shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: docState.pdfCanvasHeight * state.scale }}>
           {state.pdfFile ? (

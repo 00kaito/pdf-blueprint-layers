@@ -145,3 +145,27 @@ Detailed changes are documented in the `implementation_report.md` file.
 
 ---
 
+## FOLLOW-UP INITIATED — 2026-05-02 16:58:54
+
+**User instruction:** Follow-up request: ogranicz funkcje tylko do podstawowych o ktorych byla mowa - bez calego obiekt full properties, dodatkowo otwieraj z default zoom 410% - jesli mozliwe niech ruch przyblizania na telefonie (ruch palcami modyfikuje suwak zoomu projektu - zamiast przyblizenie calej strony)
+
+---
+
+## HUMAN_FEEDBACK — iter 1 — 2026-05-02 16:59:22
+
+### Gemini (Analiza feedbacku → plan naprawy)
+
+**Root cause:** The editor defaults to a scale of 1.0 instead of the requested 4.1 (410%), and the absence of pinch-gesture interception allows the browser to zoom the entire webpage instead of updating the project's internal scale; additionally, the mobile UI includes an 'object details' mode that displays too many non-essential properties.
+
+**Fix steps:**
+1. In client/src/lib/editor-context.tsx, change the scale value in initialUIState from 1 to 4.1 to set the default zoom to 410%.  
+   *files:* client/src/lib/editor-context.tsx
+2. Update client/src/hooks/useTouchGestures.ts to implement pinch-to-zoom: track two simultaneous touch points, calculate the distance change between them, and dispatch the SET_SCALE action to update the project scale while calling preventDefault() to stop the browser from zooming the whole page.  
+   *files:* client/src/hooks/useTouchGestures.ts
+3. Simplify client/src/components/editor/MobileBottomBar.tsx by removing advanced property fields in the 'details' mode branch, restricting the UI to core functions: Name, Status color selection, and the Photo gallery.  
+   *files:* client/src/components/editor/MobileBottomBar.tsx
+
+**Key fix:** Set default scale to 4.1 in the initial state and implement two-finger pinch interception to control the internal editor scale.
+
+---
+
