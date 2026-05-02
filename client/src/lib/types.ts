@@ -112,4 +112,5 @@ export type EditorAction =
   | { type: 'SET_PDF_DIMENSIONS'; payload: { width: number; height: number } }
   | { type: 'ADD_OBJECT_PHOTO'; payload: { id: string; photoDataUrl: string } }
   | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } }
-  | { type: 'TOGGLE_STATUS_COLORS' };
+  | { type: 'TOGGLE_STATUS_COLORS' }
+  | { type: 'RESET_EDITOR' };

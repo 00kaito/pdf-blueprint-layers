@@ -10,15 +10,6 @@ import AuthPage from "@/pages/AuthPage";
 import {useCurrentUser} from "@/hooks/useAuth";
 import {Loader2} from "lucide-react";
 
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={Home}/>
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
-
 function AppContent() {
   const {data: user, isLoading, isError, error, refetch} = useCurrentUser();
 
@@ -53,24 +44,25 @@ function AppContent() {
     );
   }
 
-  if (!user) {
-    return (
-      <Switch>
-        <Route path="/auth" component={AuthPage} />
-        <Route>
-          <Redirect to="/auth" />
-        </Route>
-      </Switch>
-    );
-  }
-
   return (
-    <EditorProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </EditorProvider>
+    <Switch>
+      <Route path="/auth">
+        {user ? <Redirect to="/" /> : <AuthPage />}
+      </Route>
+      
+      <Route path="/">
+        {!user ? <Redirect to="/auth" /> : (
+          <EditorProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Home />
+            </TooltipProvider>
+          </EditorProvider>
+        )}
+      </Route>
+
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 

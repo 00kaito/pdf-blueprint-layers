@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { data: user } = useCurrentUser();
   const loginMutation = useLogin();
   const registerMutation = useRegister();
   const { toast } = useToast();
@@ -21,11 +20,6 @@ export default function AuthPage() {
   const [regUsername, setRegUsername] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
-
-  if (user) {
-    setLocation("/");
-    return null;
-  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

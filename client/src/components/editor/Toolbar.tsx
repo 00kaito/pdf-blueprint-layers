@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
-import {Bold, Download, FolderOpen, Save, Settings2, Trash2, ZoomIn, ZoomOut, Loader2} from 'lucide-react';
+import {Bold, Download, FolderOpen, Save, Settings2, Trash2, ZoomIn, ZoomOut, Loader2, ChevronLeft, Share2, Check} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
 import {Toggle} from '@/components/ui/toggle';
@@ -11,6 +11,7 @@ import {Slider} from '@/components/ui/slider';
 import {Label} from "@/components/ui/label";
 import {useExport} from '@/hooks/useExport';
 import {useImport} from '@/hooks/useImport';
+import {ShareProjectDialog} from './ShareProjectDialog';
 
 export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   const { state: docState, dispatch } = useDocument();
@@ -18,6 +19,7 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   const { handleFlattenAndDownload, handleExportProject } = useExport();
   const { handleFileImport } = useImport();
   const dirInputRef = React.useRef<HTMLInputElement>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const onProjectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     await handleFileImport(e.target.files);
@@ -42,6 +44,18 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   return (
     <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-between shrink-0">
       <div className="flex items-center gap-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => dispatch({ type: 'RESET_EDITOR' })}
+          className="flex items-center gap-1 -ml-2"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span>Projects</span>
+        </Button>
+
+        <Separator orientation="vertical" className="h-6" />
+
         <div className="flex items-center gap-2">
           {selectedObjects.length > 0 && (
             <>
@@ -108,17 +122,17 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           )}
         </div>
 
-        {isSaving !== undefined && (
+        {isSaving !== undefined && docState.projectId && (
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 text-[10px] font-medium text-muted-foreground transition-all">
             {isSaving ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Saving changes...</span>
+                <span>Saving...</span>
               </>
             ) : (
               <>
-                <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                <span>All changes saved</span>
+                <Check className="h-3 w-3 text-green-500" />
+                <span>Saved</span>
               </>
             )}
           </div>
@@ -132,6 +146,13 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           <span className="text-xs w-12 text-center">{Math.round(uiState.scale * 100)}%</span>
           <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_SCALE', payload: Math.min(10, uiState.scale + 0.25) })}><ZoomIn className="w-4 h-4" /></Button>
         </div>
+
+        {docState.projectId && (
+          <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
+            <Share2 className="w-4 h-4 mr-2" />
+            Share
+          </Button>
+        )}
 
         <Button variant="outline" size="sm" onClick={handleExportProject}><Save className="w-4 h-4 mr-2" />Save</Button>
         <Button variant="outline" size="sm" asChild>
@@ -178,6 +199,12 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
 
         <Button size="sm" onClick={handleFlattenAndDownload}><Download className="w-4 h-4 mr-2" />Export PDF</Button>
       </div>
+
+      <ShareProjectDialog 
+        projectId={docState.projectId}
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+      />
     </div>
   );
 };

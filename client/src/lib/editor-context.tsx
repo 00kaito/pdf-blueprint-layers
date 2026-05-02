@@ -247,6 +247,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       };
     case 'TOGGLE_STATUS_COLORS':
       return { ...state, showStatusColors: !state.showStatusColors };
+    case 'RESET_EDITOR':
+      return { ...state, ...initialDocumentState };
     default:
       return state;
   }
