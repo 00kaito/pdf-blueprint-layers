@@ -1,22 +1,28 @@
 # Implementation Report — Iteration 1
 
 ## Changes made
-- **Step 1: Upload photo to server on add**:
-    - Modified `client/src/components/editor/ObjectPhotoGallery.tsx` to upload photos to the `/api/files` endpoint immediately after compression.
-    - Added a `dataUrlToFile` helper to convert compressed base64 data URLs back to `File` objects for multipart upload.
-    - Integrated `useUploadFile` hook and `useDocument` to obtain `projectId` for the upload.
-    - Updated `handleFileChange` to dispatch the server-returned URL (`/api/files/:fileId`) instead of the base64 string.
-- **Step 2: Extend export toDataUrl helper**:
-    - Modified `client/src/hooks/useExport.ts` to handle `/api/files/` URLs during the export process.
-    - Updated the `toDataUrl` helper to fetch server-side photos and convert them back to base64 data URLs, ensuring they are correctly embedded in the exported ZIP bundle.
-    - Maintained backward compatibility for `blob:` URLs and legacy base64 data URLs.
+- **State Management**: Added `SET_ACTIVE_LAYER` action to `EditorAction` and handled it in `editorReducer` (as an alias to `SELECT_LAYER`) to ensure consistency with the implementation plan.
+- **New Component**: Created `MobileAddObjectPanel.tsx` which provides a compact 4-column grid of icon buttons (camera, square, circle, triangle, star, hexagon, arrow-right), a text button, and an image upload button. It also includes a layer selector to set the active layer before adding objects.
+- **Mobile UI Overhaul**: Completely rewritten `MobileBottomBar.tsx`:
+    - Removed the large `50vh` modal.
+    - Implemented a compact `48px` (h-12) fixed bottom strip.
+    - Added a "By status" toggle checkbox in the strip.
+    - Added contextual middle zone: shows active layer name when no object is selected, and an inline name input when an object is selected.
+    - Added action buttons in the strip: '+' to open the add-object sheet, 'Camera' and 'ChevronUp' to open the edit sheet at specific sections.
+    - Replaced the mode state machine with two shadcn/ui `Sheet` components for adding and editing objects.
+    - The edit sheet includes a status selection grid (6 statuses), `ObjectPhotoGallery` for managing photos, and a scrollable `PropertiesPanel`.
+- **Layout Adjustments**: Added `pb-12` padding to the mobile layout wrapper in `home.tsx` to prevent the new bottom strip from obscuring the canvas content.
 
 ## Files affected
-- MODIFIED: `client/src/components/editor/ObjectPhotoGallery.tsx`
-- MODIFIED: `client/src/hooks/useExport.ts`
+- CREATED: `client/src/components/editor/MobileAddObjectPanel.tsx`
+- MODIFIED: `client/src/lib/types.ts`
+- MODIFIED: `client/src/lib/editor-context.tsx`
+- MODIFIED: `client/src/components/editor/MobileBottomBar.tsx`
+- MODIFIED: `client/src/pages/home.tsx`
 
 ## Deviations from plan
-None
+None.
 
 ## Potential issues
-None. The build succeeded and the logic follows the requested architectural changes. Existing projects with base64 photos will continue to render correctly and will be handled by the export process.
+- **Nested Scrolling**: The `PropertiesPanel` inside the edit sheet's `ScrollArea` might lead to nested scrolling if `PropertiesPanel` height exceeds the remaining sheet space. However, the sheet's `ScrollArea` should handle the overall content.
+- **Element IDs**: Used `id="photo-gallery-section"` and `id="full-properties-section"` for programmatic scrolling within the edit sheet. Ensure no ID collisions occur (highly unlikely in this context).

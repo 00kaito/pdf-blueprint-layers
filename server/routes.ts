@@ -91,8 +91,10 @@ export async function registerRoutes(
     }
     const parsed = projectStateSchema.safeParse(req.body);
     if (!parsed.success) {
+      console.error(`[Project] Update failed for ${req.params.id}:`, parsed.error);
       return res.status(400).json(parsed.error);
     }
+    console.log(`[Project] Saving state for project ${req.params.id} by user ${req.user!.username}`);
     await storage.saveProjectState(req.params.id, parsed.data);
     res.sendStatus(200);
   });
@@ -104,6 +106,7 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     
+    console.log(`[Project] Deleting project ${req.params.id} by user ${req.user!.username}`);
     const state = await storage.getProjectState(req.params.id);
     if (state) {
       if (state.pdfFileId) await storage.deleteFile(state.pdfFileId);
@@ -121,6 +124,7 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     const { username } = req.body;
+    console.log(`[Project] Sharing project ${req.params.id} with user ${username}`);
     const user = await storage.getUserByUsername(username);
     if (!user) return res.status(404).json({ message: "User not found" });
     if (project.sharedWith.includes(user.id)) return res.sendStatus(200);
@@ -136,25 +140,35 @@ export async function registerRoutes(
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
     const { originalname, mimetype, buffer } = req.file;
     const { projectId } = req.body;
+    console.log(`[File] Uploading: ${originalname} (${mimetype}, ${buffer.length} bytes) for project: ${projectId || 'none'} by user: ${req.user!.username}`);
     const meta = await storage.saveFile(buffer, originalname, mimetype, req.user!.id, projectId);
+    console.log(`[File] Saved with ID: ${meta.id}`);
     res.json({ fileId: meta.id, url: `/api/files/${meta.id}` });
   });
 
   app.get("/api/files/:fileId", requireAuth, async (req, res) => {
     const meta = await storage.getFileMeta(req.params.fileId);
-    if (!meta) return res.status(404).json({ message: "File not found" });
+    if (!meta) {
+      console.warn(`[File] Meta not found for ${req.params.fileId}`);
+      return res.status(404).json({ message: "File not found" });
+    }
     
     if (meta.projectId) {
       const project = await storage.getProject(meta.projectId);
       if (!project || (project.ownerId !== req.user!.id && !project.sharedWith.includes(req.user!.id))) {
+        console.warn(`[File] Access denied for ${req.params.fileId} (project mismatch or no access)`);
         return res.status(403).json({ message: "Forbidden" });
       }
     } else if (meta.ownerId !== req.user!.id) {
+      console.warn(`[File] Access denied for ${req.params.fileId} (owner mismatch)`);
       return res.status(403).json({ message: "Forbidden" });
     }
     
     const buffer = await storage.getFileBuffer(req.params.fileId);
-    if (!buffer) return res.status(404).json({ message: "File not found" });
+    if (!buffer) {
+      console.error(`[File] Buffer not found for ${req.params.fileId} even though meta exists`);
+      return res.status(404).json({ message: "File not found" });
+    }
     
     res.setHeader("Content-Type", meta.mimeType);
     res.send(buffer);

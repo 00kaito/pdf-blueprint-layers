@@ -88,6 +88,7 @@ export type EditorAction =
   | { type: 'UPDATE_LAYER'; payload: { id: string; updates: Partial<Layer> } }
   | { type: 'TOGGLE_LAYER_VISIBILITY'; payload: string } // id
   | { type: 'SELECT_LAYER'; payload: string } // id
+  | { type: 'SET_ACTIVE_LAYER'; payload: string } // id
   | { type: 'DELETE_LAYER'; payload: string } // id
   | { type: 'ADD_OBJECT'; payload: EditorObject }
   | { type: 'UPDATE_OBJECT'; payload: { id: string; updates: Partial<EditorObject> } }

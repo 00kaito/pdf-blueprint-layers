@@ -36,25 +36,29 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    console.log(`[PhotoGallery] Selected ${files.length} files`);
     for (const file of files) {
       try {
+        console.log(`[PhotoGallery] Compressing: ${file.name} (${file.size} bytes)`);
         const photoDataUrl = await compressImage(file);
         
         // Convert data URL back to File for upload
         const photoFile = dataUrlToFile(photoDataUrl, file.name);
         
+        console.log(`[PhotoGallery] Uploading: ${file.name} (compressed to ${photoFile.size} bytes)`);
         // Upload to server
         const result = await uploadFile.mutateAsync({ 
           file: photoFile, 
           projectId: state.projectId || undefined 
         });
 
+        console.log(`[PhotoGallery] Upload successful: ${result.url}`);
         dispatch({
           type: 'ADD_OBJECT_PHOTO',
           payload: { id: objectId, photoDataUrl: result.url },
         });
       } catch (error) {
-        console.error('Failed to upload image:', error);
+        console.error('[PhotoGallery] Failed to process/upload image:', error);
       }
     }
     // Reset input

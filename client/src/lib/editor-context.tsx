@@ -98,6 +98,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         ),
       };
     case 'SELECT_LAYER':
+    case 'SET_ACTIVE_LAYER':
       return { ...state, activeLayerId: action.payload };
     case 'DELETE_LAYER': {
       const layerId = action.payload;

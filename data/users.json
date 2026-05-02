@@ -10,5 +10,11 @@
     "passwordHash": "$2b$10$T/4QxAVogRPs7dVG0mJcqOVTTEBAanVtvsevjTOeSmD5zNfzZK2LO",
     "id": "9a43e12c-37a2-467d-9e26-ae24df5ccbbe",
     "createdAt": "2026-05-02T18:28:36.092Z"
+  },
+  {
+    "username": "Note",
+    "passwordHash": "$2b$10$I0jK0h4xp5eRv0jd7abJEu5RvZa3VBEJvSprhiSjNuV68NsML933K",
+    "id": "dec963d5-09dc-4a71-b8fe-45dc90ac07d1",
+    "createdAt": "2026-05-02T20:35:09.723Z"
   }
 ]

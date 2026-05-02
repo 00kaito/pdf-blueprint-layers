@@ -106,6 +106,7 @@ export class FileStorage {
     const project = this.projects.get(id);
     if (!project) throw new Error('Project not found');
     const updated = { ...project, ...partial, updatedAt: new Date().toISOString() };
+    console.log(`[FileStorage] Updating project ${id}:`, partial);
     this.projects.set(id, updated);
     this.flushProjects();
     return updated;
@@ -131,6 +132,7 @@ export class FileStorage {
   async saveProjectState(id: string, state: ProjectState): Promise<void> {
     const stateFile = path.join(this.statesDir, `${id}.json`);
     const tmpFile = `${stateFile}.tmp`;
+    console.log(`[FileStorage] Saving project state for ${id} to ${stateFile}`);
     fs.writeFileSync(tmpFile, JSON.stringify(state, null, 2));
     fs.renameSync(tmpFile, stateFile);
     await this.updateProject(id, {}); // update updatedAt
@@ -146,8 +148,11 @@ export class FileStorage {
       projectId,
       createdAt: new Date().toISOString()
     };
-    fs.writeFileSync(path.join(this.filesDir, id), buffer);
-    fs.writeFileSync(path.join(this.filesDir, `${id}.meta.json`), JSON.stringify(meta, null, 2));
+    const filePath = path.join(this.filesDir, id);
+    const metaPath = path.join(this.filesDir, `${id}.meta.json`);
+    console.log(`[FileStorage] Saving file ${originalName} (ID: ${id}) to ${filePath}`);
+    fs.writeFileSync(filePath, buffer);
+    fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
     return meta;
   }
 

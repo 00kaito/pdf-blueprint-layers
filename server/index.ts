@@ -52,8 +52,19 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      
+      if (req.method === "POST" || req.method === "PUT") {
+        if (path.startsWith("/api/projects/") && req.body) {
+          const { layers, objects } = req.body;
+          logLine += ` [Body: ${layers?.length || 0} layers, ${objects?.length || 0} objects]`;
+        } else if (path.startsWith("/api/files") && req.file) {
+          logLine += ` [File: ${req.file.originalname} (${req.file.size} bytes)]`;
+        }
+      }
+
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        const responseString = JSON.stringify(capturedJsonResponse);
+        logLine += ` :: ${responseString.length > 200 ? responseString.substring(0, 200) + "..." : responseString}`;
       }
 
       log(logLine);

@@ -2,159 +2,209 @@ import React, { useState, useEffect } from 'react';
 import { useDocument, useUI } from '@/lib/editor-context';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
 import { PropertiesPanel } from './PropertiesPanel';
+import { MobileAddObjectPanel } from './MobileAddObjectPanel';
 import { 
   ChevronUp, 
   ChevronDown, 
-  ChevronLeft, 
   Plus, 
-  Type
+  Camera,
+  Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Sheet,
+  SheetContent,
+} from "@/components/ui/sheet";
+import { cn } from '@/lib/utils';
 
 export const MobileBottomBar: React.FC = () => {
   const { state: docState, dispatch: docDispatch } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
 
-  const [mode, setMode] = useState<'list' | 'edit' | 'details'>('list');
   const [isBarVisible, setIsBarVisible] = useState(true);
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
+  const activeLayer = docState.layers.find(l => l.id === uiState.activeLayerId);
+
+  const [localName, setLocalName] = useState('');
 
   useEffect(() => {
-    if (uiState.objectDetailsOpen && selectedObjectId) {
-      setMode('details');
-    } else if (uiState.selectedObjectIds.length > 0) {
-      setMode('edit');
-    } else {
-      setMode('list');
+    if (selectedObject) {
+      setLocalName(selectedObject.name || '');
     }
-  }, [uiState.selectedObjectIds, uiState.objectDetailsOpen, selectedObjectId]);
+  }, [selectedObject?.id, selectedObject?.name]);
 
-  const handleBackToList = () => {
-    if (mode === 'details') {
-      uiDispatch({ type: 'CLOSE_OBJECT_DETAILS' });
-    } else {
-      uiDispatch({ type: 'SELECT_OBJECT', payload: null });
-    }
+  const handleNameChange = (newName: string) => {
+    setLocalName(newName);
+    docDispatch({
+      type: 'UPDATE_OBJECTS',
+      payload: { ids: [selectedObjectId], updates: { name: newName } }
+    });
   };
 
-  const handleToggleVisibility = () => {
-    setIsBarVisible(!isBarVisible);
+  const openEditSheet = (section?: 'photos' | 'properties') => {
+    setEditSheetOpen(true);
+    if (section) {
+      // Small delay to allow sheet to render
+      setTimeout(() => {
+        const id = section === 'photos' ? 'photo-gallery-section' : 'full-properties-section';
+        const element = document.getElementById(id);
+        element?.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
   };
 
   if (!isBarVisible) {
     return (
       <Button
-        onClick={handleToggleVisibility}
+        onClick={() => setIsBarVisible(true)}
         className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-lg z-[100] h-12 w-12 p-0 bg-primary hover:bg-primary/90"
       >
-        <ChevronUp className="h-6 w-6 text-primary-foreground" />
+        <Plus className="h-6 w-6 text-primary-foreground" />
       </Button>
     );
   }
 
+  const statuses = [
+    { value: 'PLANNED', label: 'Planned', color: 'bg-[#f87171]' },
+    { value: 'CABLE_PULLED', label: 'Pulled', color: 'bg-[#3b82f6]' },
+    { value: 'TERMINATED', label: 'Terminated', color: 'bg-[#a855f7]' },
+    { value: 'TESTED', label: 'Tested', color: 'bg-[#4ade80]' },
+    { value: 'APPROVED', label: 'Approved', color: 'bg-[#16a34a]' },
+    { value: 'ISSUE', label: 'Issue', color: 'bg-[#dc2626]' },
+  ];
+
   return (
-    <div className={`fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl transition-transform duration-300 z-[100] h-[50vh] flex flex-col`}>
-      {/* Top Header */}
-      <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
-        {mode !== 'list' ? (
-          <Button variant="ghost" size="icon" onClick={handleBackToList} className="h-8 w-8">
-            <ChevronLeft className="h-5 w-5" />
+    <>
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-12 flex items-center px-4 gap-3">
+        {/* LEFT: Status colors toggle */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Checkbox 
+            id="status-colors" 
+            checked={uiState.showStatusColors} 
+            onCheckedChange={() => uiDispatch({ type: 'TOGGLE_STATUS_COLORS' })}
+          />
+          <label htmlFor="status-colors" className="text-[10px] font-medium leading-none whitespace-nowrap">By status</label>
+        </div>
+
+        {/* CENTER: Contextual zone */}
+        <div className="flex-1 min-w-0 flex items-center justify-center">
+          {selectedObject ? (
+            <Input 
+              value={localName} 
+              onChange={(e) => handleNameChange(e.target.value)}
+              className="h-8 text-xs px-2"
+              placeholder="Object name..."
+            />
+          ) : (
+            <div 
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 max-w-full cursor-pointer"
+              onClick={() => setAddSheetOpen(true)}
+            >
+              <Layers className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-[10px] font-medium truncate">
+                {activeLayer?.name || 'No Layer'}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Action zone */}
+        <div className="flex items-center gap-1 shrink-0">
+          {selectedObject ? (
+            <>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('photos')}>
+                <Camera className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('properties')}>
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setAddSheetOpen(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsBarVisible(false)}>
+            <ChevronDown className="h-4 w-4" />
           </Button>
-        ) : (
-          <div className="w-8" />
-        )}
-
-        <span className="font-semibold truncate max-w-[200px]">
-          {mode === 'details' ? 'Properties' : (mode === 'edit' 
-            ? (selectedObject?.name || selectedObject?.type || 'Edit Object')
-            : 'Objects')}
-        </span>
-
-
-        <Button variant="ghost" size="icon" onClick={handleToggleVisibility} className="h-8 w-8">
-          <ChevronDown className="h-5 w-5" />
-        </Button>
+        </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
-          {mode === 'list' ? (
-            <div className="space-y-3 pb-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Layer Objects</h3>
-              <div className="space-y-1">
-                {docState.objects.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground italic border border-dashed rounded-lg">
-                    No objects added yet
-                  </div>
-                ) : (
-                  docState.objects.map(obj => {
-                    const layer = docState.layers.find(l => l.id === obj.layerId);
-                    return (
-                      <div 
-                        key={obj.id}
-                        className="flex items-center gap-3 p-3 rounded-md border border-border bg-card active:bg-accent transition-colors cursor-pointer"
-                        onClick={() => uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id })}
-                      >
-                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                          {obj.type === 'icon' ? <Plus className="h-4 w-4" /> : <Type className="h-4 w-4" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">{obj.name || obj.type}</div>
-                          <div className="text-[10px] text-muted-foreground truncate">{layer?.name || 'Unknown Layer'}</div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+      {/* Add Object Sheet */}
+      <Sheet open={addSheetOpen} onOpenChange={setAddSheetOpen}>
+        <SheetContent side="bottom" className="px-0 pt-2 pb-6 max-h-[38vh] rounded-t-xl">
+          <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-2" />
+          <MobileAddObjectPanel onClose={() => setAddSheetOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit Object Sheet */}
+      <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
+        <SheetContent side="bottom" className="px-0 pt-2 pb-0 h-[55vh] rounded-t-xl overflow-hidden flex flex-col">
+          <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-2 shrink-0" />
+          <ScrollArea className="flex-1 px-4">
+            <div className="space-y-6 pb-10">
+              <div className="space-y-2 pt-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Name / Label</label>
+                <Input 
+                  value={localName} 
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="Enter label..."
+                />
               </div>
-            </div>
-          ) : mode === 'edit' ? (
-            selectedObject ? (
-              <div className="space-y-6 pb-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Name / Label</label>
-                  <Input 
-                    value={selectedObject.name || ''} 
-                    onChange={(e) => docDispatch({ 
-                      type: 'UPDATE_OBJECTS', 
-                      payload: { ids: [selectedObject.id], updates: { name: e.target.value } } 
-                    })}
-                    placeholder="Enter label..."
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {statuses.map((status) => (
+                    <Button
+                      key={status.value}
+                      variant={selectedObject?.status === status.value ? "default" : "outline"}
+                      className={cn(
+                        "h-10 text-[10px] px-1 flex flex-col items-center gap-1",
+                        selectedObject?.status === status.value && status.color
+                      )}
+                      onClick={() => handleStatusChange(status.value)}
+                    >
+                      <div className={cn("w-2 h-2 rounded-full", status.color)} />
+                      {status.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedObject && (
+                <div id="photo-gallery-section">
+                  <ObjectPhotoGallery 
+                    objectId={selectedObject.id} 
+                    photos={selectedObject.photos || []} 
                   />
                 </div>
+              )}
 
-                <Separator />
-
-                <ObjectPhotoGallery 
-                  objectId={selectedObject.id} 
-                  photos={selectedObject.photos || []} 
-                />
-
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  onClick={() => uiDispatch({ type: 'OPEN_OBJECT_DETAILS' })}
-                >
-                  View Full Properties
+              <div className="pt-4 border-t border-border">
+                <Button variant="ghost" className="w-full justify-between h-auto py-2 px-0 hover:bg-transparent" onClick={() => {
+                  const element = document.getElementById('full-properties-section');
+                  element?.scrollIntoView({ behavior: 'smooth' });
+                }}>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Full Properties</span>
+                  <ChevronDown className="h-4 w-4" />
                 </Button>
+                <div id="full-properties-section" className="mt-4">
+                  <PropertiesPanel />
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                 Object not found
-              </div>
-            )
-          ) : mode === 'details' ? (
-            <div className="pb-6">
-              <PropertiesPanel />
             </div>
-          ) : null}
-        </div>
-      </ScrollArea>
-    </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 };

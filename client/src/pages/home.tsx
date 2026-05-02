@@ -26,7 +26,7 @@ const Home = () => {
   if (isMobile) {
     return (
       <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
-        <div className="flex flex-col h-screen overflow-hidden bg-background relative">
+        <div className="flex flex-col h-screen overflow-hidden bg-background relative pb-12">
           <Canvas />
           <MobileBottomBar />
         </div>
