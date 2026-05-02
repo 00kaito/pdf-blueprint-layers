@@ -53,6 +53,20 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
   const { state: uiState } = useUI();
   const [isRotating, setIsRotating] = useState(false);
 
+  const touchGestures = useTouchGestures({
+    onTap: () => {
+      dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+    },
+    onDoubleTap: () => {
+      dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+      dispatch({ type: 'OPEN_OBJECT_DETAILS' });
+    },
+    onLongPress: () => {
+      dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+      dispatch({ type: 'OPEN_OBJECT_DETAILS' });
+    },
+  });
+
   const displayColor = uiState.showStatusColors 
     ? (getStatusCategoryColor(obj.status) || obj.color || '#000000')
     : (obj.color || '#000000');
@@ -89,6 +103,39 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleRotationTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    setIsRotating(true);
+
+    const touch = e.touches[0];
+    const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const handleTouchMove = (tE: TouchEvent) => {
+      if (tE.touches.length !== 1) return;
+      const moveTouch = tE.touches[0];
+      const angle = Math.atan2(moveTouch.clientY - centerY, moveTouch.clientX - centerX);
+      let degree = (angle * (180 / Math.PI)) + 90;
+      const snappedDegree = Math.round(degree / 45) * 45;
+      dispatch({ 
+        type: 'UPDATE_OBJECT', 
+        payload: { id: obj.id, updates: { rotation: snappedDegree } } 
+      });
+    };
+
+    const handleTouchEnd = () => {
+      setIsRotating(false);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
   };
 
   return (
@@ -138,6 +185,7 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
         <div 
           className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 hover:scale-110 transition-transform"
           onMouseDown={handleRotationMouseDown}
+          onTouchStart={handleRotationTouchStart}
         >
           <RotateCw className="w-4 h-4" />
         </div>
@@ -146,6 +194,7 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       <div 
         className="w-full h-full relative" 
         style={{ transform: `rotate(${obj.rotation || 0}deg)` }}
+        {...touchGestures}
       >
           {obj.type === 'text' && (
             <div 

@@ -150,7 +150,11 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         selectedObjectIds: state.selectedObjectIds.filter(id => !action.payload.includes(id)),
       };
     case 'SELECT_OBJECT':
-      return { ...state, selectedObjectIds: action.payload ? [action.payload] : [] };
+      return { 
+        ...state, 
+        selectedObjectIds: action.payload ? [action.payload] : [],
+        objectDetailsOpen: action.payload ? state.objectDetailsOpen : false 
+      };
     case 'TOGGLE_OBJECT_SELECTION':
       return {
         ...state,
@@ -295,9 +299,10 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       scrollPos: state.scrollPos,
       tool: state.tool,
       showStatusColors: state.showStatusColors,
+      objectDetailsOpen: state.objectDetailsOpen,
     },
     dispatch
-  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, dispatch]);
+  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, dispatch]);
 
   return (
     <DocumentContext.Provider value={documentValue}>
@@ -325,6 +330,11 @@ export const useEditor = () => {
   const doc = useDocument();
   const ui = useUI();
   return {
+    state: { ...doc.state, ...ui.state } as EditorState,
+    dispatch: doc.dispatch
+  };
+};
+n {
     state: { ...doc.state, ...ui.state } as EditorState,
     dispatch: doc.dispatch
   };

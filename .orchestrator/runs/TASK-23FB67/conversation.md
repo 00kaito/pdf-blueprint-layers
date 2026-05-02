@@ -1,0 +1,47 @@
+# Conversation Log — TASK-23FB67
+
+**Task:** kiedy uzywam na urzadzeniu mobilnym nie moge kliknac w obiekt - click i double click nie dzialaja - popraw to abym widziel properties obiektow + chce aby wejscie w szczegoly obiekty nastepowalo po przytrzymaniu palca na obiekcie i/lub przez double-click
+
+**Roles:** architect=Claude, developer=Gemini, reviewer=Gemini
+
+---
+
+## ARCHITECTING — 2026-05-02 14:47:46
+
+### Claude (Architekt)
+
+**Summary:** Fix mobile touch interaction by adding tap/double-tap/long-press gesture detection to ObjectRenderer (objects currently only have onClick which is unreliable on touch). Add objectDetailsOpen UI state; wire double-tap and long-press on any object to select it and open a full-properties 'details' view inside MobileBottomBar.
+
+**Plan:**
+1. **Create useTouchGestures hook** — Create client/src/hooks/useTouchGestures.ts. The hook accepts { onTap, onDoubleTap, onLongPress } callbacks and returns { onTouchStart, onTouchEnd, onTouchMove, onTouchCancel } React event handlers. Implementation: onTouchStart records touch position + time and starts a 500ms setTimeout for long-press (fires onLongPress, clears internal state). onTouchMove cancels the long-press timer if finger moves >10px. onTouchEnd cancels the long-press timer; if touch distance <10px and duration <500ms it's a tap — compare Date.now() against a lastTapRef (useRef) to decide single-tap (>300ms gap → onTap) vs double-tap (≤300ms gap → onDoubleTap). Use useRef for all mutable state (no useState), cleanup timers in useEffect return. TypeScript-safe: accept optional callbacks. `[CREATE]`
+2. **Add objectDetailsOpen to UIState and action types** — In client/src/lib/types.ts: add `objectDetailsOpen: boolean` field to UIState interface. Add two new action variants to EditorAction union: `| { type: 'OPEN_OBJECT_DETAILS' }` and `| { type: 'CLOSE_OBJECT_DETAILS' }`. `[MODIFY]`
+3. **Wire new state and actions in editor-context reducer** — In client/src/lib/editor-context.tsx: add `objectDetailsOpen: false` to initialUIState. In editorReducer add cases: `OPEN_OBJECT_DETAILS` → `{ ...state, objectDetailsOpen: true }`, `CLOSE_OBJECT_DETAILS` → `{ ...state, objectDetailsOpen: false }`. Also modify the existing `SELECT_OBJECT` case: when payload is null, also set `objectDetailsOpen: false` (so deselecting an object closes the details view). `[MODIFY]`
+4. **Add touch gesture handling to ObjectRenderer** — In client/src/components/editor/Canvas/ObjectRenderer.tsx: import useTouchGestures. Call the hook with: onTap → dispatch SELECT_OBJECT (same as existing onClick), onDoubleTap → dispatch SELECT_OBJECT then OPEN_OBJECT_DETAILS, onLongPress → dispatch SELECT_OBJECT then OPEN_OBJECT_DETAILS. Attach the returned touch handlers to the inner content div (the div with `className='w-full h-full relative'` at line 147) via onTouchStart/onTouchEnd/onTouchMove/onTouchCancel props. Keep the existing onClick on Rnd for desktop. For the rotation handle (line 138), add onTouchStart={handleRotationTouchStart} alongside the existing onMouseDown — handleRotationTouchStart reads e.touches[0] coordinates instead of e.clientX/Y, then registers document touchmove/touchend listeners that mirror the existing mousemove/mouseup logic. `[MODIFY]`
+5. **Add 'details' mode to MobileBottomBar** — In client/src/components/editor/MobileBottomBar.tsx: change mode state type to `'list' | 'edit' | 'details'`. Import useUI dispatch and the PropertiesPanel component. Add a useEffect: when uiState.objectDetailsOpen becomes true AND selectedObjectId is set, call setMode('details'). When it becomes false, if selectedObjectIds.length > 0 setMode('edit') else setMode('list'). In the header (mode === 'details'): show a back ChevronLeft button that calls uiDispatch({ type: 'CLOSE_OBJECT_DETAILS' }) and shows title 'Properties'. In the ScrollArea body: add a `mode === 'details'` branch that renders `<PropertiesPanel />` directly. This reuses all existing PropertiesPanel logic without duplication. `[MODIFY]`
+
+**Acceptance Criteria:**
+- `[c1]` File client/src/hooks/useTouchGestures.ts exists and exports a function useTouchGestures that accepts { onTap, onDoubleTap, onLongPress } as optional callbacks and returns an object with onTouchStart, onTouchEnd, onTouchMove, onTouchCancel properties  
+  *Verify:* Read the file; check the exported function signature and returned object keys
+- `[c2]` UIState interface in client/src/lib/types.ts contains `objectDetailsOpen: boolean`  
+  *Verify:* Grep for 'objectDetailsOpen' in types.ts and confirm it is inside the UIState type block
+- `[c3]` EditorAction union in client/src/lib/types.ts contains both `{ type: 'OPEN_OBJECT_DETAILS' }` and `{ type: 'CLOSE_OBJECT_DETAILS' }` variants  
+  *Verify:* Grep for 'OPEN_OBJECT_DETAILS' and 'CLOSE_OBJECT_DETAILS' in types.ts
+- `[c4]` initialUIState in editor-context.tsx has `objectDetailsOpen: false`, and the reducer handles OPEN_OBJECT_DETAILS, CLOSE_OBJECT_DETAILS, and clears objectDetailsOpen when SELECT_OBJECT payload is null  
+  *Verify:* Read editor-context.tsx; check initialUIState object and reducer switch cases for the three action types
+- `[c5]` ObjectRenderer.tsx calls useTouchGestures and attaches touch handlers to the inner content div (the div with transform rotate style), with onTap dispatching SELECT_OBJECT, and onDoubleTap/onLongPress dispatching SELECT_OBJECT then OPEN_OBJECT_DETAILS  
+  *Verify:* Read ObjectRenderer.tsx; confirm useTouchGestures import, hook call, and the inner div has onTouchStart/End/Move/Cancel from the hook
+- `[c6]` ObjectRenderer.tsx rotation handle div has an onTouchStart handler that reads e.touches[0] coordinates and registers document touchmove/touchend listeners for rotation, mirroring the existing onMouseDown logic  
+  *Verify:* Read ObjectRenderer.tsx; confirm the rotation handle div at the -top-10 position has both onMouseDown and onTouchStart props
+- `[c7]` MobileBottomBar.tsx mode state type is 'list' | 'edit' | 'details', a useEffect reacts to uiState.objectDetailsOpen to set mode to 'details', and when mode === 'details' the component renders PropertiesPanel  
+  *Verify:* Read MobileBottomBar.tsx; confirm the mode type literal, the useEffect watching objectDetailsOpen, and the JSX branch for mode === 'details'
+- `[c8]` MobileBottomBar 'details' mode header has a back button that dispatches CLOSE_OBJECT_DETAILS (not SELECT_OBJECT null), so the user returns to 'edit' mode without losing the selection  
+  *Verify:* Read MobileBottomBar.tsx; in the details mode header, confirm the back button calls uiDispatch({ type: 'CLOSE_OBJECT_DETAILS' })
+
+**Risks:**
+- react-rnd uses react-draggable internally which may intercept touchstart/touchmove events before the inner div receives them — if touch handlers on the inner div never fire, the fallback is to attach them to a transparent absolutely-positioned overlay div rendered as a sibling of the content div, or to use the Rnd component's own onTouchStart prop if it exposes one
+- The long-press timer (setTimeout 500ms) can fire during a legitimate slow drag on mobile — guard against this by tracking cumulative touch movement distance in onTouchMove and cancelling the timer as soon as movement exceeds 10px
+- PropertiesPanel may depend on fixed-width layout assumptions that look broken when rendered inside the 50vh MobileBottomBar — check the component for min-width or overflow styles and add overflow-y: auto to the wrapper if needed
+- Double-tap detection relies on timing (300ms window) — if react-rnd calls preventDefault on touchstart, the browser may not fire the second touchend event that triggers the counter; test by logging touchend events on a real device before final integration
+
+---
+

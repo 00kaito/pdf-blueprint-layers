@@ -1,25 +1,33 @@
 # Implementation Report — Iteration 1
 
 ## Changes made
-- **Fixed project reload bug**: Reordered dispatches in `PDFUploader.tsx`'s `handleOpenProject` to ensure `IMPORT_PROJECT` is called last, preventing `SET_PDF` from wiping restored layers and objects.
-- **Created `useManualSave` hook**: Implemented a new hook in `client/src/hooks/useManualSave.ts` that handles saving the project to the server. It supports both updating existing projects and creating new ones (including PDF uploads) if the project hasn't been saved to the server yet.
-- **Updated project schema**: Added `activeLayerId` to `projectStateSchema` in `shared/schema.ts` to ensure the active layer is preserved across sessions.
-- **Enhanced auto-save**: Updated `client/src/hooks/useAutoSave.ts` to also include `activeLayerId` in the auto-save payload for consistency.
-- **Updated Toolbar**:
-    - Renamed "Save" button to "Export Project Files".
-    - Renamed "Export PDF" button to "Merge Layers and Export as PDF".
-    - Added a new "Save" button that utilizes the `useManualSave` hook, with a loading indicator and conditional visibility (only shows when a PDF is loaded).
+- Created `useTouchGestures` hook in `client/src/hooks/useTouchGestures.ts` to handle `onTap`, `onDoubleTap`, and `onLongPress` with threshold and delay management.
+- Modified `client/src/lib/types.ts` to add `objectDetailsOpen` to `UIState` and `OPEN_OBJECT_DETAILS`, `CLOSE_OBJECT_DETAILS` actions to `EditorAction`.
+- Updated `client/src/lib/editor-context.tsx`:
+    - Added `objectDetailsOpen: false` to `initialUIState`.
+    - Handled `OPEN_OBJECT_DETAILS` and `CLOSE_OBJECT_DETAILS` in `editorReducer`.
+    - Updated `SELECT_OBJECT` case to clear `objectDetailsOpen` when deselecting.
+    - Included `objectDetailsOpen` in `uiValue` useMemo inside `EditorProvider`.
+- Updated `client/src/components/editor/Canvas/ObjectRenderer.tsx`:
+    - Integrated `useTouchGestures` hook for tap (select), double-tap (open details), and long-press (open details) interactions.
+    - Added `handleRotationTouchStart` to support object rotation via touch on mobile devices.
+    - Attached touch gesture handlers to the inner content div of objects.
+- Updated `client/src/components/editor/MobileBottomBar.tsx`:
+    - Added `'details'` mode to the state.
+    - Added a `useEffect` to automatically switch to `'details'` mode when `objectDetailsOpen` is true.
+    - Updated the header to show "Properties" and a back button that dispatches `CLOSE_OBJECT_DETAILS`.
+    - Rendered the `PropertiesPanel` component when in `'details'` mode.
+    - Added a "Full Properties" button to the default edit mode for easier access.
 
 ## Files affected
-- CREATED: `client/src/hooks/useManualSave.ts`
-- MODIFIED: `client/src/components/editor/PDFUploader.tsx`
-- MODIFIED: `client/src/components/editor/Toolbar.tsx`
-- MODIFIED: `client/src/hooks/useAutoSave.ts`
-- MODIFIED: `shared/schema.ts`
+- CREATED: `client/src/hooks/useTouchGestures.ts`
+- MODIFIED: `client/src/lib/types.ts`
+- MODIFIED: `client/src/lib/editor-context.tsx`
+- MODIFIED: `client/src/components/editor/Canvas/ObjectRenderer.tsx`
+- MODIFIED: `client/src/components/editor/MobileBottomBar.tsx`
 
 ## Deviations from plan
-- Also updated `shared/schema.ts` to include `activeLayerId`, which was necessary to fulfill the risk mitigation mentioned in the plan and provide a better UX.
-- Also updated `client/src/hooks/useAutoSave.ts` to include `activeLayerId` for consistency with the new manual save behavior.
+None
 
 ## Potential issues
-None. The manual Save button provides a way to create server-side projects for PDFs that were opened locally but not yet linked to a project ID.
+None

@@ -17,22 +17,28 @@ export const MobileBottomBar: React.FC = () => {
   const { state: docState, dispatch: docDispatch } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
 
-  const [mode, setMode] = useState<'list' | 'edit'>('list');
+  const [mode, setMode] = useState<'list' | 'edit' | 'details'>('list');
   const [isBarVisible, setIsBarVisible] = useState(true);
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
 
   useEffect(() => {
-    if (uiState.selectedObjectIds.length > 0) {
+    if (uiState.objectDetailsOpen && selectedObjectId) {
+      setMode('details');
+    } else if (uiState.selectedObjectIds.length > 0) {
       setMode('edit');
     } else {
       setMode('list');
     }
-  }, [uiState.selectedObjectIds]);
+  }, [uiState.selectedObjectIds, uiState.objectDetailsOpen, selectedObjectId]);
 
   const handleBackToList = () => {
-    uiDispatch({ type: 'SELECT_OBJECT', payload: null });
+    if (mode === 'details') {
+      uiDispatch({ type: 'CLOSE_OBJECT_DETAILS' });
+    } else {
+      uiDispatch({ type: 'SELECT_OBJECT', payload: null });
+    }
   };
 
   const handleToggleVisibility = () => {
@@ -54,19 +60,20 @@ export const MobileBottomBar: React.FC = () => {
     <div className={`fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl transition-transform duration-300 z-[100] h-[50vh] flex flex-col`}>
       {/* Top Header */}
       <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
-        {mode === 'edit' ? (
+        {mode !== 'list' ? (
           <Button variant="ghost" size="icon" onClick={handleBackToList} className="h-8 w-8">
             <ChevronLeft className="h-5 w-5" />
           </Button>
         ) : (
           <div className="w-8" />
         )}
-        
+
         <span className="font-semibold truncate max-w-[200px]">
-          {mode === 'edit' 
+          {mode === 'details' ? 'Properties' : (mode === 'edit' 
             ? (selectedObject?.name || selectedObject?.type || 'Edit Object')
-            : 'Objects'}
+            : 'Objects')}
         </span>
+
 
         <Button variant="ghost" size="icon" onClick={handleToggleVisibility} className="h-8 w-8">
           <ChevronDown className="h-5 w-5" />
@@ -138,6 +145,49 @@ export const MobileBottomBar: React.FC = () => {
                 </div>
               )}
             </>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+                  <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                   Object not found
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="pb-6">
+              <PropertiesPanel />
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+/div>
+      </ScrollArea>
+    </div>
+  );
+};
+                  <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                   Object not found
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="pb-6">
+              <PropertiesPanel />
+            </div>
           )}
         </div>
       </ScrollArea>

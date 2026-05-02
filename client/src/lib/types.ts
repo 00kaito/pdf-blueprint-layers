@@ -73,6 +73,7 @@ export type UIState = {
   scrollPos: { x: number; y: number };
   tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp';
   showStatusColors: boolean;
+  objectDetailsOpen: boolean;
 };
 
 export type EditorState = DocumentState & UIState;
@@ -97,6 +98,8 @@ export type EditorAction =
   | { type: 'TOGGLE_OBJECT_SELECTION'; payload: string }
   | { type: 'SET_SELECTION'; payload: string[] }
   | { type: 'SET_TOOL'; payload: UIState['tool'] }
+  | { type: 'OPEN_OBJECT_DETAILS' }
+  | { type: 'CLOSE_OBJECT_DETAILS' }
   | { type: 'SET_PAGE'; payload: number }
   | { type: 'SET_SCALE'; payload: number }
   | { type: 'SET_SCROLL'; payload: { x: number; y: number } }
