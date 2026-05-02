@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-7217B2",
+  "description": "tworze projekt z pdf dodaje do niego obiekty, pozniej po ponownym wejsciu w projekt widze tylko pdf (nie widze naniesionych obiektow) - chce miec przycisk zapisz ktory zapisze ten projekt w aplikacji; Ponadto zmien nazwe przycisku export pdf do merge layers and export as pdf, oraz zmien obecny przycisk save na export project files",
+  "title": "tworze projekt z pdf dodaje do niego obiekty, pozniej po ponownym wejsciu w projekt widze tylko pdf ",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "After opening an existing server-side project via PDFUploader, docState.objects and docState.layers match the saved project state (are not empty after load)",
+      "how_to_verify": "In PDFUploader.tsx handleOpenProject, confirm IMPORT_PROJECT dispatch appears after SET_PDF, SET_OVERLAY_PDF, and SET_PDF_FILE_IDS dispatches (i.e. IMPORT_PROJECT is the last dispatch)",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "File client/src/hooks/useManualSave.ts exists and exports a useManualSave function returning { handleSave: () => Promise<void>, isSaving: boolean }",
+      "how_to_verify": "File exists at client/src/hooks/useManualSave.ts; grep for 'export function useManualSave' or 'export const useManualSave'",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "useManualSave calls useSaveProject mutation when docState.projectId is non-null",
+      "how_to_verify": "In useManualSave.ts, confirm there is a branch checking docState.projectId and calling saveProject.mutateAsync with id and state payload",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "useManualSave calls useCreateProject then useUploadFile then dispatches SET_PROJECT_ID when docState.projectId is null and docState.pdfFile is non-null",
+      "how_to_verify": "In useManualSave.ts, confirm the else branch calls createProject.mutateAsync, uploadFile.mutateAsync, and dispatches { type: 'SET_PROJECT_ID', payload: ... }",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "Toolbar.tsx contains a button with the label 'Export Project Files' that calls handleExportProject",
+      "how_to_verify": "grep for 'Export Project Files' in client/src/components/editor/Toolbar.tsx",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c6",
+      "description": "Toolbar.tsx contains a button with the label 'Merge Layers and Export as PDF' that calls handleFlattenAndDownload",
+      "how_to_verify": "grep for 'Merge Layers and Export as PDF' in client/src/components/editor/Toolbar.tsx",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c7",
+      "description": "Toolbar.tsx contains a new Save button that imports and calls handleSave from useManualSave, disabled while isSaving is true",
+      "how_to_verify": "grep for 'useManualSave' in Toolbar.tsx; confirm button JSX includes isSaving as disabled condition and calls handleSave",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Fix project reload bug (SET_PDF wipes layers/objects after IMPORT_PROJECT), add a server-side Save button, rename 'Export PDF' to 'Merge Layers and Export as PDF', and rename the current 'Save' button to 'Export Project Files'.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Fix project reload bug in PDFUploader.tsx\",\n      \"description\": \"In handleOpenProject, the dispatch order is wrong: IMPORT_PROJECT (which restores saved layers/objects) is called on line 112, then SET_PDF is called on line 113 which hard-resets layers=[] and objects=[] back to defaults, destroying the restored state. Fix: move the IMPORT_PROJECT dispatch to AFTER SET_PDF, SET_OVERLAY_PDF, and SET_PDF_FILE_IDS so it has the final word. New order: (1) SET_PDF, (2) SET_OVERLAY_PDF, (3) SET_PDF_FILE_IDS, (4) IMPORT_PROJECT.\",\n      \"files_affected\": [\n        \"client/src/components/editor/PDFUploader.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Create useManualSave hook\",\n      \"description\": \"Create a new hook client/src/hooks/useManualSave.ts that exposes handleSave and isSaving. Logic: (A) if docState.projectId is set, call useSaveProject.mutateAsync({ id: docState.projectId, state: { layers, objects, customIcons, exportSettings, autoNumbering, overlayOpacity, pdfFileId, overlayPdfFileId } }) and show a toast on success/failure. (B) if docState.projectId is null and docState.pdfFile is not null, call useCreateProject.mutateAsync({ name: pdfFile.name or 'New Project' }), then useUploadFile.mutateAsync({ file: pdfFile, projectId: project.id }), then dispatch SET_PROJECT_ID and SET_PDF_FILE_IDS with the resulting IDs, then call useSaveProject.mutateAsync with the full state. (C) if both are null, show a toast error 'No project to save'.\",\n      \"files_affected\": [\n        \"client/src/hooks/useManualSave.ts\"\n      ],\n      \"type\": \"CREATE\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Update Toolbar.tsx: rename buttons and add Save button\",\n      \"description\": \"Three changes in Toolbar.tsx: (1) Find the 'Save' button (line ~157, handler handleExportProject) and rename its label to 'Export Project Files'. (2) Find the 'Export PDF' button (line ~200, handler handleFlattenAndDownload) and rename its label to 'Merge Layers and Export as PDF'. (3) Import useManualSave and add a new 'Save' button — position it near the top of the toolbar button group (logically first or next to the Share button), using a Cloud or Save icon, calling handleSave from the hook, and disabling it while isSaving is true. The Save button should only be visible when docState.pdfFile is set (same condition as other action buttons).\",\n      \"files_affected\": [\n        \"client/src/components/editor/Toolbar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"After opening an existing server-side project via PDFUploader, docState.objects and docState.layers match the saved project state (are not empty after load)\",\n      \"how_to_verify\": \"In PDFUploader.tsx handleOpenProject, confirm IMPORT_PROJECT dispatch appears after SET_PDF, SET_OVERLAY_PDF, and SET_PDF_FILE_IDS dispatches (i.e. IMPORT_PROJECT is the last dispatch)\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"File client/src/hooks/useManualSave.ts exists and exports a useManualSave function returning { handleSave: () => Promise<void>, isSaving: boolean }\",\n      \"how_to_verify\": \"File exists at client/src/hooks/useManualSave.ts; grep for 'export function useManualSave' or 'export const useManualSave'\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"useManualSave calls useSaveProject mutation when docState.projectId is non-null\",\n      \"how_to_verify\": \"In useManualSave.ts, confirm there is a branch checking docState.projectId and calling saveProject.mutateAsync with id and state payload\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"useManualSave calls useCreateProject then useUploadFile then dispatches SET_PROJECT_ID when docState.projectId is null and docState.pdfFile is non-null\",\n      \"how_to_verify\": \"In useManualSave.ts, confirm the else branch calls createProject.mutateAsync, uploadFile.mutateAsync, and dispatches { type: 'SET_PROJECT_ID', payload: ... }\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"Toolbar.tsx contains a button with the label 'Export Project Files' that calls handleExportProject\",\n      \"how_to_verify\": \"grep for 'Export Project Files' in client/src/components/editor/Toolbar.tsx\"\n    },\n    {\n      \"id\": \"c6\",\n      \"description\": \"Toolbar.tsx contains a button with the label 'Merge Layers and Export as PDF' that calls handleFlattenAndDownload\",\n      \"how_to_verify\": \"grep for 'Merge Layers and Export as PDF' in client/src/components/editor/Toolbar.tsx\"\n    },\n    {\n      \"id\": \"c7\",\n      \"description\": \"Toolbar.tsx contains a new Save button that imports and calls handleSave from useManualSave, disabled while isSaving is true\",\n      \"how_to_verify\": \"grep for 'useManualSave' in Toolbar.tsx; confirm button JSX includes isSaving as disabled condition and calls handleSave\"\n    }\n  ],\n  \"risks\": [\n    \"SET_PDF resets activeLayerId as well as layers/objects — after IMPORT_PROJECT the activeLayerId from the saved state will restore, but if the saved projectId referenced a layer that was deleted the editor could silently use a stale activeLayerId. Mitigation: IMPORT_PROJECT already sets activeLayerId from the saved payload so this is handled.\",\n    \"When creating a new server project from within Toolbar (no existing projectId), the overlayPdfFile is currently not uploaded in the useManualSave happy path — only the main PDF is uploaded. If the user had an overlay, it will be missing after the project is reopened. Mitigation: extend useManualSave to also call uploadFile for overlayPdfFile if docState.overlayPdfFile is non-null and dispatch SET_PDF_FILE_IDS accordingly.\",\n    \"useImport.ts (the 'Open' button) parses a projectId from the imported JSON and passes it through IMPORT_PROJECT. If that projectId belongs to another user's server project, the manual Save button would overwrite that project. Mitigation: strip projectId from locally-imported files, or validate ownership before saving.\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "89e3e7437330f0e91fee93e9c5c3636bfefebb75",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777746769.039894,
+  "updated_at": 1777746952.521354
+}

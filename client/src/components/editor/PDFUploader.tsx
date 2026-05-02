@@ -109,13 +109,13 @@ export const PDFUploader = () => {
         overlayPdfFile = new File([blob], "overlay.pdf", { type: "application/pdf" });
       }
 
-      dispatch({ type: 'IMPORT_PROJECT', payload: { ...state, projectId } });
       if (mainPdfFile) dispatch({ type: 'SET_PDF', payload: mainPdfFile });
       if (overlayPdfFile) dispatch({ type: 'SET_OVERLAY_PDF', payload: overlayPdfFile });
       dispatch({ type: 'SET_PDF_FILE_IDS', payload: { 
         pdfFileId: state.pdfFileId, 
         overlayPdfFileId: state.overlayPdfFileId 
       }});
+      dispatch({ type: 'IMPORT_PROJECT', payload: { ...state, projectId } });
       
     } catch (e: any) {
       toast({ variant: "destructive", title: "Failed to open project", description: e.message });

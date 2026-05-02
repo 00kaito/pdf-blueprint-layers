@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useDocument } from "@/lib/editor-context";
+import { useDocument, useUI } from "@/lib/editor-context";
 import { useSaveProject } from "./useProjects";
 
 export function useAutoSave() {
   const { state: docState } = useDocument();
+  const { state: uiState } = useUI();
   const saveProject = useSaveProject();
   const [isSaving, setIsSaving] = useState(false);
   const timeoutRef = useRef<any>(null);
@@ -26,9 +27,10 @@ export function useAutoSave() {
           autoNumbering: docState.autoNumbering,
           overlayOpacity: docState.overlayOpacity,
           pdfFileId: docState.pdfFileId,
-          overlayPdfFileId: docState.overlayPdfFileId
+          overlayPdfFileId: docState.overlayPdfFileId,
+          activeLayerId: uiState.activeLayerId
         };
-        await saveProject.mutateAsync({ id: docState.projectId!, state: payload });
+        await saveProject.mutateAsync({ id: docState.projectId!, state: payload as any });
       } catch (e) {
         console.error("Auto-save failed", e);
       } finally {

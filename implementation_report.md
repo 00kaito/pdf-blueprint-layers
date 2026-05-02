@@ -1,22 +1,25 @@
 # Implementation Report — Iteration 1
 
 ## Changes made
-- **Added `RESET_EDITOR` action**: Defined a new action type in `client/src/lib/types.ts` to allow resetting the editor state.
-- **Implemented `RESET_EDITOR` reducer case**: Added logic in `client/src/lib/editor-context.tsx` to clear all document data while preserving UI state, which triggers the navigation back to the project list (PDFUploader) in `home.tsx`.
-- **Created `ShareProjectDialog` component**: Extracted the sharing logic into a reusable component in `client/src/components/editor/ShareProjectDialog.tsx`.
-- **Updated `Toolbar` component**:
-    - Added a **"Projects"** button (Back button) that dispatches `RESET_EDITOR`.
-    - Added a **"Share"** button (visible only for cloud projects) that opens the `ShareProjectDialog`.
-    - Enhanced the **auto-save status indicator** to show a `Check` icon and "Saved" text when changes are successfully persisted to the server.
+- **Fixed project reload bug**: Reordered dispatches in `PDFUploader.tsx`'s `handleOpenProject` to ensure `IMPORT_PROJECT` is called last, preventing `SET_PDF` from wiping restored layers and objects.
+- **Created `useManualSave` hook**: Implemented a new hook in `client/src/hooks/useManualSave.ts` that handles saving the project to the server. It supports both updating existing projects and creating new ones (including PDF uploads) if the project hasn't been saved to the server yet.
+- **Updated project schema**: Added `activeLayerId` to `projectStateSchema` in `shared/schema.ts` to ensure the active layer is preserved across sessions.
+- **Enhanced auto-save**: Updated `client/src/hooks/useAutoSave.ts` to also include `activeLayerId` in the auto-save payload for consistency.
+- **Updated Toolbar**:
+    - Renamed "Save" button to "Export Project Files".
+    - Renamed "Export PDF" button to "Merge Layers and Export as PDF".
+    - Added a new "Save" button that utilizes the `useManualSave` hook, with a loading indicator and conditional visibility (only shows when a PDF is loaded).
 
 ## Files affected
-- CREATED: `client/src/components/editor/ShareProjectDialog.tsx`
-- MODIFIED: `client/src/lib/types.ts`
-- MODIFIED: `client/src/lib/editor-context.tsx`
+- CREATED: `client/src/hooks/useManualSave.ts`
+- MODIFIED: `client/src/components/editor/PDFUploader.tsx`
 - MODIFIED: `client/src/components/editor/Toolbar.tsx`
+- MODIFIED: `client/src/hooks/useAutoSave.ts`
+- MODIFIED: `shared/schema.ts`
 
 ## Deviations from plan
-None.
+- Also updated `shared/schema.ts` to include `activeLayerId`, which was necessary to fulfill the risk mitigation mentioned in the plan and provide a better UX.
+- Also updated `client/src/hooks/useAutoSave.ts` to include `activeLayerId` for consistency with the new manual save behavior.
 
 ## Potential issues
-None.
+None. The manual Save button provides a way to create server-side projects for PDFs that were opened locally but not yet linked to a project ID.

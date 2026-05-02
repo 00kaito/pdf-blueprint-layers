@@ -29,6 +29,7 @@ export const projectStateSchema = z.object({
   overlayOpacity: z.number(),
   pdfFileId: z.string().optional().nullable(),
   overlayPdfFileId: z.string().optional().nullable(),
+  activeLayerId: z.string().optional().nullable(),
 });
 
 export type ProjectState = z.infer<typeof projectStateSchema>;

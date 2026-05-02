@@ -11,6 +11,7 @@ import {Slider} from '@/components/ui/slider';
 import {Label} from "@/components/ui/label";
 import {useExport} from '@/hooks/useExport';
 import {useImport} from '@/hooks/useImport';
+import {useManualSave} from '@/hooks/useManualSave';
 import {ShareProjectDialog} from './ShareProjectDialog';
 
 export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
@@ -18,6 +19,7 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   const { state: uiState } = useUI();
   const { handleFlattenAndDownload, handleExportProject } = useExport();
   const { handleFileImport } = useImport();
+  const { handleSave, isSaving: isManualSaving } = useManualSave();
   const dirInputRef = React.useRef<HTMLInputElement>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
@@ -154,7 +156,14 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           </Button>
         )}
 
-        <Button variant="outline" size="sm" onClick={handleExportProject}><Save className="w-4 h-4 mr-2" />Save</Button>
+        {docState.pdfFile && (
+          <Button variant="outline" size="sm" onClick={handleSave} disabled={isManualSaving}>
+            {isManualSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Save
+          </Button>
+        )}
+
+        <Button variant="outline" size="sm" onClick={handleExportProject}><Save className="w-4 h-4 mr-2" />Export Project Files</Button>
         <Button variant="outline" size="sm" asChild>
           <label htmlFor="project-upload" className="cursor-pointer">
             <FolderOpen className="w-4 h-4 mr-2" />Open
@@ -197,7 +206,7 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           </PopoverContent>
         </Popover>
 
-        <Button size="sm" onClick={handleFlattenAndDownload}><Download className="w-4 h-4 mr-2" />Export PDF</Button>
+        <Button size="sm" onClick={handleFlattenAndDownload}><Download className="w-4 h-4 mr-2" />Merge Layers and Export as PDF</Button>
       </div>
 
       <ShareProjectDialog 
