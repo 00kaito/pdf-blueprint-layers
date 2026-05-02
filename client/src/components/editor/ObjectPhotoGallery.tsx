@@ -9,14 +9,28 @@ import {
 } from '@/components/ui/dialog';
 import { Camera, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { compressImage } from '@/core/image-compress';
+import { useUploadFile } from '@/hooks/useProjects';
 
 interface ObjectPhotoGalleryProps {
   objectId: string;
   photos: string[];
 }
 
+const dataUrlToFile = (dataUrl: string, filename: string): File => {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
 export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId, photos }) => {
-  const { dispatch } = useDocument();
+  const { state, dispatch } = useDocument();
+  const uploadFile = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -25,12 +39,22 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
     for (const file of files) {
       try {
         const photoDataUrl = await compressImage(file);
+        
+        // Convert data URL back to File for upload
+        const photoFile = dataUrlToFile(photoDataUrl, file.name);
+        
+        // Upload to server
+        const result = await uploadFile.mutateAsync({ 
+          file: photoFile, 
+          projectId: state.projectId || undefined 
+        });
+
         dispatch({
           type: 'ADD_OBJECT_PHOTO',
-          payload: { id: objectId, photoDataUrl },
+          payload: { id: objectId, photoDataUrl: result.url },
         });
       } catch (error) {
-        console.error('Failed to compress image:', error);
+        console.error('Failed to upload image:', error);
       }
     }
     // Reset input

@@ -1,0 +1,61 @@
+{
+  "summary": "Photos are stored as base64 data URLs inline in EditorObject.photos[], causing the PUT /api/projects/:id JSON body to exceed tens of MB when many photos exist. Fix: upload each photo immediately to the existing /api/files endpoint on add, and store only the lightweight /api/files/:fileId URL reference in state.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Upload photo to server on add, store URL reference",
+      "description": "In ObjectPhotoGallery.tsx, replace the current flow (compress → dispatch base64 to state) with: compress → convert data URL to File → POST /api/files → dispatch /api/files/:fileId URL to state. Import useUploadFile from useProjects and useDocument to access docState.projectId. Add a local dataUrlToFile helper. Wrap in try/catch and show a console error on failure so the input is always reset. Remove the useUploadFile import from anywhere else if needed — but it already exists there.",
+      "files_affected": [
+        "client/src/components/editor/ObjectPhotoGallery.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Extend export toDataUrl helper to fetch /api/files/ URLs",
+      "description": "In useExport.ts, inside handleExportProject, extend the toDataUrl helper to also handle strings that start with '/api/files/' by calling fetch(content) the same way it already handles 'blob:' URLs. The existing photos mapping (obj.photos.map(photo => toDataUrl(photo))) will then correctly embed server-side photos as base64 data URLs in the exported ZIP bundle.",
+      "files_affected": [
+        "client/src/hooks/useExport.ts"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "ObjectPhotoGallery.tsx handleFileChange calls POST /api/files for each selected photo and dispatches a string matching /^\\/api\\/files\\/[a-f0-9-]+$/ as photoDataUrl — never a data:image base64 string",
+      "how_to_verify": "Read ObjectPhotoGallery.tsx: confirm dispatch payload contains the fileId URL string returned from uploadFile.mutateAsync, not the result of compressImage directly"
+    },
+    {
+      "id": "c2",
+      "description": "ObjectPhotoGallery.tsx imports and calls useUploadFile from @/hooks/useProjects and useDocument from @/lib/editor-context to obtain docState.projectId",
+      "how_to_verify": "Read ObjectPhotoGallery.tsx: imports section and hook call sites both present"
+    },
+    {
+      "id": "c3",
+      "description": "ObjectPhotoGallery.tsx contains a local helper function (e.g. dataUrlToFile) that converts a base64 data URL string to a File object for upload",
+      "how_to_verify": "Read ObjectPhotoGallery.tsx: function exists and is called between compressImage and uploadFile.mutateAsync"
+    },
+    {
+      "id": "c4",
+      "description": "useExport.ts toDataUrl helper branch for '/api/files/' strings uses fetch(content) followed by FileReader.readAsDataURL, identical in structure to the existing 'blob:' branch",
+      "how_to_verify": "Read useExport.ts handleExportProject: toDataUrl contains an else-if (or combined condition) for content.startsWith('/api/files/')"
+    },
+    {
+      "id": "c5",
+      "description": "The existing 'blob:' branch in useExport.ts toDataUrl is not modified",
+      "how_to_verify": "Read useExport.ts: blob: handling block is unchanged from current implementation"
+    },
+    {
+      "id": "c6",
+      "description": "Photos with legacy base64 data URL values still render correctly in the gallery (backward compat: img src accepts both data: URLs and /api/files/ paths)",
+      "how_to_verify": "ObjectPhotoGallery.tsx img src={photo} is unchanged — no conditional rendering based on URL type"
+    }
+  ],
+  "risks": [
+    "Photos added while the user session is expired or unauthenticated will fail silently — the POST /api/files returns 401 and the photo is not added; user sees no feedback unless an error toast is wired up",
+    "Existing projects saved before this fix still have base64 data URLs in their photos arrays in the database — those projects continue to work (img src renders data: URLs correctly) but the large save payload issue recurs if the user saves again without re-adding photos; a one-time migration is not included in this plan",
+    "Sequential upload of many photos (for loop with await) is slow on low-bandwidth connections — parallel upload with Promise.all would be faster but risks overloading the server with simultaneous multipart requests; sequential is the safer default",
+    "useUploadFile uses fetch without the apiRequest wrapper, meaning CSRF protection (if ever added) would not apply to photo uploads"
+  ]
+}

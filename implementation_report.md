@@ -1,17 +1,22 @@
-# Implementation Report — Iteration 3
+# Implementation Report — Iteration 1
 
 ## Changes made
-- **Verified Core Implementation**: Confirmed that `useTouchGestures` hook, `UIState` updates, `editorReducer` logic, and `MobileBottomBar` modes were correctly implemented in previous iterations.
-- **Improved Mobile Rotation**: Added `tE.preventDefault()` to the `handleTouchMove` event in `ObjectRenderer.tsx` to prevent page scrolling while rotating objects on touch devices.
-- **Explicit Mode Handling**: Updated `MobileBottomBar.tsx` to use an explicit conditional branch for `mode === 'details'`, strictly adhering to the implementation plan.
-- **Final Validation**: Manually verified that `SELECT_OBJECT` correctly clears `objectDetailsOpen` when the payload is null, and that the back button in `MobileBottomBar` handles transitions between 'details', 'edit', and 'list' modes as specified.
+- **Step 1: Upload photo to server on add**:
+    - Modified `client/src/components/editor/ObjectPhotoGallery.tsx` to upload photos to the `/api/files` endpoint immediately after compression.
+    - Added a `dataUrlToFile` helper to convert compressed base64 data URLs back to `File` objects for multipart upload.
+    - Integrated `useUploadFile` hook and `useDocument` to obtain `projectId` for the upload.
+    - Updated `handleFileChange` to dispatch the server-returned URL (`/api/files/:fileId`) instead of the base64 string.
+- **Step 2: Extend export toDataUrl helper**:
+    - Modified `client/src/hooks/useExport.ts` to handle `/api/files/` URLs during the export process.
+    - Updated the `toDataUrl` helper to fetch server-side photos and convert them back to base64 data URLs, ensuring they are correctly embedded in the exported ZIP bundle.
+    - Maintained backward compatibility for `blob:` URLs and legacy base64 data URLs.
 
 ## Files affected
-- MODIFIED: `client/src/components/editor/Canvas/ObjectRenderer.tsx`
-- MODIFIED: `client/src/components/editor/MobileBottomBar.tsx`
+- MODIFIED: `client/src/components/editor/ObjectPhotoGallery.tsx`
+- MODIFIED: `client/src/hooks/useExport.ts`
 
 ## Deviations from plan
-None. The core requirements were already present, so this iteration focused on fine-tuning and verifying the "Unfinished criteria" from the previous review.
+None
 
 ## Potential issues
-None.
+None. The build succeeded and the logic follows the requested architectural changes. Existing projects with base64 photos will continue to render correctly and will be handled by the export process.

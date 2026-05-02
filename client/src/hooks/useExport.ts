@@ -35,7 +35,7 @@ export const useExport = () => {
             return assetCache.get(content)!;
         }
 
-        if (content.startsWith('blob:')) {
+        if (content.startsWith('blob:') || content.startsWith('/api/files/')) {
             try {
                 const response = await fetch(content);
                 const blob = await response.blob();
@@ -50,7 +50,7 @@ export const useExport = () => {
                     reader.readAsDataURL(blob);
                 });
             } catch (e) {
-                console.error("Failed to fetch blob", e);
+                console.error("Failed to fetch content", e);
                 return content;
             }
         }
