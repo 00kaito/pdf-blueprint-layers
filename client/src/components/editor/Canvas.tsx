@@ -14,10 +14,12 @@ import {DrawingLayer} from './Canvas/DrawingLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import pdfjsWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Set worker URL to local Vite asset
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
+// Set worker URL to local Vite asset using the standard URL constructor
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 export const Canvas = () => {
   const { state: docState, dispatch } = useDocument();

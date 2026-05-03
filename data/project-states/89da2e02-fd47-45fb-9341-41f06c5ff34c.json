@@ -54,8 +54,8 @@
       "id": "11af3ae5-af8c-41e9-911c-118638c45bfc",
       "type": "image",
       "name": "",
-      "x": 69.70964435778167,
-      "y": 32.12729476125617,
+      "x": 70.89370382762213,
+      "y": 32.07588059115282,
       "width": 5,
       "height": 5,
       "layerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a",
@@ -65,7 +65,9 @@
       "status": "CABLE_PULLED",
       "statusUpdatedAt": "2026-05-02T19:22:05.014Z",
       "statusUpdatedBy": "Przemek",
-      "photos": []
+      "photos": [
+        "/api/files/44553354-42d4-4f39-b722-f85dad0eaa27"
+      ]
     },
     {
       "id": "a8a56478-4fd9-4d31-999b-82ab48884d2e",
@@ -124,14 +126,7 @@
       "status": "CABLE_PULLED",
       "statusUpdatedAt": "2026-05-02T19:20:46.574Z",
       "statusUpdatedBy": "Przemek",
-      "photos": [
-        "/api/files/62e4554a-3ada-48be-88ea-2b90e2e71a97",
-        "/api/files/60401778-b500-4d7b-b92b-f121c499847e",
-        "/api/files/2feca732-72e1-419a-85b0-9e146470e2be",
-        "/api/files/1cce4f4d-b2e6-46c8-80ed-f37fe10cb2a0",
-        "/api/files/8d5253df-b327-4cd3-8e0f-43c5f41d42cf",
-        "/api/files/32759f2e-573b-45a4-a194-a99e4432269f"
-      ]
+      "photos": []
     },
     {
       "id": "80829a67-d374-4bed-b671-bdd5d75e0481",
@@ -154,7 +149,7 @@
       "type": "image",
       "name": "",
       "x": 118.2,
-      "y": 63.05,
+      "y": 63.04999999999999,
       "width": 5,
       "height": 5,
       "layerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a",
@@ -183,7 +178,7 @@
       "type": "image",
       "name": "",
       "x": 179.7,
-      "y": 31.25,
+      "y": 31.250000000000004,
       "width": 5,
       "height": 5,
       "layerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a",
@@ -192,7 +187,10 @@
       "color": "#1c71d8",
       "status": "CABLE_PULLED",
       "statusUpdatedAt": "2026-05-02T19:21:01.719Z",
-      "statusUpdatedBy": "Przemek"
+      "statusUpdatedBy": "Przemek",
+      "photos": [
+        "/api/files/99d6d4a0-9742-4a27-a5fd-0b412c0da152"
+      ]
     },
     {
       "id": "1a822350-1c34-43ca-8446-5fd821d9bd45",
@@ -221,7 +219,10 @@
       "color": "#1c71d8",
       "status": "CABLE_PULLED",
       "statusUpdatedAt": "2026-05-02T19:20:35.783Z",
-      "statusUpdatedBy": "Przemek"
+      "statusUpdatedBy": "Przemek",
+      "photos": [
+        "/api/files/993f5478-5c24-49b4-8000-83e39369d766"
+      ]
     },
     {
       "id": "1eea58cd-7fe0-472d-8e7a-5d10139781a9",
@@ -240,7 +241,7 @@
       "id": "df55e9bc-e537-4704-8403-e79682a6e605",
       "type": "image",
       "name": "TV + RALLY BAR",
-      "x": 45.2,
+      "x": 45.68780487804878,
       "y": 49.95,
       "width": 5,
       "height": 5,
@@ -250,7 +251,10 @@
       "color": "#26a269",
       "status": "CABLE_PULLED",
       "statusUpdatedAt": "2026-05-02T19:20:37.998Z",
-      "statusUpdatedBy": "Przemek"
+      "statusUpdatedBy": "Przemek",
+      "photos": [
+        "/api/files/94bc1be6-d76b-4a90-a223-d2baa0a88351"
+      ]
     },
     {
       "id": "fd41c677-a129-4b1d-ae28-d4efa2a72c76",
@@ -266,14 +270,17 @@
       "color": "#1c71d8",
       "status": "CABLE_PULLED",
       "statusUpdatedAt": "2026-05-02T19:21:03.230Z",
-      "statusUpdatedBy": "Przemek"
+      "statusUpdatedBy": "Przemek",
+      "photos": [
+        "/api/files/45ba8ac5-26d2-4cf0-9093-565fe0199fbf"
+      ]
     },
     {
       "id": "044c72a8-ba96-4963-9eb8-bdc66fc82cc3",
       "type": "image",
       "name": "",
-      "x": 178.7,
-      "y": 103.95,
+      "x": 161.5557602475679,
+      "y": 106.12321348974493,
       "width": 5,
       "height": 5,
       "layerId": "20eceb77-9fd5-4cf2-a37b-3b75edd2c3c2",
@@ -350,41 +357,56 @@
       "id": "16ec3470-f533-4020-9e84-4c9f9c3a0811",
       "type": "image",
       "name": "Gggggh",
-      "x": 133.1,
-      "y": 173.35,
+      "x": 132.47007874015748,
+      "y": 173.03503937007872,
       "width": 5,
       "height": 5,
       "layerId": "9b470038-4221-467b-b82d-377f331b9f4b",
       "content": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48IS0tIFVwbG9hZGVkIHRvOiBTVkcgUmVwbywgd3d3LnN2Z3JlcG8uY29tLCBHZW5lcmF0b3I6IFNWRyBSZXBvIE1peGVyIFRvb2xzIC0tPgo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDI0IDI0IiBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxzdHlsZT4uY2xzLTF7ZmlsbDpub25lO3N0cm9rZTojMDIwMjAyO3N0cm9rZS1taXRlcmxpbWl0OjEwO3N0cm9rZS13aWR0aDoxLjkxcHg7fTwvc3R5bGU+PC9kZWZzPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMS41IiB5PSI0LjM2IiB3aWR0aD0iMjEiIGhlaWdodD0iMTUuMjciIHJ4PSIxLjkxIi8+PGxpbmUgY2xhc3M9ImNscy0xIiB4MT0iMS41IiB5MT0iOC4xOCIgeDI9IjIyLjUiIHkyPSI4LjE4Ii8+PGNpcmNsZSBjbGFzcz0iY2xzLTEiIGN4PSIxNi43NyIgY3k9IjEzLjkxIiByPSIxLjkxIi8+PHBvbHlsaW5lIGNsYXNzPSJjbHMtMSIgcG9pbnRzPSI1LjMyIDE2Ljc3IDUuMzIgMTMuOTEgMTQuODYgMTMuOTEiLz48bGluZSBjbGFzcz0iY2xzLTEiIHgxPSI5LjE0IiB5MT0iMTYuNzciIHgyPSI5LjE0IiB5Mj0iMTMuOTEiLz48L3N2Zz4=",
       "rotation": 0,
       "color": "#ed333b",
-      "status": "TERMINATED"
+      "status": "CABLE_PULLED",
+      "statusUpdatedAt": "2026-05-02T21:43:26.740Z",
+      "statusUpdatedBy": "Ipad",
+      "photos": [
+        "/api/files/f21d8383-f267-468a-9a1a-8836b2662e55"
+      ]
     },
     {
       "id": "352b1610-d285-4144-a30f-0ee73a9adc0d",
       "type": "image",
       "name": "",
       "x": 124.3,
-      "y": 169.45,
+      "y": 169.44999999999996,
       "width": 5,
       "height": 5,
       "layerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a",
       "content": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KDTwhLS0gVXBsb2FkZWQgdG86IFNWRyBSZXBvLCB3d3cuc3ZncmVwby5jb20sIEdlbmVyYXRvcjogU1ZHIFJlcG8gTWl4ZXIgVG9vbHMgLS0+DQo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbD0ibm9uZSI+DQoNCjxnIGNsaXAtcGF0aD0idXJsKCNhKSI+DQoNCjxwYXRoIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2Utd2lkdGg9IjEyIiBkPSJNMTIyIDQ4SDM0Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjcyYzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoODhjNi42MjcgMCAxMi01LjM3MyAxMi0xMlY2MGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyWm0xMiA0MCAzNi0yOHY3MmwtMzYtMjgiLz4NCg0KPHBhdGggZmlsbD0iIzAwMDAwMCIgZD0iTTQ5IDk4YTMgMyAwIDAgMC0zIDN2MjRhMi45OTggMi45OTggMCAwIDAgMyAzIDIuOTk5IDIuOTk5IDAgMCAwIDMtM3YtNC43NThsNi44NzkgNi44NzlhMi45OTggMi45OTggMCAxIDAgNC4yNDItNC4yNDJsLTcuMDktNy4wOWM0LjQzNS0uNTQgNy45Ny00LjIxOSA3Ljk3LTguNzg5IDAtNC45MzUtNC4wNjYtOS05LTlINDlabTI2IDBjLTMuMjc4IDAtNiAyLjcyMi02IDZ2MThjMCAzLjI3OCAyLjcyMiA2IDYgNmg5YTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTIuOTk5IDIuOTk5IDAgMCAwIDg0IDEyMmgtOXYtNmgzYTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTIuOTk5IDIuOTk5IDAgMCAwIDc4IDExMGgtM3YtNmg5YTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTMgMyAwIDAgMCA4NCA5OGgtOVptMjYgMGMtNC45MzUgMC05IDQuMDY1LTkgOXYxMmMwIDQuOTM1IDQuMDY1IDkgOSA5aDZjLjc5NiAwIDEuNTU5LS4zMTYgMi4xMjEtLjg3OWEyLjk5NiAyLjk5NiAwIDAgMCAwLTQuMjQyQTIuOTk2IDIuOTk2IDAgMCAwIDEwNyAxMjJoLTZjLTEuNjkyIDAtMy0xLjMwOC0zLTN2LTEyYzAtMS42OTIgMS4zMDgtMyAzLTNoNmMuNzk2IDAgMS41NTktLjMxNiAyLjEyMS0uODc5YTIuOTk2IDIuOTk2IDAgMCAwIDAtNC4yNDJBMi45OTggMi45OTggMCAwIDAgMTA3IDk4aC02Wm0tNDkgNmgzYzEuNjkyIDAgMyAxLjMwOCAzIDNzLTEuMzA4IDMtMyAzaC0zdi02WiIvPg0KDQo8L2c+DQoNCjxkZWZzPg0KDQo8Y2xpcFBhdGggaWQ9ImEiPg0KDQo8cGF0aCBmaWxsPSIjZmZmZmZmIiBkPSJNMCAwaDE5MnYxOTJIMHoiLz4NCg0KPC9jbGlwUGF0aD4NCg0KPC9kZWZzPg0KDQo8L3N2Zz4=",
       "rotation": -45,
-      "color": "#1c71d8"
+      "color": "#1c71d8",
+      "status": "CABLE_PULLED",
+      "statusUpdatedAt": "2026-05-02T21:44:33.791Z",
+      "statusUpdatedBy": "Ipad"
     },
     {
       "id": "69f92c06-dc32-4dc7-8ca9-382458566fb4",
       "type": "image",
       "name": "",
-      "x": 124.4,
+      "x": 124.39999999999999,
       "y": 165.05000000000004,
       "width": 5,
       "height": 5,
       "layerId": "9b470038-4221-467b-b82d-377f331b9f4b",
       "content": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48IS0tIFVwbG9hZGVkIHRvOiBTVkcgUmVwbywgd3d3LnN2Z3JlcG8uY29tLCBHZW5lcmF0b3I6IFNWRyBSZXBvIE1peGVyIFRvb2xzIC0tPgo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDI0IDI0IiBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxzdHlsZT4uY2xzLTF7ZmlsbDpub25lO3N0cm9rZTojMDIwMjAyO3N0cm9rZS1taXRlcmxpbWl0OjEwO3N0cm9rZS13aWR0aDoxLjkxcHg7fTwvc3R5bGU+PC9kZWZzPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMS41IiB5PSI0LjM2IiB3aWR0aD0iMjEiIGhlaWdodD0iMTUuMjciIHJ4PSIxLjkxIi8+PGxpbmUgY2xhc3M9ImNscy0xIiB4MT0iMS41IiB5MT0iOC4xOCIgeDI9IjIyLjUiIHkyPSI4LjE4Ii8+PGNpcmNsZSBjbGFzcz0iY2xzLTEiIGN4PSIxNi43NyIgY3k9IjEzLjkxIiByPSIxLjkxIi8+PHBvbHlsaW5lIGNsYXNzPSJjbHMtMSIgcG9pbnRzPSI1LjMyIDE2Ljc3IDUuMzIgMTMuOTEgMTQuODYgMTMuOTEiLz48bGluZSBjbGFzcz0iY2xzLTEiIHgxPSI5LjE0IiB5MT0iMTYuNzciIHgyPSI5LjE0IiB5Mj0iMTMuOTEiLz48L3N2Zz4=",
       "rotation": 90,
-      "color": "#ed333b"
+      "color": "#ed333b",
+      "photos": [
+        "/api/files/aabe1f7e-6226-45d1-a097-97dcdab6eaac",
+        "/api/files/7f259e16-b13c-4680-af47-f5f20826ca26"
+      ],
+      "status": "CABLE_PULLED",
+      "statusUpdatedAt": "2026-05-02T21:47:53.759Z",
+      "statusUpdatedBy": "Ipad"
     },
     {
       "id": "8a3fdfe4-a6c9-4faa-a377-8e43879d9333",
@@ -419,8 +441,8 @@
       "id": "641d4c33-8b8f-4f2f-8944-7d6694872016",
       "type": "image",
       "name": "",
-      "x": 119.39999999999999,
-      "y": 154.55,
+      "x": 119.24251968503937,
+      "y": 153.76259842519687,
       "width": 5,
       "height": 5,
       "layerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a",
@@ -429,7 +451,10 @@
       "color": "#1c71d8",
       "status": "CABLE_PULLED",
       "statusUpdatedAt": "2026-05-02T19:20:52.669Z",
-      "statusUpdatedBy": "Przemek"
+      "statusUpdatedBy": "Przemek",
+      "photos": [
+        "/api/files/68430ddf-4c5d-430d-85d1-259fcbb37ed3"
+      ]
     },
     {
       "id": "f84507d4-1e41-4d53-a22f-b33c14294058",
@@ -1066,13 +1091,19 @@
       "type": "image",
       "name": "",
       "x": 119.9,
-      "y": 226.45,
+      "y": 226.44999999999996,
       "width": 5,
       "height": 5,
       "layerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a",
       "content": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KDTwhLS0gVXBsb2FkZWQgdG86IFNWRyBSZXBvLCB3d3cuc3ZncmVwby5jb20sIEdlbmVyYXRvcjogU1ZHIFJlcG8gTWl4ZXIgVG9vbHMgLS0+DQo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbD0ibm9uZSI+DQoNCjxnIGNsaXAtcGF0aD0idXJsKCNhKSI+DQoNCjxwYXRoIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2Utd2lkdGg9IjEyIiBkPSJNMTIyIDQ4SDM0Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjcyYzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoODhjNi42MjcgMCAxMi01LjM3MyAxMi0xMlY2MGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyWm0xMiA0MCAzNi0yOHY3MmwtMzYtMjgiLz4NCg0KPHBhdGggZmlsbD0iIzAwMDAwMCIgZD0iTTQ5IDk4YTMgMyAwIDAgMC0zIDN2MjRhMi45OTggMi45OTggMCAwIDAgMyAzIDIuOTk5IDIuOTk5IDAgMCAwIDMtM3YtNC43NThsNi44NzkgNi44NzlhMi45OTggMi45OTggMCAxIDAgNC4yNDItNC4yNDJsLTcuMDktNy4wOWM0LjQzNS0uNTQgNy45Ny00LjIxOSA3Ljk3LTguNzg5IDAtNC45MzUtNC4wNjYtOS05LTlINDlabTI2IDBjLTMuMjc4IDAtNiAyLjcyMi02IDZ2MThjMCAzLjI3OCAyLjcyMiA2IDYgNmg5YTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTIuOTk5IDIuOTk5IDAgMCAwIDg0IDEyMmgtOXYtNmgzYTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTIuOTk5IDIuOTk5IDAgMCAwIDc4IDExMGgtM3YtNmg5YTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTMgMyAwIDAgMCA4NCA5OGgtOVptMjYgMGMtNC45MzUgMC05IDQuMDY1LTkgOXYxMmMwIDQuOTM1IDQuMDY1IDkgOSA5aDZjLjc5NiAwIDEuNTU5LS4zMTYgMi4xMjEtLjg3OWEyLjk5NiAyLjk5NiAwIDAgMCAwLTQuMjQyQTIuOTk2IDIuOTk2IDAgMCAwIDEwNyAxMjJoLTZjLTEuNjkyIDAtMy0xLjMwOC0zLTN2LTEyYzAtMS42OTIgMS4zMDgtMyAzLTNoNmMuNzk2IDAgMS41NTktLjMxNiAyLjEyMS0uODc5YTIuOTk2IDIuOTk2IDAgMCAwIDAtNC4yNDJBMi45OTggMi45OTggMCAwIDAgMTA3IDk4aC02Wm0tNDkgNmgzYzEuNjkyIDAgMyAxLjMwOCAzIDNzLTEuMzA4IDMtMyAzaC0zdi02WiIvPg0KDQo8L2c+DQoNCjxkZWZzPg0KDQo8Y2xpcFBhdGggaWQ9ImEiPg0KDQo8cGF0aCBmaWxsPSIjZmZmZmZmIiBkPSJNMCAwaDE5MnYxOTJIMHoiLz4NCg0KPC9jbGlwUGF0aD4NCg0KPC9kZWZzPg0KDQo8L3N2Zz4=",
       "rotation": 225,
-      "color": "#1c71d8"
+      "color": "#1c71d8",
+      "status": "CABLE_PULLED",
+      "statusUpdatedAt": "2026-05-02T21:41:28.040Z",
+      "statusUpdatedBy": "Ipad",
+      "photos": [
+        "/api/files/198f6cfa-aff8-4591-91a0-d156bd6d8cf9"
+      ]
     },
     {
       "id": "975760a5-d6ab-4ba8-8eb7-ed4a9e0498bc",
@@ -1091,14 +1122,20 @@
       "id": "1fd97bb7-0482-4feb-adb4-550e6844a7a9",
       "type": "image",
       "name": "",
-      "x": 108.6,
-      "y": 259.65,
+      "x": 108.75748031496062,
+      "y": 258.86259842519684,
       "width": 5,
       "height": 5,
       "layerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a",
       "content": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KDTwhLS0gVXBsb2FkZWQgdG86IFNWRyBSZXBvLCB3d3cuc3ZncmVwby5jb20sIEdlbmVyYXRvcjogU1ZHIFJlcG8gTWl4ZXIgVG9vbHMgLS0+DQo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbD0ibm9uZSI+DQoNCjxnIGNsaXAtcGF0aD0idXJsKCNhKSI+DQoNCjxwYXRoIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2Utd2lkdGg9IjEyIiBkPSJNMTIyIDQ4SDM0Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjcyYzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoODhjNi42MjcgMCAxMi01LjM3MyAxMi0xMlY2MGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyWm0xMiA0MCAzNi0yOHY3MmwtMzYtMjgiLz4NCg0KPHBhdGggZmlsbD0iIzAwMDAwMCIgZD0iTTQ5IDk4YTMgMyAwIDAgMC0zIDN2MjRhMi45OTggMi45OTggMCAwIDAgMyAzIDIuOTk5IDIuOTk5IDAgMCAwIDMtM3YtNC43NThsNi44NzkgNi44NzlhMi45OTggMi45OTggMCAxIDAgNC4yNDItNC4yNDJsLTcuMDktNy4wOWM0LjQzNS0uNTQgNy45Ny00LjIxOSA3Ljk3LTguNzg5IDAtNC45MzUtNC4wNjYtOS05LTlINDlabTI2IDBjLTMuMjc4IDAtNiAyLjcyMi02IDZ2MThjMCAzLjI3OCAyLjcyMiA2IDYgNmg5YTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTIuOTk5IDIuOTk5IDAgMCAwIDg0IDEyMmgtOXYtNmgzYTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTIuOTk5IDIuOTk5IDAgMCAwIDc4IDExMGgtM3YtNmg5YTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTMgMyAwIDAgMCA4NCA5OGgtOVptMjYgMGMtNC45MzUgMC05IDQuMDY1LTkgOXYxMmMwIDQuOTM1IDQuMDY1IDkgOSA5aDZjLjc5NiAwIDEuNTU5LS4zMTYgMi4xMjEtLjg3OWEyLjk5NiAyLjk5NiAwIDAgMCAwLTQuMjQyQTIuOTk2IDIuOTk2IDAgMCAwIDEwNyAxMjJoLTZjLTEuNjkyIDAtMy0xLjMwOC0zLTN2LTEyYzAtMS42OTIgMS4zMDgtMyAzLTNoNmMuNzk2IDAgMS41NTktLjMxNiAyLjEyMS0uODc5YTIuOTk2IDIuOTk2IDAgMCAwIDAtNC4yNDJBMi45OTggMi45OTggMCAwIDAgMTA3IDk4aC02Wm0tNDkgNmgzYzEuNjkyIDAgMyAxLjMwOCAzIDNzLTEuMzA4IDMtMyAzaC0zdi02WiIvPg0KDQo8L2c+DQoNCjxkZWZzPg0KDQo8Y2xpcFBhdGggaWQ9ImEiPg0KDQo8cGF0aCBmaWxsPSIjZmZmZmZmIiBkPSJNMCAwaDE5MnYxOTJIMHoiLz4NCg0KPC9jbGlwUGF0aD4NCg0KPC9kZWZzPg0KDQo8L3N2Zz4=",
       "rotation": 225,
-      "color": "#1c71d8"
+      "color": "#1c71d8",
+      "status": "CABLE_PULLED",
+      "statusUpdatedAt": "2026-05-02T21:41:55.221Z",
+      "statusUpdatedBy": "Ipad",
+      "photos": [
+        "/api/files/8ae0714c-e803-4fc0-b1e0-47191084f5b3"
+      ]
     },
     {
       "id": "9090a912-24ad-40da-b80b-43c370ecd4b2",
@@ -1286,8 +1323,8 @@
       "id": "423fabf4-dd86-46b2-94cd-fa13f6a94e44",
       "type": "image",
       "name": "",
-      "x": 169.79283752441407,
-      "y": 133.60717010498047,
+      "x": 160.7189045975848,
+      "y": 118.22389909697742,
       "width": 5,
       "height": 5,
       "layerId": "20eceb77-9fd5-4cf2-a37b-3b75edd2c3c2",
@@ -1361,6 +1398,21 @@
       "content": "circle",
       "rotation": 0,
       "status": "PLANNED"
+    },
+    {
+      "id": "5a12ad08-4a33-45fc-8806-3c0606c42030",
+      "type": "image",
+      "name": "",
+      "x": 176.6799363057325,
+      "y": 167.729754322111,
+      "width": 6.428571428571429,
+      "height": 5.357142857142858,
+      "layerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a",
+      "content": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KDTwhLS0gVXBsb2FkZWQgdG86IFNWRyBSZXBvLCB3d3cuc3ZncmVwby5jb20sIEdlbmVyYXRvcjogU1ZHIFJlcG8gTWl4ZXIgVG9vbHMgLS0+DQo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbD0ibm9uZSI+DQoNCjxnIGNsaXAtcGF0aD0idXJsKCNhKSI+DQoNCjxwYXRoIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2Utd2lkdGg9IjEyIiBkPSJNMTIyIDQ4SDM0Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjcyYzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoODhjNi42MjcgMCAxMi01LjM3MyAxMi0xMlY2MGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyWm0xMiA0MCAzNi0yOHY3MmwtMzYtMjgiLz4NCg0KPHBhdGggZmlsbD0iIzAwMDAwMCIgZD0iTTQ5IDk4YTMgMyAwIDAgMC0zIDN2MjRhMi45OTggMi45OTggMCAwIDAgMyAzIDIuOTk5IDIuOTk5IDAgMCAwIDMtM3YtNC43NThsNi44NzkgNi44NzlhMi45OTggMi45OTggMCAxIDAgNC4yNDItNC4yNDJsLTcuMDktNy4wOWM0LjQzNS0uNTQgNy45Ny00LjIxOSA3Ljk3LTguNzg5IDAtNC45MzUtNC4wNjYtOS05LTlINDlabTI2IDBjLTMuMjc4IDAtNiAyLjcyMi02IDZ2MThjMCAzLjI3OCAyLjcyMiA2IDYgNmg5YTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTIuOTk5IDIuOTk5IDAgMCAwIDg0IDEyMmgtOXYtNmgzYTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTIuOTk5IDIuOTk5IDAgMCAwIDc4IDExMGgtM3YtNmg5YTIuOTk5IDIuOTk5IDAgMCAwIDIuMTIxLTUuMTIxQTMgMyAwIDAgMCA4NCA5OGgtOVptMjYgMGMtNC45MzUgMC05IDQuMDY1LTkgOXYxMmMwIDQuOTM1IDQuMDY1IDkgOSA5aDZjLjc5NiAwIDEuNTU5LS4zMTYgMi4xMjEtLjg3OWEyLjk5NiAyLjk5NiAwIDAgMCAwLTQuMjQyQTIuOTk2IDIuOTk2IDAgMCAwIDEwNyAxMjJoLTZjLTEuNjkyIDAtMy0xLjMwOC0zLTN2LTEyYzAtMS42OTIgMS4zMDgtMyAzLTNoNmMuNzk2IDAgMS41NTktLjMxNiAyLjEyMS0uODc5YTIuOTk2IDIuOTk2IDAgMCAwIDAtNC4yNDJBMi45OTggMi45OTggMCAwIDAgMTA3IDk4aC02Wm0tNDkgNmgzYzEuNjkyIDAgMyAxLjMwOCAzIDNzLTEuMzA4IDMtMyAzaC0zdi02WiIvPg0KDQo8L2c+DQoNCjxkZWZzPg0KDQo8Y2xpcFBhdGggaWQ9ImEiPg0KDQo8cGF0aCBmaWxsPSIjZmZmZmZmIiBkPSJNMCAwaDE5MnYxOTJIMHoiLz4NCg0KPC9jbGlwUGF0aD4NCg0KPC9kZWZzPg0KDQo8L3N2Zz4=",
+      "rotation": 225,
+      "photos": [
+        "/api/files/daa11165-94eb-4e5f-8c04-b0c5fef27dec"
+      ]
     }
   ],
   "customIcons": [
@@ -1412,5 +1464,5 @@
   "overlayOpacity": 0.5,
   "pdfFileId": "bef7ae89-a95f-499e-9c4c-6a778d33b479",
   "overlayPdfFileId": null,
-  "activeLayerId": "71efbe1c-d0c0-48d2-9c83-2cfc3ff62138"
+  "activeLayerId": "b25aa212-f50d-44f6-a718-6d3c4ac5140a"
 }

@@ -7,13 +7,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Camera, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { compressImage } from '@/core/image-compress';
 import { useUploadFile } from '@/hooks/useProjects';
+import { Progress } from '@/components/ui/progress';
 
 interface ObjectPhotoGalleryProps {
   objectId: string;
   photos: string[];
+}
+
+interface UploadStatus {
+  fileName: string;
+  progress: number;
+  status: 'compressing' | 'uploading' | 'done' | 'error';
+  error?: string;
 }
 
 const dataUrlToFile = (dataUrl: string, filename: string): File => {
@@ -33,35 +41,76 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
   const uploadFile = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<Record<string, UploadStatus>>({});
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    console.log(`[PhotoGallery] Selected ${files.length} files`);
+    if (files.length === 0) return;
+
+    console.log(`[PhotoGallery] Starting upload for ${files.length} files`);
+    
     for (const file of files) {
+      const uploadId = `${Date.now()}-${file.name}`;
+      
+      setUploadQueue(prev => ({
+        ...prev,
+        [uploadId]: { fileName: file.name, progress: 10, status: 'compressing' }
+      }));
+
       try {
-        console.log(`[PhotoGallery] Compressing: ${file.name} (${file.size} bytes)`);
+        console.log(`[PhotoGallery] Stage 1: Compressing ${file.name}`);
         const photoDataUrl = await compressImage(file);
         
-        // Convert data URL back to File for upload
+        setUploadQueue(prev => ({
+          ...prev,
+          [uploadId]: { ...prev[uploadId], progress: 40, status: 'uploading' }
+        }));
+
         const photoFile = dataUrlToFile(photoDataUrl, file.name);
+        console.log(`[PhotoGallery] Stage 2: Uploading ${file.name} (Compressed: ${photoFile.size} bytes)`);
         
-        console.log(`[PhotoGallery] Uploading: ${file.name} (compressed to ${photoFile.size} bytes)`);
-        // Upload to server
         const result = await uploadFile.mutateAsync({ 
           file: photoFile, 
           projectId: state.projectId || undefined 
         });
 
-        console.log(`[PhotoGallery] Upload successful: ${result.url}`);
+        setUploadQueue(prev => ({
+          ...prev,
+          [uploadId]: { ...prev[uploadId], progress: 80, status: 'done' }
+        }));
+
+        console.log(`[PhotoGallery] Stage 3: Adding to project state: ${result.url}`);
         dispatch({
           type: 'ADD_OBJECT_PHOTO',
           payload: { id: objectId, photoDataUrl: result.url },
         });
-      } catch (error) {
-        console.error('[PhotoGallery] Failed to process/upload image:', error);
+
+        setUploadQueue(prev => ({
+          ...prev,
+          [uploadId]: { ...prev[uploadId], progress: 100 }
+        }));
+
+        setTimeout(() => {
+          setUploadQueue(prev => {
+            const next = { ...prev };
+            delete next[uploadId];
+            return next;
+          });
+        }, 2000);
+
+      } catch (error: any) {
+        console.error(`[PhotoGallery] Error processing ${file.name}:`, error);
+        setUploadQueue(prev => ({
+          ...prev,
+          [uploadId]: { 
+            ...prev[uploadId], 
+            status: 'error', 
+            error: error.message || 'Unknown error' 
+          }
+        }));
       }
     }
-    // Reset input
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -101,6 +150,16 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
     }
   };
 
+  const isUploading = Object.values(uploadQueue).some(item => item.status === 'compressing' || item.status === 'uploading');
+
+  const clearUpload = (id: string) => {
+    setUploadQueue(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -112,9 +171,10 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           variant="outline"
           size="icon"
           className="h-6 w-6"
+          disabled={isUploading}
           onClick={() => fileInputRef.current?.click()}
         >
-          <Plus className="h-3 w-3" />
+          {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
         </Button>
         <input
           type="file"
@@ -126,6 +186,44 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           {...({ capture: 'environment' } as any)}
         />
       </div>
+
+      {Object.keys(uploadQueue).length > 0 && (
+        <div className="space-y-2 border rounded-md p-2 bg-muted/50">
+          {Object.entries(uploadQueue).map(([id, item]) => (
+            <div key={id} className="space-y-1">
+              <div className="flex justify-between items-center text-[10px] font-medium">
+                <span className="truncate max-w-[150px]">{item.fileName}</span>
+                <div className="flex items-center gap-2">
+                  <span className={item.status === 'error' ? 'text-destructive' : 'text-primary'}>
+                    {item.status === 'compressing' && 'Compressing...'}
+                    {item.status === 'uploading' && 'Uploading...'}
+                    {item.status === 'done' && 'Ready!'}
+                    {item.status === 'error' && 'Failed'}
+                  </span>
+                  {item.status === 'error' && (
+                    <button 
+                      onClick={() => clearUpload(id)}
+                      className="p-0.5 hover:bg-destructive/10 rounded text-destructive"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <Progress 
+                value={item.progress} 
+                className={`h-1 ${item.status === 'error' ? '[&>div]:bg-destructive' : ''}`} 
+              />
+              {item.error && (
+                <div className="flex items-start gap-1 text-[9px] text-destructive leading-tight">
+                  <AlertCircle className="w-2 h-2 mt-0.5 shrink-0" />
+                  <span>{item.error}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2">
         {photos.map((photo, index) => (
@@ -150,7 +248,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
             </button>
           </div>
         ))}
-        {photos.length === 0 && (
+        {photos.length === 0 && !isUploading && (
           <div className="col-span-3 py-4 text-center text-xs text-muted-foreground italic border border-dashed rounded-md">
             No photos yet
           </div>

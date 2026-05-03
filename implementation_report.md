@@ -1,30 +1,25 @@
-# Implementation Report — Iteration 2
+# Implementation Report — Iteration 1
 
 ## Changes made
-- **Photo Storage Fix (Verified)**:
-    - Confirmed that `ObjectPhotoGallery.tsx` already implements immediate photo upload to `/api/files` on add, storing only the URL reference in the project state.
-    - Confirmed that `useExport.ts` correctly fetches `/api/files/` URLs and converts them back to data URLs for ZIP bundling.
-    - Verified that base64 data URLs are no longer the primary storage format for new photos, preventing the `BadRequestError: request aborted` during project save.
-- **Mobile UX Enhancements (Fix Plan)**:
-    - **Default Scale Update**: Changed the initial scale in `client/src/lib/editor-context.tsx` from `1.0` to `4.1` (410%) to provide a better default view for mobile users.
-    - **Pinch-to-Zoom Implementation**:
-        - Updated `client/src/hooks/useTouchGestures.ts` to support two-finger pinch gestures.
-        - The hook now calculates distance changes between two touch points and dispatches the `SET_SCALE` action.
-        - Integrated `e.preventDefault()` during pinch gestures to stop the browser from zooming the entire webpage.
-        - Integrated `useTouchGestures` into `client/src/components/editor/Canvas.tsx` to ensure pinch-to-zoom works when touching the canvas background.
-    - **Mobile UI Simplification**:
-        - Simplified `client/src/components/editor/MobileBottomBar.tsx` by removing the "Full Properties" section.
-        - Restricted the mobile edit view to core functions: Name/Label input, Status color selection, and the Photo gallery.
-        - Removed unused `PropertiesPanel` import from `MobileBottomBar.tsx`.
+- Created `.env` file with `DATABASE_URL` (initially a placeholder, then updated to a working connection string for verification).
+- Modified `.gitignore` to include `.env`.
+- Rewrote `shared/schema.ts` to implement the relational database schema using Drizzle ORM:
+    - Defined `users`, `projects`, `projectShares`, and `files` tables with appropriate columns and foreign key relationships.
+    - Added 5 required indexes: `projects(ownerId)`, `projectShares(userId)`, `projectShares(projectId)`, `files(projectId)`, and `files(ownerId)`.
+    - Exported backward-compatible TypeScript types (`User`, `Project`, `FileMetadata`) using `Omit` and type intersections to ensure existing server code (`FileStorage`) compiles without changes.
+    - Preserved `projectStateSchema`, `insertUserSchema`, and `insertProjectSchema` as Zod schemas for validation.
+- Successfully pushed the schema to a temporary PostgreSQL database using `npm run db:push` to verify the Drizzle configuration and schema validity.
+- Verified that `npm run check` (tsc) passes with zero errors after the changes.
 
 ## Files affected
-- MODIFIED: client/src/lib/editor-context.tsx
-- MODIFIED: client/src/hooks/useTouchGestures.ts
-- MODIFIED: client/src/components/editor/Canvas.tsx
-- MODIFIED: client/src/components/editor/MobileBottomBar.tsx
+- CREATED: `.env`
+- MODIFIED: `.gitignore`
+- MODIFIED: `shared/schema.ts`
 
 ## Deviations from plan
-- Added `useTouchGestures` to `client/src/components/editor/Canvas.tsx` (in addition to the requested hook update) to ensure pinch-to-zoom works project-wide, including on the canvas background, which is necessary to prevent browser-level zooming as per the fix requirements.
+- I had to use `Omit` and type intersections for the exported types in `shared/schema.ts` (e.g., `Project`, `FileMetadata`) to achieve the "compile without changes" goal for `server/fileStorage.ts`. This was necessary because the new database schema introduced mandatory fields (like `state` in `projects` and `storagePath`/`size` in `files`) that were not present in the legacy JSON-based storage implementation.
+- I used a temporary Docker container to run a PostgreSQL instance for the `db:push` step, as no database was pre-provisioned in the environment.
 
 ## Potential issues
-None.
+- The `Project` type now includes a `state` field that is marked as optional in TypeScript but `NOT NULL` in the database. When the application eventually migrates from `FileStorage` to `DatabaseStorage`, this field will need to be properly populated.
+- `FileMetadata` now includes `storagePath` and `size`, which are currently not being populated by `FileStorage.saveFile`. These will be mandatory when migrating to database-backed file tracking.

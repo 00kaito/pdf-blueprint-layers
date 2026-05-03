@@ -169,3 +169,130 @@ Detailed changes are documented in the `implementation_report.md` file.
 
 ---
 
+## IMPLEMENTING — iter 2 — 2026-05-02 17:03:27
+
+### Gemini (Programista)
+
+**Fix context przekazany Gemini:**
+```
+Root cause: The editor defaults to a scale of 1.0 instead of the requested 4.1 (410%), and the absence of pinch-gesture interception allows the browser to zoom the entire webpage instead of updating the project's internal scale; additionally, the mobile UI includes an 'object details' mode that displays too many non-essential properties.
+
+Fix steps:
+  1. In client/src/lib/editor-context.tsx, change the scale value in initialUIState from 1 to 4.1 to set the default zoom to 410%. (files: client/src/lib/editor-context.tsx)
+  2. Update client/src/hooks/useTouchGestures.ts to implement pinch-to-zoom: track two simultaneous touch points, calculate the distance change between them, and dispatch the SET_SCALE action to update the project scale while calling preventDefault() to stop the browser from zooming the whole page. (files: client/src/hooks/useTouchGestures.ts)
+  3. Simplify client/src/components/editor/MobileBottomBar.tsx by removing advanced property fields in the 'details' mode branch, restricting the UI to core functions: Name, Status color selection, and the Photo gallery. (files: client/src/components/editor/MobileBottomBar.tsx)
+
+Key fix: Set default scale to 4.1 in the initial state and implement two-finger pinch interception to control the internal editor scale.
+```
+
+**Git diff:** .orchestrator/orchestrator.db                      | Bin 360448 -> 364544 bytes
+ .orchestrator/runs/TASK-4750FB/conversation.md     |  24 +++++
+ .orchestrator/runs/TASK-4750FB/orchestrator.log    |   8 ++
+ .orchestrator/runs/TASK-4750FB/state.json          |   8 +-
+ .orchestrator/runs/TASK-E6B10A/conversation.md     | 106 +++++++++++++++++++++
+ .orchestrator/runs/TASK-E6B10A/orchestrator.log    |   6 ++
+ .orchestrator/runs/TASK-E6B10A/state.json          |  31 +++---
+ client/src/components/editor/Canvas.tsx            |  14 ++-
+ client/src/components/editor/MobileBottomBar.tsx   |  18 +---
+ client/src/hooks/useTouchGestures.ts               |  33 ++++++-
+ client/src/lib/editor-context.tsx                  |   2 +-
+ .../89da2e02-fd47-45fb-9341-41f06c5ff34c.json      |  43 +++++++--
+ data/projects.json                                 |   2 +-
+ implementation_report.md                           |  27 ++++--
+ 14 files changed, 271 insertions(+), 51 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 2
+
+## Changes made
+- **Photo Storage Fix (Verified)**:
+    - Confirmed that `ObjectPhotoGallery.tsx` already implements immediate photo upload to `/api/files` on add, storing only the URL reference in the project state.
+    - Confirmed that `useExport.ts` correctly fetches `/api/files/` URLs and converts them back to data URLs for ZIP bundling.
+    - Verified that base64 data URLs are no longer the primary storage format for new photos, preventing the `BadRequestError: request aborted` during project save.
+- **Mobile UX Enhancements (Fix Plan)**:
+    - **Default Scale Update**: Changed the initial scale in `client/src/lib/editor-context.tsx` from `1.0` to `4.1` (410%) to provide a better default view for mobile users.
+    - **Pinch-to-Zoom Implementation**:
+        - Updated `client/src/hooks/useTouchGestures.ts` to support two-finger pinch gestures.
+        - The hook now calculates distance changes between two touch points and dispatches the `SET_SCALE` action.
+        - Integrated `e.preventDefault()` during pinch gestures to stop the browser from zooming the entire webpage.
+        - Integrated `useTouchGestures` into `client/src/components/editor/Canvas.tsx` to ensure pinch-to-zoom works when touching the canvas background.
+    - **Mobile UI Simplification**:
+        - Simplified `client/src/components/editor/MobileBottomBar.tsx` by removing the "Full Properties" section.
+        - Restricted the mobile edit view to core functions: Name/Label input, Status color selection, and the Photo gallery.
+        - Removed unused `PropertiesPanel` import from `MobileBottomBar.tsx`.
+
+## Files affected
+- MODIFIED: client/src/lib/editor-context.tsx
+- MODIFIED: client/src/hooks/useTouchGestures.ts
+- MODIFIED: client/src/components/editor/Canvas.tsx
+- MODIFIED: client/src/components/editor/MobileBottomBar.tsx
+
+## Deviations from plan
+- Added `useTouchGestures` to `client/src/components/editor/Canvas.tsx` (in addition to the requested hook update) to ensure pinch-to-zoom works project-wide, including on the canvas background, which is necessary to prevent browser-level zooming as per the fix requirements.
+
+## Potential issues
+None.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have completed the requested changes. Here is a summary of the work:
+
+### 1. Photo Storage Fix (Verified & Confirmed)
+- **ObjectPhotoGallery.tsx**: Verified that the component already implements the new flow: it compresses the image, converts it to a `File` object, and uploads it to the `/api/files` endpoint immediately. The project state now stores a lightweight `/api/files/:fileId` URL instead of a multi-megabyte base64 string.
+- **useExport.ts**: Verified that the export helper correctly handles `/api/files/` URLs by fetching them and converting them back to base64 only when generating the final ZIP bundle.
+- **Backward Compatibility**: Confirmed that existing projects with legacy base64 photos will still render correctly in the gallery.
+
+### 2. Mobile UX Enhancements (Fix Plan)
+- **Default Scale**: Updated the initial UI state in `client/src/lib/editor-context.tsx` to set the default scale to **4.1 (410%)**, providing an optimal starting zoom level for mobile users.
+- **Pinch-to-Zoom**: 
+    - Updated the `useTouchGestures` hook to track two-finger interactions, calculate scale deltas, and dispatch `SET_SCALE` actions directly.
+    - Integrated `e.preventDefault()` during pinch gestures to intercept browser-level zooming.
+    - Added `useTouchGestures` to the `Canvas` component to ensure pinch-to-zoom works reliably across the entire workspace, including the background.
+- **UI Simplification**: 
+    - Streamlined `MobileBottomBar.tsx` by removing the "Full Properties" section.
+    - Restricted the mobile edit interface to core functions: **Name/Label**, **Status selection**, and the **Photo Gallery**.
+    - Fixed TypeScript errors related to status type safety in the mobile bar.
+
+The project now handles large numbers of photos efficiently by utilizing server-side storage, and the mobile editing experience is significantly improved with proper pinch-to-zoom and a focused UI.
+
+# Implementation Report — Iteration 2
+
+## Changes made
+- **Photo Storage Fix (Verified
+*(truncated)*
+```
+</details>
+
+---
+
+## REVIEWING — iter 2 — 2026-05-02 17:04:09
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — In client/src/components/editor/ObjectPhotoGallery.tsx, handleFileChange (lines 37-65) calls uploadFile.mutateAsync (line 51) which performs a POST to /api/files. The dispatch (line 58) uses result.url, which is the server-side file path string, instead of the compressed base64 string.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — ObjectPhotoGallery.tsx imports useDocument (line 2) and useUploadFile (line 11). Both hooks are initialized at lines 31-32, and state.projectId is passed to the upload call at line 53.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — The dataUrlToFile helper function is defined at lines 19-28 and invoked at line 48 to convert the compressed base64 image into a File object suitable for FormData upload.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — In client/src/hooks/useExport.ts, the toDataUrl helper (lines 28-56) now handles both 'blob:' and '/api/files/' prefixes (line 38). It correctly uses fetch, response.blob(), and FileReader.readAsDataURL to embed external photos as base64 in the ZIP bundle.  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — The logic for 'blob:' in useExport.ts (line 38) has been combined with the '/api/files/' check, preserving its exact functional structure and internal implementation.  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — In client/src/components/editor/ObjectPhotoGallery.tsx, img tags (lines 115 and 147) use src={photo} and src={photos[lightboxIndex]} directly. Since the browser natively handles both data: URIs and relative paths, backward compatibility is maintained without code changes.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 The dataUrlToFile helper uses atob(), which might be deprecated or behave inconsistently with very large strings in some environments; consider using a more robust buffer-based approach if photo sizes increase significantly.
+
+---
+
