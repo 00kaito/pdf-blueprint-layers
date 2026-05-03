@@ -54,3 +54,115 @@
 
 ---
 
+## IMPLEMENTING — iter 1 — 2026-05-02 21:57:56
+
+### Gemini (Programista)
+
+**Open criteria do adresowania:**
+- `[c1]` File server/db.ts exists and exports `pool` typed as pg.Pool and `db` typed as a Drizzle instance initialised with the schema from shared/schema.ts
+- `[c2]` DatabaseStorage in server/databaseStorage.ts implements every method declared in the IStorage interface: getUser, getUserByUsername, createUser, getProject, listProjectsForUser, createProject, updateProject, deleteProject, getProjectState, saveProjectState, saveFile, getFileMeta, getFileBuffer, deleteFile
+- `[c3]` DatabaseStorage.getProject and listProjectsForUser return Project objects with sharedWith populated from the project_shares table, not hardcoded as []
+- `[c4]` DatabaseStorage.saveProjectState updates the state JSONB column in the projects table (not a file), and also updates updatedAt
+- `[c5]` DatabaseStorage.createProject wraps its INSERT inside a db.transaction() call
+- `[c6]` server/auth.ts no longer imports or references memorystore or MemoryStore; the session store is a connect-pg-simple instance constructed with the shared pg pool
+- `[c7]` server/storage.ts exports DatabaseStorage as the default storage instance; when STORAGE_TYPE=file is set it exports FileStorage instead
+- `[c8]` TypeScript compilation of the server passes without errors after the changes
+
+**Git diff:** .orchestrator/orchestrator.db                   | Bin 364544 -> 385024 bytes
+ .orchestrator/runs/TASK-A365D1/conversation.md  | 115 ++++++++++++++++++++++++
+ .orchestrator/runs/TASK-A365D1/orchestrator.log |   6 ++
+ .orchestrator/runs/TASK-A365D1/state.json       |  52 ++++++-----
+ Dockerfile                                      |  33 +++----
+ implementation_report.md                        |  34 +++----
+ server/auth.ts                                  |  11 ++-
+ server/storage.ts                               |   5 +-
+ 8 files changed, 199 insertions(+), 57 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- Created `server/db.ts` to initialize Drizzle ORM with a `pg` pool.
+- Created `server/databaseStorage.ts` which implements the `IStorage` interface using Drizzle ORM.
+    - Implemented user management (CRUD).
+    - Implemented project management with support for `project_shares` (LEFT JOINs for aggregation, synchronized update pattern).
+    - Implemented project state persistence in the database (JSONB column).
+    - Implemented file metadata storage in the database while keeping binary data on disk (matching `FileStorage` behavior).
+    - Used `db.transaction()` for atomic project creation and updates.
+- Modified `server/auth.ts` to use `connect-pg-simple` for persistent session storage in PostgreSQL.
+    - Replaced `memorystore` with `PgStore`.
+    - Configured `createTableIfMissing: true` for automatic session table setup.
+- Modified `server/storage.ts` to switch the default storage to `DatabaseStorage`.
+    - Added support for `STORAGE_TYPE=file` environment variable to fallback to `FileStorage`.
+
+## Files affected
+- CREATED: `server/db.ts`
+- CREATED: `server/databaseStorage.ts`
+- MODIFIED: `server/auth.ts`
+- MODIFIED: `server/storage.ts`
+
+## Deviations from plan
+None
+
+## Potential issues
+None. TypeScript type checks passed successfully, and the implementation follows the requested relational patterns and transactions.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have completed the implementation of the relational database storage using Drizzle ORM, migrated the session store to PostgreSQL, and updated the storage factory.
+
+### Summary of Changes
+1.  **Database Initialization**: Created `server/db.ts` to initialize the Drizzle ORM client using a `pg.Pool`. It exports both the `pool` (for session management) and the `db` instance (for storage operations).
+2.  **DatabaseStorage Implementation**: Created `server/databaseStorage.ts` which fully implements the `IStorage` interface.
+    *   **Users**: Standard CRUD operations using Drizzle.
+    *   **Projects**: Uses `LEFT JOIN` on `project_shares` to aggregate shared users into an array. Project creation and updates are wrapped in `db.transaction()` to ensure atomicity, especially when syncing sharing permissions.
+    *   **Project State**: Now stored directly in the `projects` table as `JSONB`, with automatic `updatedAt` timestamps.
+    *   **Files**: Metadata is stored in the `files` table, while binary content remains on disk in `data/files/`, maintaining consistency with the previous `FileStorage` approach but with a persistent database index.
+3.  **Session Migration**: Updated `server/auth.ts` to replace the in-memory session store with `connect-pg-simple`. This uses the shared PostgreSQL pool and automatically handles table creation if missing.
+4.  **Storage Factory Update**: Modified `server/storage.ts` to export `DatabaseStorage` by default. A fallback to `FileStorage` is provided via the `STORAGE_TYPE=file` environment variable.
+
+### Verification
+I verified the implementation by running `npx tsc --noEmit`, which confirmed that all new and modified files are type-safe and correctly implement the project's interfaces and schemas.
+
+Detailed changes and affected files are documented in `implementation_report.md`.
+```
+</details>
+
+---
+
+## REVIEWING — iter 1 — 2026-05-02 21:58:38
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — server/db.ts exports both `pool` and `db` (created via drizzle(pool, { schema })) as verified by reading the file.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — server/databaseStorage.ts contains all 14 method implementations with signatures matching IStorage. TypeScript compilation passed.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — In server/databaseStorage.ts, both methods use leftJoin with projectShares and aggregate the resulting sharedUserId values into the sharedWith array.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — Implementation in server/databaseStorage.ts uses db.update(projects).set({ state, updatedAt: new Date().toISOString() }).  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — Implementation in server/databaseStorage.ts uses return await db.transaction(async (tx) => { ... }) and performs the insert via the tx parameter.  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — server/auth.ts uses connect-pg-simple and initializes PostgresStore with the pool and createTableIfMissing: true. No memorystore imports present.  
+  *confidence:* HIGH
+- ✅ `[c7]` **DONE** — server/storage.ts uses process.env.STORAGE_TYPE === 'file' ? new FileStorage() : new DatabaseStorage() to determine the storage instance.  
+  *confidence:* HIGH
+- ✅ `[c8]` **DONE** — Ran npx tsc --noEmit and it returned with exit code 0 and no output errors.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 Consider removing 'memorystore' from package.json since it's no longer used in the server code.
+- 💡 DatabaseStorage.listProjectsForUser could be optimized to use a single query with subqueries or OR conditions instead of three separate selects.
+
+---
+

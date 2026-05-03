@@ -7,13 +7,9 @@ import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
 export class DatabaseStorage implements IStorage {
-  private filesDir = path.resolve(process.cwd(), 'data', 'files');
+  private storageRoot = path.resolve(process.cwd(), 'storage');
 
-  constructor() {
-    if (!fs.existsSync(this.filesDir)) {
-      fs.mkdirSync(this.filesDir, { recursive: true });
-    }
-  }
+  constructor() {}
 
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -162,7 +158,12 @@ export class DatabaseStorage implements IStorage {
 
   async saveFile(buffer: Buffer, originalName: string, mimeType: string, ownerId: string, projectId?: string): Promise<FileMetadata> {
     const id = uuidv4();
-    const storagePath = path.join(this.filesDir, id);
+    const targetDir = projectId 
+      ? path.join(this.storageRoot, 'projects', projectId)
+      : path.join(this.storageRoot, 'users', ownerId, 'icons');
+      
+    fs.mkdirSync(targetDir, { recursive: true });
+    const storagePath = path.join(targetDir, id);
     fs.writeFileSync(storagePath, buffer);
     
     const [file] = await db.insert(files).values({
