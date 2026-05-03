@@ -3,7 +3,8 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
-import createMemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
+import { pool } from "./db";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
@@ -14,7 +15,7 @@ declare global {
 }
 
 export function configureAuth(app: Express) {
-  const MemoryStore = createMemoryStore(session);
+  const PostgresStore = connectPgSimple(session);
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET ?? "dev-secret-change-in-prod",
     resave: false,
@@ -22,8 +23,10 @@ export function configureAuth(app: Express) {
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
-    store: new MemoryStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
+    store: new PostgresStore({
+      pool,
+      tableName: "session",
+      createTableIfMissing: true,
     }),
   };
 

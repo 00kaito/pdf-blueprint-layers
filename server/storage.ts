@@ -1,5 +1,6 @@
 import { User, Project, ProjectState, FileMetadata } from "@shared/schema";
 import { FileStorage } from "./fileStorage";
+import { DatabaseStorage } from "./databaseStorage";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -21,4 +22,6 @@ export interface IStorage {
   deleteFile(fileId: string): Promise<void>;
 }
 
-export const storage = new FileStorage();
+export const storage = process.env.STORAGE_TYPE === "file" 
+  ? new FileStorage() 
+  : new DatabaseStorage();

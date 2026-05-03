@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pdf-blueprint-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-pdf_blueprint}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pdf-blueprint-app
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-pdf_blueprint}
+      SESSION_SECRET: ${SESSION_SECRET:-some-very-secret-key}
+      NODE_ENV: production
+      PORT: 5000
+    depends_on:
+      - db
+    volumes:
+      - ./storage:/app/storage
+      - ./data:/app/data
+
+volumes:
+  postgres_data:
