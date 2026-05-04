@@ -1,248 +1,119 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { useDocument, useUI } from '@/lib/editor-context';
-import { ObjectPhotoGallery } from './ObjectPhotoGallery';
-import { ObjectComments } from './ObjectComments';
-import { MobileAddObjectPanel } from './MobileAddObjectPanel';
 import { useCurrentUser } from '@/hooks/useAuth';
-import { 
-  ChevronUp, 
-  ChevronDown, 
-  Plus, 
-  Camera,
-  Layers,
-  MessageSquare
-} from 'lucide-react';
+import { useUploadFile } from '@/hooks/useProjects';
+import { compressImage } from '@/core/image-compress';
+import { Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Sheet,
-  SheetContent,
-} from "@/components/ui/sheet";
-import { cn } from '@/lib/utils';
+
+const dataUrlToFile = (dataUrl: string, filename: string): File => {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
 
 export const MobileBottomBar: React.FC = () => {
   const { state: docState, dispatch: docDispatch } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
-
-  const [isBarVisible, setIsBarVisible] = useState(true);
-  const [addSheetOpen, setAddSheetOpen] = useState(false);
-  const [editSheetOpen, setEditSheetOpen] = useState(false);
+  
+  const uploadFileMutation = useUploadFile();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
-  const activeLayer = docState.layers.find(l => l.id === uiState.activeLayerId);
 
-  const [localName, setLocalName] = useState('');
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !selectedObjectId) return;
 
-  useEffect(() => {
-    if (selectedObject) {
-      setLocalName(selectedObject.name || '');
-    }
-  }, [selectedObject?.id, selectedObject?.name]);
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        const photoDataUrl = await compressImage(file);
+        const photoFile = dataUrlToFile(photoDataUrl, file.name);
+        const result = await uploadFileMutation.mutateAsync({ 
+          file: photoFile, 
+          projectId: docState.projectId || undefined 
+        });
 
-  const handleNameChange = (newName: string) => {
-    if (isTech) return;
-    setLocalName(newName);
-  };
-
-  useEffect(() => {
-    if (!selectedObjectId || !selectedObject || localName === selectedObject.name || isTech) return;
-
-    const timer = setTimeout(() => {
-      docDispatch({
-        type: 'UPDATE_OBJECTS',
-        payload: { ids: [selectedObjectId], updates: { name: localName } }
-      });
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [localName, selectedObjectId, selectedObject, docDispatch, isTech]);
-
-  const handleStatusChange = (status: 'PLANNED' | 'CABLE_PULLED' | 'TERMINATED' | 'TESTED' | 'APPROVED' | 'ISSUE') => {
-    if (!selectedObjectId || isTech) return;
-    docDispatch({
-      type: 'UPDATE_OBJECTS',
-      payload: { ids: [selectedObjectId], updates: { status } }
-    });
-  };
-
-  const openEditSheet = (section?: 'photos' | 'properties' | 'comments') => {
-    setEditSheetOpen(true);
-    if (section) {
-      // Small delay to allow sheet to render
-      setTimeout(() => {
-        const id = section === 'photos' ? 'photo-gallery-section' : 
-                   section === 'comments' ? 'comments-section' : 
-                   'full-properties-section';
-        const element = document.getElementById(id);
-        element?.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
+        docDispatch({
+          type: 'ADD_OBJECT_PHOTO',
+          payload: { id: selectedObjectId, photoDataUrl: result.url },
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  if (!isBarVisible) {
+  if (isTech) {
     return (
-      <Button
-        onClick={() => !isTech && setIsBarVisible(true)}
-        className={cn(
-          "fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-lg z-[100] h-12 w-12 p-0 bg-primary hover:bg-primary/90",
-          isTech && "hidden"
-        )}
-      >
-        <Plus className="h-6 w-6 text-primary-foreground" />
-      </Button>
-    );
-  }
-
-  const statuses: { value: 'PLANNED' | 'CABLE_PULLED' | 'TERMINATED' | 'TESTED' | 'APPROVED' | 'ISSUE', label: string, color: string }[] = [
-    { value: 'PLANNED', label: 'Planned', color: 'bg-[#f87171]' },
-    { value: 'CABLE_PULLED', label: 'Pulled', color: 'bg-[#3b82f6]' },
-    { value: 'TERMINATED', label: 'Terminated', color: 'bg-[#a855f7]' },
-    { value: 'TESTED', label: 'Tested', color: 'bg-[#4ade80]' },
-    { value: 'APPROVED', label: 'Approved', color: 'bg-[#16a34a]' },
-    { value: 'ISSUE', label: 'Issue', color: 'bg-[#dc2626]' },
-  ];
-
-  return (
-    <>
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-12 flex items-center px-4 gap-3">
-        {/* LEFT: Status colors toggle */}
-        <div className="flex items-center gap-2 shrink-0">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-12 flex items-center px-4">
+        <div className="flex items-center gap-2">
           <Checkbox 
-            id="status-colors" 
+            id="status-colors-mobile" 
             checked={uiState.showStatusColors} 
             onCheckedChange={() => uiDispatch({ type: 'TOGGLE_STATUS_COLORS' })}
           />
-          <label htmlFor="status-colors" className="text-[10px] font-medium leading-none whitespace-nowrap">By status</label>
-        </div>
-
-        {/* CENTER: Contextual zone */}
-        <div className="flex-1 min-w-0 flex items-center justify-center">
-          {selectedObject ? (
-            <Input 
-              value={localName} 
-              onChange={(e) => handleNameChange(e.target.value)}
-              className="h-8 text-xs px-2"
-              placeholder="Object name..."
-              disabled={isTech}
-            />
-          ) : (
-            <div 
-              className={cn(
-                "flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 max-w-full",
-                !isTech && "cursor-pointer"
-              )}
-              onClick={() => !isTech && setAddSheetOpen(true)}
-            >
-              <Layers className="h-3 w-3 text-muted-foreground shrink-0" />
-              <span className="text-[10px] font-medium truncate">
-                {activeLayer?.name || 'No Layer'}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT: Action zone */}
-        <div className="flex items-center gap-1 shrink-0">
-          {selectedObject ? (
-            <>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('comments')}>
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('photos')}>
-                <Camera className="h-4 w-4" />
-              </Button>
-              {!isTech && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('properties')}>
-                  <ChevronUp className="h-4 w-4" />
-                </Button>
-              )}
-            </>
-          ) : (
-            !isTech && (
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setAddSheetOpen(true)}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            )
-          )}
-          {!isTech && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsBarVisible(false)}>
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          )}
+          <label htmlFor="status-colors-mobile" className="text-xs font-medium leading-none">Color by status</label>
         </div>
       </div>
+    );
+  }
 
-      {/* Add Object Sheet */}
-      <Sheet open={addSheetOpen} onOpenChange={setAddSheetOpen}>
-        <SheetContent side="bottom" className="px-0 pt-2 pb-6 max-h-[38vh] rounded-t-xl">
-          <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-2" />
-          <MobileAddObjectPanel onClose={() => setAddSheetOpen(false)} />
-        </SheetContent>
-      </Sheet>
-
-      {/* Edit Object Sheet */}
-      <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
-        <SheetContent side="bottom" className="px-0 pt-2 pb-0 h-[55vh] rounded-t-xl overflow-hidden flex flex-col">
-          <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-2 shrink-0" />
-          <ScrollArea className="flex-1 px-4">
-            <div className="space-y-6 pb-10">
-              <div className="space-y-2 pt-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Name / Label</label>
-                <Input 
-                  value={localName} 
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  placeholder="Enter label..."
-                  disabled={isTech}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {statuses.map((status) => (
-                    <Button
-                      key={status.value}
-                      variant={selectedObject?.status === status.value ? "default" : "outline"}
-                      className={cn(
-                        "h-10 text-[10px] px-1 flex flex-col items-center gap-1",
-                        selectedObject?.status === status.value && status.color
-                      )}
-                      onClick={() => handleStatusChange(status.value)}
-                      disabled={isTech}
-                    >
-                      <div className={cn("w-2 h-2 rounded-full", status.color)} />
-                      {status.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {selectedObject && (
-                <>
-                  <div id="photo-gallery-section">
-                    <ObjectPhotoGallery 
-                      objectId={selectedObject.id} 
-                      photos={selectedObject.photos || []} 
-                    />
-                  </div>
-                  
-                  <div id="comments-section">
-                    <ObjectComments 
-                      objectId={selectedObject.id} 
-                      comments={selectedObject.comments || []} 
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
-    </>
+  // PM version
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-12 flex items-center px-4 justify-between">
+       <div className="flex items-center gap-2 min-w-0 mr-4">
+          <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider shrink-0">Object:</span>
+          <span className="text-xs font-medium truncate">
+            {selectedObject ? (selectedObject.name || 'Untitled') : "Select an object"}
+          </span>
+       </div>
+       
+       <div className="flex items-center gap-2">
+         {selectedObject && (
+           <Button 
+             size="sm" 
+             variant="default" 
+             className="h-8 gap-1.5 px-3 rounded-full"
+             disabled={isUploading}
+             onClick={() => fileInputRef.current?.click()}
+           >
+             {isUploading ? (
+               <Loader2 className="h-4 w-4 animate-spin" />
+             ) : (
+               <Camera className="h-4 w-4" />
+             )}
+             <span className="text-xs">Add Photo</span>
+           </Button>
+         )}
+         
+         <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+            {...({ capture: 'environment' } as any)}
+          />
+       </div>
+    </div>
   );
 };

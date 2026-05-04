@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-452459",
+  "description": "wyrzuc z wersji telefonicznej add objects, pozostaw jedynie maly bar na dole gdzie moge dodaj zdjecie do zaznaczonego wczeniusje obiektu - jesli jestem PM, a jesli TECH moge tylko zaznaczac checkbox color by status - zadnych plusow czy wysuwania menu do gory - tylko podglad jako TECH",
+  "title": "wyrzuc z wersji telefonicznej add objects, pozostaw jedynie maly bar na dole gdzie moge dodaj zdjeci",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Mobile view does not contain any '+' buttons or 'Add Object' menus.",
+      "how_to_verify": "Visual inspection of `client/src/pages/home.tsx` and `client/src/components/editor/Toolbar.tsx` for conditional rendering based on `isMobile`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "For PM role on mobile, `MobileBottomBar` renders a button to add photos to a selected object.",
+      "how_to_verify": "Check `MobileBottomBar.tsx` for `role === 'admin'` or `'manager'` logic rendering `ObjectPhotoGallery` or a direct upload trigger.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "For TECH role on mobile, `MobileBottomBar` renders only a checkbox/switch for 'Color by status'.",
+      "how_to_verify": "Check `MobileBottomBar.tsx` for `role === 'technician'` logic rendering the `Checkbox` for status colors.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "Mobile Bottom Bar does not expand/slide upwards.",
+      "how_to_verify": "Verify `MobileBottomBar.tsx` does not use `Drawer` or height-expanding animations/states.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "Technicians cannot drag or resize objects on mobile.",
+      "how_to_verify": "Check `ObjectRenderer.tsx` for `disableDragging` and `enableResizing={false}` props on the `Rnd` component when user is a technician and on mobile.",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Restructure the mobile UI to replace the object creation panel with role-specific minimal bars: PMs get photo upload for selected objects, while Technicians get only a status-color toggle in a preview-only mode.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Research Role and Mobile Component Usage\",\n      \"description\": \"Examine `client/src/pages/home.tsx`, `client/src/components/editor/MobileBottomBar.tsx`, and `client/src/components/editor/MobileAddObjectPanel.tsx` to identify how roles are accessed and where the 'Add Object' UI is triggered.\",\n      \"files_affected\": [\n        \"client/src/pages/home.tsx\",\n        \"client/src/components/editor/MobileBottomBar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Remove Mobile Object Creation UI\",\n      \"description\": \"Hide or remove the `MobileAddObjectPanel` and its associated 'plus' buttons from the mobile view in `home.tsx` and `Toolbar.tsx`.\",\n      \"files_affected\": [\n        \"client/src/pages/home.tsx\",\n        \"client/src/components/editor/Toolbar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Implement Role-Based Mobile Bottom Bar\",\n      \"description\": \"Refactor `MobileBottomBar.tsx` to: 1. If user is PM, show only a photo upload button (enabled when an object is selected). 2. If user is TECH, show only the 'Color by status' checkbox/toggle. Remove all sliding menu logic.\",\n      \"files_affected\": [\n        \"client/src/components/editor/MobileBottomBar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 4,\n      \"title\": \"Enforce Technician Preview Mode\",\n      \"description\": \"Ensure that on mobile, users with the Technician role cannot move, resize, or delete objects, effectively making it a preview-only mode as requested.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Canvas/ObjectRenderer.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"Mobile view does not contain any '+' buttons or 'Add Object' menus.\",\n      \"how_to_verify\": \"Visual inspection of `client/src/pages/home.tsx` and `client/src/components/editor/Toolbar.tsx` for conditional rendering based on `isMobile`.\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"For PM role on mobile, `MobileBottomBar` renders a button to add photos to a selected object.\",\n      \"how_to_verify\": \"Check `MobileBottomBar.tsx` for `role === 'admin'` or `'manager'` logic rendering `ObjectPhotoGallery` or a direct upload trigger.\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"For TECH role on mobile, `MobileBottomBar` renders only a checkbox/switch for 'Color by status'.\",\n      \"how_to_verify\": \"Check `MobileBottomBar.tsx` for `role === 'technician'` logic rendering the `Checkbox` for status colors.\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"Mobile Bottom Bar does not expand/slide upwards.\",\n      \"how_to_verify\": \"Verify `MobileBottomBar.tsx` does not use `Drawer` or height-expanding animations/states.\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"Technicians cannot drag or resize objects on mobile.\",\n      \"how_to_verify\": \"Check `ObjectRenderer.tsx` for `disableDragging` and `enableResizing={false}` props on the `Rnd` component when user is a technician and on mobile.\"\n    }\n  ],\n  \"risks\": [\n    \"Frontend role detection may rely on `useCurrentUser()` which might return null if the session is strictly technician-name based (trust-based).\",\n    \"Removing the 'Add' functionality on mobile might block PMs who occasionally need to fix/add things on site if they aren't near a desktop.\",\n    \"The 'Color by status' toggle might require a global state change that needs to be properly synced with the UIContext.\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "d115af9393c405ae330b7df273848e9847bdc7c1",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777938132.093476,
+  "updated_at": 1777938164.6196136
+}

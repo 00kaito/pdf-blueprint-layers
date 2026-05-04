@@ -1,28 +1,20 @@
 # Implementation Report — Iteration 1
 
 ## Changes made
-- **Updated Types:** Added `comments?: string[]` to `EditorObject` in `client/src/lib/types.ts`.
-- **Home Page Logic:** Added `useCurrentUser` hook to `home.tsx` to detect user role. Verified that sidebars (`LayerPanel`, `PropertiesPanel`) are not rendered on mobile, satisfying the requirement for TECH role on phone.
-- **Canvas Interactions:** Confirmed that `Canvas.tsx` and `ObjectRenderer.tsx` already had `isTech` restrictions for dragging, resizing, and tool selection (forcing 'select' tool for TECH).
-- **Mobile Bottom Bar Enhancements:**
-    - Restricted `Plus` (Add Object) and `ChevronDown` (Hide Bar) buttons for TECH role.
-    - Added `MessageSquare` (Comments) button for all roles (view-only for TECH, interactive for PM).
-    - Integrated `ObjectComments` and `ObjectPhotoGallery` into the mobile edit sheet.
-    - Ensured "Color by Status" checkbox is available for all roles including TECH.
-- **New Component:** Created `ObjectComments.tsx` to allow PMs to add/view/delete comments and TECHs to only view them.
-- **Properties Panel Update:** Added `ObjectComments` to the desktop `PropertiesPanel` for consistency.
-- **Photo Gallery Update:** Updated `ObjectPhotoGallery.tsx` to disable adding and deleting photos for the TECH role.
+- Refactored `client/src/components/editor/MobileBottomBar.tsx` to remove the complex sliding panel and "Add Object" functionality.
+- Implemented role-based minimal bottom bars for mobile:
+  - **Technicians (TECH):** Only see a "Color by status" checkbox/toggle.
+  - **Managers/Admins (PM):** See the selected object's name and an "Add Photo" button that directly triggers the camera/file picker and uploads photos to the selected object.
+- Removed `MobileAddObjectPanel` and associated sheets from the mobile view.
+- Verified that Technicians are in "preview-only" mode on mobile (dragging, resizing, and deleting are disabled via the `isTech` role check in `ObjectRenderer.tsx` and `Canvas.tsx`).
 
 ## Files affected
-- CREATED: `client/src/components/editor/ObjectComments.tsx`
-- MODIFIED: `client/src/lib/types.ts`
-- MODIFIED: `client/src/pages/home.tsx`
 - MODIFIED: `client/src/components/editor/MobileBottomBar.tsx`
-- MODIFIED: `client/src/components/editor/PropertiesPanel.tsx`
-- MODIFIED: `client/src/components/editor/ObjectPhotoGallery.tsx`
 
 ## Deviations from plan
-None.
+- Did not modify `client/src/pages/home.tsx` or `client/src/components/editor/Toolbar.tsx` for "plus" buttons because `Toolbar` is already not rendered on mobile, and `MobileBottomBar` was the only place where mobile-specific "plus" buttons existed.
+- `MobileAddObjectPanel.tsx` was not deleted but is no longer used in the mobile UI.
 
 ## Potential issues
-None. The implementation follows the role-based restrictions requested, ensuring TECH users on mobile have a view-only experience with status coloring, while PMs have full editing capabilities for labels, photos, and comments.
+- PMs can no longer add new objects on mobile. This is per request ("wyrzuc z wersji telefonicznej add objects") but might be a limitation if they need to add something on-site.
+- Viewing photos/comments on mobile is now hidden as the request specified "only" a bar for adding photos.

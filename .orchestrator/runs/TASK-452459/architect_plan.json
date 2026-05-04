@@ -1,0 +1,75 @@
+{
+  "summary": "Restructure the mobile UI to replace the object creation panel with role-specific minimal bars: PMs get photo upload for selected objects, while Technicians get only a status-color toggle in a preview-only mode.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Research Role and Mobile Component Usage",
+      "description": "Examine `client/src/pages/home.tsx`, `client/src/components/editor/MobileBottomBar.tsx`, and `client/src/components/editor/MobileAddObjectPanel.tsx` to identify how roles are accessed and where the 'Add Object' UI is triggered.",
+      "files_affected": [
+        "client/src/pages/home.tsx",
+        "client/src/components/editor/MobileBottomBar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Remove Mobile Object Creation UI",
+      "description": "Hide or remove the `MobileAddObjectPanel` and its associated 'plus' buttons from the mobile view in `home.tsx` and `Toolbar.tsx`.",
+      "files_affected": [
+        "client/src/pages/home.tsx",
+        "client/src/components/editor/Toolbar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Implement Role-Based Mobile Bottom Bar",
+      "description": "Refactor `MobileBottomBar.tsx` to: 1. If user is PM, show only a photo upload button (enabled when an object is selected). 2. If user is TECH, show only the 'Color by status' checkbox/toggle. Remove all sliding menu logic.",
+      "files_affected": [
+        "client/src/components/editor/MobileBottomBar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Enforce Technician Preview Mode",
+      "description": "Ensure that on mobile, users with the Technician role cannot move, resize, or delete objects, effectively making it a preview-only mode as requested.",
+      "files_affected": [
+        "client/src/components/editor/Canvas/ObjectRenderer.tsx"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "Mobile view does not contain any '+' buttons or 'Add Object' menus.",
+      "how_to_verify": "Visual inspection of `client/src/pages/home.tsx` and `client/src/components/editor/Toolbar.tsx` for conditional rendering based on `isMobile`."
+    },
+    {
+      "id": "c2",
+      "description": "For PM role on mobile, `MobileBottomBar` renders a button to add photos to a selected object.",
+      "how_to_verify": "Check `MobileBottomBar.tsx` for `role === 'admin'` or `'manager'` logic rendering `ObjectPhotoGallery` or a direct upload trigger."
+    },
+    {
+      "id": "c3",
+      "description": "For TECH role on mobile, `MobileBottomBar` renders only a checkbox/switch for 'Color by status'.",
+      "how_to_verify": "Check `MobileBottomBar.tsx` for `role === 'technician'` logic rendering the `Checkbox` for status colors."
+    },
+    {
+      "id": "c4",
+      "description": "Mobile Bottom Bar does not expand/slide upwards.",
+      "how_to_verify": "Verify `MobileBottomBar.tsx` does not use `Drawer` or height-expanding animations/states."
+    },
+    {
+      "id": "c5",
+      "description": "Technicians cannot drag or resize objects on mobile.",
+      "how_to_verify": "Check `ObjectRenderer.tsx` for `disableDragging` and `enableResizing={false}` props on the `Rnd` component when user is a technician and on mobile."
+    }
+  ],
+  "risks": [
+    "Frontend role detection may rely on `useCurrentUser()` which might return null if the session is strictly technician-name based (trust-based).",
+    "Removing the 'Add' functionality on mobile might block PMs who occasionally need to fix/add things on site if they aren't near a desktop.",
+    "The 'Color by status' toggle might require a global state change that needs to be properly synced with the UIContext."
+  ]
+}
