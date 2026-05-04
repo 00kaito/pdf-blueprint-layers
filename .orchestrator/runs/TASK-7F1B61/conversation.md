@@ -261,3 +261,128 @@ A detailed summary of all changes can be found in the `implementation_report.md`
 
 ---
 
+## IMPLEMENTING — iter 2 — 2026-05-04 14:35:13
+
+### Gemini (Programista)
+
+**Fix context przekazany Gemini:**
+```
+Root cause: The admin panel entry point was placed in the contextually-named PDFUploader component without a clear 'Settings' label, making it undiscoverable, and the implementation completely omitted the password management functionality specifically requested by the user.
+
+Fix steps:
+  1. Extend the IStorage interface in server/storage.ts and implement it in DatabaseStorage in server/databaseStorage.ts with an 'updateUserPassword(userId: string, passwordHash: string): Promise<void>' method. (files: server/storage.ts, server/databaseStorage.ts)
+  2. Add a new route 'PUT /api/admin/users/:id/password' in server/routes.ts, protected by requireRole('admin'), which validates the request, hashes the new password using bcrypt, and calls storage.updateUserPassword. (files: server/routes.ts)
+  3. Update client/src/pages/AdminPage.tsx to include a password reset field and 'Zmień hasło' button for each user in the user management table, using a new useUpdateUserPassword mutation hook. (files: client/src/pages/AdminPage.tsx)
+  4. Relocate the admin navigation button in client/src/components/editor/PDFUploader.tsx to a more prominent location (e.g., top-right corner of the project list) and relabel it to 'Settings' (Ustawienia) with a gear icon to match the user's expectations. (files: client/src/components/editor/PDFUploader.tsx)
+
+Key fix: Implement the missing user password update functionality and expose the admin panel through a prominent 'Settings' button.
+```
+
+**Git diff:** .orchestrator/orchestrator.db                   | Bin 471040 -> 495616 bytes
+ .orchestrator/runs/TASK-7F1B61/conversation.md  | 175 ++++++++++++++++++++++++
+ .orchestrator/runs/TASK-7F1B61/orchestrator.log |  14 ++
+ .orchestrator/runs/TASK-7F1B61/state.json       |  54 +++++---
+ client/src/components/editor/PDFUploader.tsx    |   6 +-
+ client/src/hooks/useAuth.ts                     |  12 ++
+ client/src/pages/AdminPage.tsx                  |  73 +++++++++-
+ implementation_report.md                        |  53 +++----
+ server/databaseStorage.ts                       |   4 +
+ server/fileStorage.ts                           |   8 ++
+ server/routes.ts                                |  12 +-
+ server/storage.ts                               |   1 +
+ shared/schema.ts                                |   4 +
+ 13 files changed, 353 insertions(+), 63 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 2
+
+## Changes made
+- **Schema & Storage:**
+    - Updated `shared/schema.ts` to include `role` in `users` table and added `updateUserPasswordSchema`.
+    - Extended `IStorage` interface in `server/storage.ts` with `updateUserPassword`.
+    - Implemented `updateUserPassword` in `server/databaseStorage.ts` and `server/fileStorage.ts`.
+- **Backend Auth & Routes:**
+    - Verified `requireRole` middleware and `seedAdminUser` function in `server/auth.ts`.
+    - Updated `server/routes.ts` to include `role` in auth responses and protected write endpoints with `requireRole('PM', 'admin')`.
+    - Added administrative routes: `GET /api/admin/users`, `PUT /api/admin/users/:id/role`, and `PUT /api/admin/users/:id/password`.
+    - Ensured `seedAdminUser` is called in `server/index.ts`.
+- **Frontend Hooks & Components:**
+    - Added `useUpdateUserPassword` hook in `client/src/hooks/useAuth.ts`.
+    - Updated `Canvas.tsx`, `ObjectRenderer.tsx`, `ObjectToolbar.tsx`, `Toolbar.tsx`, `LayerPanel.tsx`, and `PropertiesPanel.tsx` to respect the `TECH` role (read-only mode).
+    - Enhanced `PropertiesPanel.tsx` to show `issueDescription` when an object is in `ISSUE` status.
+    - Created/Updated `AdminPage.tsx` with role management and password reset UI.
+    - Updated `App.tsx` with `/admin` route protection.
+    - Relocated and relabeled the admin navigation button in `PDFUploader.tsx` to "Ustawienia" with a gear icon.
+
+## Files affected
+- MODIFIED: shared/schema.ts
+- MODIFIED: server/storage.ts
+- MODIFIED: server/databaseStorage.ts
+- MODIFIED: server/fileStorage.ts
+- MODIFIED: server/routes.ts
+- MODIFIED: client/src/hooks/useAuth.ts
+- MODIFIED: client/src/pages/AdminPage.tsx
+- MODIFIED: client/src/components/editor/PDFUploader.tsx
+- (Verified/Already Modified): server/auth.ts, server/index.ts, client/src/App.tsx, client/src/components/editor/Canvas.tsx, client/src/components/editor/Canvas/ObjectRenderer.tsx, client/src/components/editor/ObjectToolbar.tsx, client/src/components/editor/Toolbar.tsx, client/src/components/editor/LayerPanel.tsx, client/src/components/editor/PropertiesPanel.tsx
+
+## Deviations from plan
+None. The implementation follows the provided plan and incorporates the human tester's fix suggestions regarding password management and button discoverability.
+
+## Potential issues
+None. Existing users will default to the 'PM' role, which preserves their current permissions. The 'admin' user is seeded automatically on startup.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have successfully implemented the requested Role-Based Access Control (RBAC) system, including the administrative password management features and UI improvements.
+
+### Key Accomplishments:
+- **RBAC Foundation**: Established three distinct roles (`admin`, `PM`, `TECH`) with clear permission boundaries. PMs retain full access, while technicians are restricted to a read-only view.
+- **Administrative Empowerment**: Created a secure Admin Panel ("Ustawienia") where administrators can manage user roles and reset passwords (admin/2Park).
+- **Technician-Specific Experience**: Implemented UI-level restrictions for `TECH` users, disabling all creation, deletion, and modification tools while preserving essential visibility features like status-based coloring and issue description viewing.
+- **Backend Enforcement**: Secured all write-heavy API endpoints (projects, files, sharing) using role-based middleware to prevent unauthorized modifications.
+
+The system now correctly handles the Polish language requirements ("Ustawienia", "Zmień hasło") and provides a robust, scalable security model for the application.
+
+A detailed summary of all changes can be found in the `implementation_report.md` file in the project root.
+```
+</details>
+
+---
+
+## REVIEWING — iter 2 — 2026-05-04 14:36:10
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — shared/schema.ts lines 8 and 43 show the 'role' column definition with default 'PM' and its inclusion in the User type.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — server/routes.ts lines 41, 57, and 76 show the 'role' field being returned in register, login, and /me responses.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — server/routes.ts lines 86, 103, 117, and 151 show the requireRole middleware correctly applied to all write endpoints.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — server/auth.ts lines 96-114 implements seedAdminUser. server/index.ts line 94 calls it before registering routes.  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — server/routes.ts lines 182 and 187 show both admin endpoints protected with requireRole('admin').  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — client/src/components/editor/Canvas/ObjectRenderer.tsx lines 152 and 153 show the correct props being passed to Rnd based on the isTech flag.  
+  *confidence:* HIGH
+- ✅ `[c7]` **DONE** — client/src/components/editor/PropertiesPanel.tsx lines 177-181 show the conditional rendering of issueDescription for TECH users when an ISSUE status is present.  
+  *confidence:* HIGH
+- ✅ `[c8]` **DONE** — client/src/pages/AdminPage.tsx exists and implements the UI. client/src/App.tsx lines 74-76 register the protected /admin route.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 Consider adding a 'Change Password' option for the currently logged-in user in their own profile settings, not just via the admin panel.
+
+**Next focus:** The task is completed and verified.
+
+---
+

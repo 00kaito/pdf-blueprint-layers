@@ -14,6 +14,9 @@ import {Loader2} from "lucide-react";
 function AppContent() {
   const {data: user, isLoading, isError, error, refetch} = useCurrentUser();
 
+  console.log('[App] Current path:', window.location.pathname);
+  console.log('[App] User state:', user ? { username: user.username, role: user.role } : 'null');
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -52,7 +55,15 @@ function AppContent() {
       </Route>
       
       <Route path="/admin">
-        {!user ? <Redirect to="/auth" /> : (user.role !== 'admin' ? <Redirect to="/" /> : <AdminPage />)}
+        {() => {
+          console.log('[App] Matching /admin route. User role:', user?.role);
+          if (!user) return <Redirect to="/auth" />;
+          if (user.role !== 'admin') {
+            console.warn('[App] User is not admin, redirecting to /');
+            return <Redirect to="/" />;
+          }
+          return <AdminPage />;
+        }}
       </Route>
 
       <Route path="/">
@@ -66,7 +77,12 @@ function AppContent() {
         )}
       </Route>
 
-      <Route component={NotFound} />
+      <Route>
+        {() => {
+          console.log('[App] No route matched, showing NotFound. Path:', window.location.pathname);
+          return <NotFound />;
+        }}
+      </Route>
     </Switch>
   );
 }
@@ -80,4 +96,3 @@ function App() {
 }
 
 export default App;
-

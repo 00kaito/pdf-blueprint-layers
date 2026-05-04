@@ -60,11 +60,21 @@ export const Canvas = () => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedObjectIds.length > 0) {
         dispatch({ type: 'DELETE_OBJECTS', payload: state.selectedObjectIds });
       }
+
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'c' || e.key === 'C') {
+          e.preventDefault();
+          dispatch({ type: 'COPY_OBJECT' });
+        } else if (e.key === 'v' || e.key === 'V') {
+          e.preventDefault();
+          dispatch({ type: 'PASTE_OBJECT' });
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.selectedObjectIds, dispatch]);
+  }, [state.selectedObjectIds, dispatch, isTech]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isTech) {

@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-B01B6B",
+  "description": "nie dziala opcja kopiuj wklej dla obiektow, chce moc duplikowac obiekty abok na ekranie obok obecnego obiektu przez ctrl+c cltr+v",
+  "title": "nie dziala opcja kopiuj wklej dla obiektow, chce moc duplikowac obiekty abok na ekranie obok obecneg",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Pressing Ctrl+C when an object is selected updates the `clipboardObject` in `DocumentState`.",
+      "how_to_verify": "Verify `editorReducer` handles `COPY_OBJECT` by setting `state.clipboardObject` to the object matching `uiState.selectedObjectId`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "Pressing Ctrl+V creates a new object in the `objects` array with a unique UUID.",
+      "how_to_verify": "Verify `PASTE_OBJECT` action in `editorReducer` uses `uuidv4()` for the new object's ID.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "Pasted objects are placed with a coordinate offset relative to the original.",
+      "how_to_verify": "Check that `PASTE_OBJECT` logic increments `x` and `y` properties of the pasted object by a fixed value (e.g., 10 or 20).",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "Keyboard listeners are cleaned up on component unmount.",
+      "how_to_verify": "Check `useEffect` in `Canvas.tsx` for proper `removeEventListener` call.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "Paste operation is blocked if the clipboard is empty or no layer is active.",
+      "how_to_verify": "Verify conditional check in `PASTE_OBJECT` reducer case for `state.clipboardObject` existence.",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Implement global keyboard listeners for Ctrl+C and Ctrl+V to handle object duplication with a spatial offset in the DocumentContext.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Analyze existing clipboard state and actions\",\n      \"description\": \"Examine `client/src/lib/editor-context.tsx` to verify `clipboardObject` state and ensure `COPY_OBJECT` and `PASTE_OBJECT` actions are correctly implemented in the reducer.\",\n      \"files_affected\": [\n        \"client/src/lib/editor-context.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Implement keyboard shortcut listener\",\n      \"description\": \"Add a global `keydown` event listener in `client/src/components/editor/Canvas.tsx` (or a dedicated hook) to intercept Ctrl+C and Ctrl+V, triggering the respective dispatch actions.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Canvas.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Refine Paste Logic with Offset\",\n      \"description\": \"Ensure the `PASTE_OBJECT` logic in the reducer or a helper function applies a visual offset (e.g., +20px X and Y) so duplicated objects don't perfectly overlap, and generates a new unique ID.\",\n      \"files_affected\": [\n        \"client/src/lib/editor-context.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"Pressing Ctrl+C when an object is selected updates the `clipboardObject` in `DocumentState`.\",\n      \"how_to_verify\": \"Verify `editorReducer` handles `COPY_OBJECT` by setting `state.clipboardObject` to the object matching `uiState.selectedObjectId`.\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"Pressing Ctrl+V creates a new object in the `objects` array with a unique UUID.\",\n      \"how_to_verify\": \"Verify `PASTE_OBJECT` action in `editorReducer` uses `uuidv4()` for the new object's ID.\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"Pasted objects are placed with a coordinate offset relative to the original.\",\n      \"how_to_verify\": \"Check that `PASTE_OBJECT` logic increments `x` and `y` properties of the pasted object by a fixed value (e.g., 10 or 20).\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"Keyboard listeners are cleaned up on component unmount.\",\n      \"how_to_verify\": \"Check `useEffect` in `Canvas.tsx` for proper `removeEventListener` call.\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"Paste operation is blocked if the clipboard is empty or no layer is active.\",\n      \"how_to_verify\": \"Verify conditional check in `PASTE_OBJECT` reducer case for `state.clipboardObject` existence.\"\n    }\n  ],\n  \"risks\": [\n    \"Conflict with browser-native copy/paste if not using `e.preventDefault()` correctly for selected text.\",\n    \"Race conditions between state updates if rapid-fire pasting occurs.\",\n    \"Paste might fail if the original layer of the copied object was deleted.\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "b0005a65fa2e86cfcdfb9737b46a6b69997de56c",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777916764.1764302,
+  "updated_at": 1777922181.3730316
+}

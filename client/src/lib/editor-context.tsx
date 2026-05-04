@@ -209,7 +209,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return {
         ...state,
         objects: [...state.objects, newObject],
-        selectedObjectIds: [newId]
+        selectedObjectIds: [newId],
+        clipboardObject: newObject
       };
     }
     case 'SET_AUTO_NUMBERING':
