@@ -89,6 +89,14 @@ export class FileStorage {
     }
   }
 
+  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      (user as any).passwordHash = passwordHash;
+      this.flushUsers();
+    }
+  }
+
   async getProject(id: string): Promise<Project | undefined> {
     return this.projects.get(id);
   }

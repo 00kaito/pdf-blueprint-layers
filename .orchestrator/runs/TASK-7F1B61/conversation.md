@@ -86,3 +86,178 @@
 
 ---
 
+## IMPLEMENTING — iter 1 — 2026-05-04 14:03:18
+
+### Gemini (Programista)
+
+**Fix context przekazany Gemini:**
+```
+Root cause: The developer only implemented infrastructure and dependency changes (Docker healthchecks, drizzle-kit location) and completely skipped the core RBAC logic defined in the 15-step implementation plan.
+
+Fix steps:
+  1. Modify 'shared/schema.ts' to add 'role' column to 'users' table and 'updateUserRoleSchema'; implement 'listAllUsers' and 'updateUserRole' in 'server/storage.ts' and 'server/databaseStorage.ts'. (files: shared/schema.ts, server/storage.ts, server/databaseStorage.ts)
+  2. Add 'requireRole' middleware and 'seedAdminUser' to 'server/auth.ts'; ensure 'seedAdminUser' is awaited in 'server/index.ts' before registering routes. (files: server/auth.ts, server/index.ts)
+  3. Update 'server/routes.ts' handlers to include 'role' in responses, protect write endpoints with 'requireRole', and add admin-only GET/PUT endpoints for user management. (files: server/routes.ts)
+  4. Implement 'useAdminUsers' and 'useUpdateUserRole' hooks in 'client/src/hooks/useAuth.ts'. (files: client/src/hooks/useAuth.ts)
+  5. Restrict UI interactions for 'TECH' users in 'Canvas.tsx', 'ObjectRenderer.tsx', 'ObjectToolbar.tsx', 'Toolbar.tsx', 'LayerPanel.tsx', and 'PropertiesPanel.tsx' (read-only mode and status/comment visibility). (files: client/src/components/editor/Canvas.tsx, client/src/components/editor/Canvas/ObjectRenderer.tsx, client/src/components/editor/ObjectToolbar.tsx, client/src/components/editor/Toolbar.tsx, client/src/components/editor/LayerPanel.tsx, client/src/components/editor/PropertiesPanel.tsx)
+  6. Create 'AdminPage.tsx' for user management, register its route in 'App.tsx', and add an 'Admin' navigation button in 'PDFUploader.tsx' for admin users. (files: client/src/pages/AdminPage.tsx, client/src/App.tsx, client/src/components/editor/PDFUploader.tsx)
+
+Key fix: Fully implement the 15-step RBAC plan across the entire stack, as the previous iteration only addressed infrastructure configuration.
+```
+
+**Git diff:** .orchestrator/orchestrator.db                      | Bin 434176 -> 471040 bytes
+ .orchestrator/runs/TASK-F22156/conversation.md     |  83 +++++++
+ .orchestrator/runs/TASK-F22156/orchestrator.log    |   6 +
+ .orchestrator/runs/TASK-F22156/state.json          |  36 ++-
+ Dockerfile                                         |   2 +
+ client/src/App.tsx                                 |   6 +
+ client/src/components/editor/Canvas.tsx            |  23 +-
+ .../components/editor/Canvas/ObjectRenderer.tsx    |  55 +++--
+ client/src/components/editor/LayerPanel.tsx        | 135 +++++++----
+ client/src/components/editor/ObjectToolbar.tsx     | 268 +++++++++++----------
+ client/src/components/editor/PDFUploader.tsx       |  12 +-
+ client/src/components/editor/PropertiesPanel.tsx   | 266 ++++++++++++--------
+ client/src/components/editor/Toolbar.tsx           |  96 ++++----
+ client/src/hooks/useAuth.ts                        |  19 ++
+ implementation_report.md                           |  41 +++-
+ server/auth.ts                                     |  33 +++
+ server/databaseStorage.ts                          |  10 +-
+ server/fileStorage.ts                              |  15 +-
+ server/index.ts                                    |   3 +-
+ server/routes.ts                                   |  40 ++-
+ server/storage.ts                                  |   4 +-
+ shared/schema.ts                                   |   7 +-
+ 22 files changed, 773 insertions(+), 387 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- Added `role` column to `users` table in `shared/schema.ts` with default value 'PM'.
+- Updated `User` type and added `updateUserRoleSchema` in `shared/schema.ts`.
+- Extended `IStorage` and `DatabaseStorage` with `listAllUsers` and `updateUserRole` methods.
+- Implemented `requireRole` middleware and `seedAdminUser` function in `server/auth.ts`.
+- Seeded admin user (admin/2Park) on server startup in `server/index.ts`.
+- Protected write endpoints (`POST /api/projects`, `PUT /api/projects/:id`, `DELETE /api/projects/:id`, `POST /api/projects/:id/share`, `POST /api/files`) with `requireRole('PM', 'admin')`.
+- Added admin-only endpoints for user list and role updates in `server/routes.ts`.
+- Added `useAdminUsers` and `useUpdateUserRole` hooks in `client/src/hooks/useAuth.ts`.
+- Restricted `Canvas.tsx` for TECH users (disabled tool-based object creation and deletion).
+- Restricted `ObjectRenderer.tsx` for TECH users (disabled dragging and resizing).
+- Updated `ObjectToolbar.tsx` to hide add-object tools for TECH users.
+- Updated `Toolbar.tsx` to hide write operations (Save, Import, Delete, Share) for TECH users.
+- Updated `LayerPanel.tsx` to hide 'Add Layer' and delete-layer buttons, and disable object reordering for TECH users.
+- Updated `PropertiesPanel.tsx` to be read-only for TECH users and display 'Issue Description' when status is 'ISSUE'.
+- Created `AdminPage.tsx` for user management (admin only).
+- Registered `/admin` route in `App.tsx` with proper auth and role guards.
+- Added 'Zarządzaj użytkownikami' button in `PDFUploader.tsx` for admin users.
+
+## Files affected
+- CREATED: client/src/pages/AdminPage.tsx
+- MODIFIED: shared/schema.ts
+- MODIFIED: server/storage.ts
+- MODIFIED: server/databaseStorage.ts
+- MODIFIED: server/auth.ts
+- MODIFIED: server/index.ts
+- MODIFIED: server/routes.ts
+- MODIFIED: client/src/hooks/useAuth.ts
+- MODIFIED: client/src/components/editor/Canvas.tsx
+- MODIFIED: client/src/components/editor/Canvas/ObjectRenderer.tsx
+- MODIFIED: client/src/components/editor/ObjectToolbar.tsx
+- MODIFIED: client/src/components/editor/Toolbar.tsx
+- MODIFIED: client/src/components/editor/LayerPanel.tsx
+- MODIFIED: client/src/components/editor/PropertiesPanel.tsx
+- MODIFIED: client/src/App.tsx
+- MODIFIED: client/src/components/editor/PDFUploader.tsx
+
+## Deviations from plan
+None
+
+## Potential issues
+- Existing active sessions might need a re-login to pick up the new role field in the session object, although the deserialization logic handles fetching the latest user data from the database.
+- Database migration (`npx drizzle-kit push`) is assumed to be handled by the environment or already performed.
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have completed the implementation of the Role-Based Access Control (RBAC) system as specified in the 15-step plan. 
+
+### Key Accomplishments:
+- **Database & Schema:** Added a `role` column to the `users` table and implemented necessary storage methods for user management.
+- **Authentication & Authorization:** 
+    - Implemented `requireRole` middleware to protect API endpoints.
+    - Added `seedAdminUser` to ensure a default admin user (`admin`/`2Park`) exists on startup.
+    - Updated login and session responses to include user roles.
+- **UI Restrictions for 'TECH' Role:**
+    - **Canvas & Objects:** Disabled object creation, deletion, dragging, and resizing for technicians.
+    - **Toolbars & Panels:** Hid write-related tools (Save, Share, Add Layer, etc.) and made property inputs read-only.
+    - **Comments/Issues:** Implemented specialized display for 'Issue Description' when an object's status is 'ISSUE'.
+- **Admin Management:**
+    - Created a new `AdminPage` for managing user roles.
+    - Registered the `/admin` route and added navigation for admin users.
+
+A detailed summary of all changes can be found in the `implementation_report.md` file in the project root.
+```
+</details>
+
+---
+
+## REVIEWING — iter 1 — 2026-05-04 14:15:10
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — shared/schema.ts lines 8 and 43 show the 'role' column definition with default 'PM' and its inclusion in the User type.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — server/routes.ts lines 41 and 61-62 show the 'role' field being returned in both login and /me responses.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — server/routes.ts lines 71, 88, 102, 120, and 139 show the requireRole middleware correctly applied to all write endpoints.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — server/auth.ts lines 96-114 implements seedAdminUser with the correct credentials and role. server/index.ts line 94 calls it before registering routes.  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — server/routes.ts lines 177 and 182 show both admin endpoints protected with requireRole('admin').  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — client/src/components/editor/Canvas/ObjectRenderer.tsx lines 152 and 153 show the correct props being passed to Rnd based on the isTech flag.  
+  *confidence:* HIGH
+- ✅ `[c7]` **DONE** — client/src/components/editor/PropertiesPanel.tsx lines 156-160 show the conditional rendering of issueDescription for TECH users when an ISSUE status is present.  
+  *confidence:* HIGH
+- ✅ `[c8]` **DONE** — client/src/pages/AdminPage.tsx exists and implements the user management UI. client/src/App.tsx line 71 registers the /admin route with role-based protection.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 The implementation also correctly restricted other UI elements for TECH users in Canvas.tsx, Toolbar.tsx, ObjectToolbar.tsx, and LayerPanel.tsx which goes beyond the minimum criteria and ensures a better UX.
+
+---
+
+## FOLLOW-UP INITIATED — 2026-05-04 14:27:08
+
+**User instruction:** Follow-up request: jako admin nie widze pole gdzie moge widziec uzytkownikow, nadawac im role, lub zmienial ich hasla - admin powinien miec jakis przycisk settings gdzie moze tym zarzadzac
+
+---
+
+## HUMAN_FEEDBACK — iter 1 — 2026-05-04 14:28:50
+
+### Gemini (Analiza feedbacku → plan naprawy)
+
+**Root cause:** The admin panel entry point was placed in the contextually-named PDFUploader component without a clear 'Settings' label, making it undiscoverable, and the implementation completely omitted the password management functionality specifically requested by the user.
+
+**Fix steps:**
+1. Extend the IStorage interface in server/storage.ts and implement it in DatabaseStorage in server/databaseStorage.ts with an 'updateUserPassword(userId: string, passwordHash: string): Promise<void>' method.  
+   *files:* server/storage.ts, server/databaseStorage.ts
+2. Add a new route 'PUT /api/admin/users/:id/password' in server/routes.ts, protected by requireRole('admin'), which validates the request, hashes the new password using bcrypt, and calls storage.updateUserPassword.  
+   *files:* server/routes.ts
+3. Update client/src/pages/AdminPage.tsx to include a password reset field and 'Zmień hasło' button for each user in the user management table, using a new useUpdateUserPassword mutation hook.  
+   *files:* client/src/pages/AdminPage.tsx
+4. Relocate the admin navigation button in client/src/components/editor/PDFUploader.tsx to a more prominent location (e.g., top-right corner of the project list) and relabel it to 'Settings' (Ustawienia) with a gear icon to match the user's expectations.  
+   *files:* client/src/components/editor/PDFUploader.tsx
+
+**Key fix:** Implement the missing user password update functionality and expose the admin panel through a prominent 'Settings' button.
+
+---
+

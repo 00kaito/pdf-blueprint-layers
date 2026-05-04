@@ -1,10 +1,11 @@
-import React from 'react';
-import { useCurrentUser, useAdminUsers, useUpdateUserRole } from '@/hooks/useAuth';
+import React, { useState } from 'react';
+import { useCurrentUser, useAdminUsers, useUpdateUserRole, useUpdateUserPassword } from '@/hooks/useAuth';
 import { Redirect, Link } from 'wouter';
-import { Loader2, ChevronLeft, Shield, User as UserIcon } from 'lucide-react';
+import { Loader2, ChevronLeft, Shield, User as UserIcon, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -12,7 +13,11 @@ const AdminPage = () => {
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const { data: users, isLoading: usersLoading } = useAdminUsers();
   const updateUserRole = useUpdateUserRole();
+  const updateUserPassword = useUpdateUserPassword();
   const { toast } = useToast();
+
+  const [resettingPasswordId, setResettingPasswordId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   if (userLoading) {
     return (
@@ -30,6 +35,21 @@ const AdminPage = () => {
     try {
       await updateUserRole.mutateAsync({ userId, role });
       toast({ title: "Role updated", description: `User role changed to ${role}` });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Update failed", description: e.message });
+    }
+  };
+
+  const handlePasswordChange = async (userId: string) => {
+    if (!newPassword) {
+      toast({ variant: "destructive", title: "Validation error", description: "Password cannot be empty" });
+      return;
+    }
+    try {
+      await updateUserPassword.mutateAsync({ userId, password: newPassword });
+      toast({ title: "Password updated", description: "User password has been changed." });
+      setResettingPasswordId(null);
+      setNewPassword("");
     } catch (e: any) {
       toast({ variant: "destructive", title: "Update failed", description: e.message });
     }
@@ -105,9 +125,50 @@ const AdminPage = () => {
                       {format(new Date(u.createdAt), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" disabled={u.id === user.id}>
-                        Reset Password
-                      </Button>
+                      {resettingPasswordId === u.id ? (
+                        <div className="flex items-center gap-2 justify-end">
+                          <Input 
+                            type="password" 
+                            placeholder="New password" 
+                            className="h-8 w-32 text-xs" 
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            autoFocus
+                          />
+                          <Button 
+                            size="sm" 
+                            className="h-8 px-2"
+                            onClick={() => handlePasswordChange(u.id)}
+                            disabled={updateUserPassword.isPending}
+                          >
+                            {updateUserPassword.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 px-2"
+                            onClick={() => {
+                              setResettingPasswordId(null);
+                              setNewPassword("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="gap-2"
+                          onClick={() => {
+                            setResettingPasswordId(u.id);
+                            setNewPassword("");
+                          }}
+                        >
+                          <Key className="h-4 w-4" />
+                          Zmień hasło
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

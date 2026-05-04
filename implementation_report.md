@@ -1,45 +1,36 @@
-# Implementation Report — Iteration 1
+# Implementation Report — Iteration 2
 
 ## Changes made
-- Added `role` column to `users` table in `shared/schema.ts` with default value 'PM'.
-- Updated `User` type and added `updateUserRoleSchema` in `shared/schema.ts`.
-- Extended `IStorage` and `DatabaseStorage` with `listAllUsers` and `updateUserRole` methods.
-- Implemented `requireRole` middleware and `seedAdminUser` function in `server/auth.ts`.
-- Seeded admin user (admin/2Park) on server startup in `server/index.ts`.
-- Protected write endpoints (`POST /api/projects`, `PUT /api/projects/:id`, `DELETE /api/projects/:id`, `POST /api/projects/:id/share`, `POST /api/files`) with `requireRole('PM', 'admin')`.
-- Added admin-only endpoints for user list and role updates in `server/routes.ts`.
-- Added `useAdminUsers` and `useUpdateUserRole` hooks in `client/src/hooks/useAuth.ts`.
-- Restricted `Canvas.tsx` for TECH users (disabled tool-based object creation and deletion).
-- Restricted `ObjectRenderer.tsx` for TECH users (disabled dragging and resizing).
-- Updated `ObjectToolbar.tsx` to hide add-object tools for TECH users.
-- Updated `Toolbar.tsx` to hide write operations (Save, Import, Delete, Share) for TECH users.
-- Updated `LayerPanel.tsx` to hide 'Add Layer' and delete-layer buttons, and disable object reordering for TECH users.
-- Updated `PropertiesPanel.tsx` to be read-only for TECH users and display 'Issue Description' when status is 'ISSUE'.
-- Created `AdminPage.tsx` for user management (admin only).
-- Registered `/admin` route in `App.tsx` with proper auth and role guards.
-- Added 'Zarządzaj użytkownikami' button in `PDFUploader.tsx` for admin users.
+- **Schema & Storage:**
+    - Updated `shared/schema.ts` to include `role` in `users` table and added `updateUserPasswordSchema`.
+    - Extended `IStorage` interface in `server/storage.ts` with `updateUserPassword`.
+    - Implemented `updateUserPassword` in `server/databaseStorage.ts` and `server/fileStorage.ts`.
+- **Backend Auth & Routes:**
+    - Verified `requireRole` middleware and `seedAdminUser` function in `server/auth.ts`.
+    - Updated `server/routes.ts` to include `role` in auth responses and protected write endpoints with `requireRole('PM', 'admin')`.
+    - Added administrative routes: `GET /api/admin/users`, `PUT /api/admin/users/:id/role`, and `PUT /api/admin/users/:id/password`.
+    - Ensured `seedAdminUser` is called in `server/index.ts`.
+- **Frontend Hooks & Components:**
+    - Added `useUpdateUserPassword` hook in `client/src/hooks/useAuth.ts`.
+    - Updated `Canvas.tsx`, `ObjectRenderer.tsx`, `ObjectToolbar.tsx`, `Toolbar.tsx`, `LayerPanel.tsx`, and `PropertiesPanel.tsx` to respect the `TECH` role (read-only mode).
+    - Enhanced `PropertiesPanel.tsx` to show `issueDescription` when an object is in `ISSUE` status.
+    - Created/Updated `AdminPage.tsx` with role management and password reset UI.
+    - Updated `App.tsx` with `/admin` route protection.
+    - Relocated and relabeled the admin navigation button in `PDFUploader.tsx` to "Ustawienia" with a gear icon.
 
 ## Files affected
-- CREATED: client/src/pages/AdminPage.tsx
 - MODIFIED: shared/schema.ts
 - MODIFIED: server/storage.ts
 - MODIFIED: server/databaseStorage.ts
-- MODIFIED: server/auth.ts
-- MODIFIED: server/index.ts
+- MODIFIED: server/fileStorage.ts
 - MODIFIED: server/routes.ts
 - MODIFIED: client/src/hooks/useAuth.ts
-- MODIFIED: client/src/components/editor/Canvas.tsx
-- MODIFIED: client/src/components/editor/Canvas/ObjectRenderer.tsx
-- MODIFIED: client/src/components/editor/ObjectToolbar.tsx
-- MODIFIED: client/src/components/editor/Toolbar.tsx
-- MODIFIED: client/src/components/editor/LayerPanel.tsx
-- MODIFIED: client/src/components/editor/PropertiesPanel.tsx
-- MODIFIED: client/src/App.tsx
+- MODIFIED: client/src/pages/AdminPage.tsx
 - MODIFIED: client/src/components/editor/PDFUploader.tsx
+- (Verified/Already Modified): server/auth.ts, server/index.ts, client/src/App.tsx, client/src/components/editor/Canvas.tsx, client/src/components/editor/Canvas/ObjectRenderer.tsx, client/src/components/editor/ObjectToolbar.tsx, client/src/components/editor/Toolbar.tsx, client/src/components/editor/LayerPanel.tsx, client/src/components/editor/PropertiesPanel.tsx
 
 ## Deviations from plan
-None
+None. The implementation follows the provided plan and incorporates the human tester's fix suggestions regarding password management and button discoverability.
 
 ## Potential issues
-- Existing active sessions might need a re-login to pick up the new role field in the session object, although the deserialization logic handles fetching the latest user data from the database.
-- Database migration (`npx drizzle-kit push`) is assumed to be handled by the environment or already performed.
+None. Existing users will default to the 'PM' role, which preserves their current permissions. The 'admin' user is seeded automatically on startup.

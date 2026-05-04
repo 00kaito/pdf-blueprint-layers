@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from "./auth";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import { insertUserSchema, projectStateSchema, updateUserRoleSchema } from "@shared/schema";
+import { insertUserSchema, projectStateSchema, updateUserRoleSchema, updateUserPasswordSchema } from "@shared/schema";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -189,6 +189,16 @@ export async function registerRoutes(
       return res.status(400).json(parsed.error);
     }
     await storage.updateUserRole(req.params.id, parsed.data.role);
+    res.sendStatus(200);
+  });
+
+  app.put("/api/admin/users/:id/password", requireAuth, requireRole('admin'), async (req, res) => {
+    const parsed = updateUserPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json(parsed.error);
+    }
+    const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+    await storage.updateUserPassword(req.params.id, passwordHash);
     res.sendStatus(200);
   });
 

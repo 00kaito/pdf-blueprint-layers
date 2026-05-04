@@ -34,6 +34,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(users).set({ role }).where(eq(users.id, userId));
   }
 
+  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+    await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+  }
+
   async getProject(id: string): Promise<Project | undefined> {
     const rows = await db
       .select({

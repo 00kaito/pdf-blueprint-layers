@@ -79,6 +79,10 @@ export const updateUserRoleSchema = z.object({
   role: z.enum(["admin", "PM", "TECH"]),
 });
 
+export const updateUserPasswordSchema = z.object({
+  password: z.string().min(1, "Password is required"),
+});
+
 export const insertProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
   ownerId: z.string(),

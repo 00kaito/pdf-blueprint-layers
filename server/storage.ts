@@ -8,6 +8,7 @@ export interface IStorage {
   createUser(insertUser: { username: string; passwordHash: string; role?: string }): Promise<User>;
   listAllUsers(): Promise<User[]>;
   updateUserRole(userId: string, role: string): Promise<void>;
+  updateUserPassword(userId: string, passwordHash: string): Promise<void>;
   
   getProject(id: string): Promise<Project | undefined>;
   listProjectsForUser(userId: string): Promise<Project[]>;

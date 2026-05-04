@@ -67,3 +67,15 @@ export function useUpdateUserRole() {
     },
   });
 }
+
+export function useUpdateUserPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      await apiRequest("PUT", `/api/admin/users/${userId}/password`, { password });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+  });
+}

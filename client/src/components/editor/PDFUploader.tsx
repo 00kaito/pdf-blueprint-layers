@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield } from 'lucide-react';
+import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings } from 'lucide-react';
 import { useImport } from '@/hooks/useImport';
 import { useProjectList, useCreateProject, useDeleteProject, useShareProject, useUploadFile } from '@/hooks/useProjects';
 import { useDocument } from '@/lib/editor-context';
@@ -147,8 +147,8 @@ export const PDFUploader = () => {
             {user?.role === 'admin' && (
               <Link href="/admin">
                 <Button variant="outline">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Zarządzaj użytkownikami
+                  <Settings className="h-4 w-4 mr-2" />
+                  Ustawienia
                 </Button>
               </Link>
             )}
