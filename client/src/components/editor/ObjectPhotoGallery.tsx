@@ -38,6 +38,8 @@ const dataUrlToFile = (dataUrl: string, filename: string): File => {
 
 export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId, photos }) => {
   const { state, dispatch } = useDocument();
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
   const uploadFile = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -171,7 +173,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           variant="outline"
           size="icon"
           className="h-6 w-6"
-          disabled={isUploading}
+          disabled={isUploading || isTech}
           onClick={() => fileInputRef.current?.click()}
         >
           {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
@@ -237,15 +239,17 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
               alt={`Photo ${index + 1}`}
               className="h-full w-full object-cover"
             />
-            <button
-              className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                removePhoto(index);
-              }}
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
+            {!isTech && (
+              <button
+                className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removePhoto(index);
+                }}
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
           </div>
         ))}
         {photos.length === 0 && !isUploading && (
@@ -293,12 +297,14 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
                   </>
                 )}
                 
-                <button
-                  className="absolute top-4 right-12 p-2 bg-black/50 text-white rounded-full hover:bg-red-500/80 transition-colors"
-                  onClick={() => removePhoto(lightboxIndex)}
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
+                {!isTech && (
+                  <button
+                    className="absolute top-4 right-12 p-2 bg-black/50 text-white rounded-full hover:bg-red-500/80 transition-colors"
+                    onClick={() => removePhoto(lightboxIndex)}
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                )}
               </>
             )}
           </div>

@@ -3,6 +3,7 @@ import {useDocument, useUI} from '@/lib/editor-context';
 import {PDFUploader} from '@/components/editor/PDFUploader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useCurrentUser } from '@/hooks/useAuth';
 
 const Canvas = lazy(() => import('@/components/editor/Canvas').then(module => ({ default: module.Canvas })));
 const Toolbar = lazy(() => import('@/components/editor/Toolbar').then(module => ({ default: module.Toolbar })));
@@ -16,6 +17,8 @@ const Home = () => {
   const { state: uiState } = useUI();
   const isMobile = useIsMobile();
   const { isSaving } = useAutoSave();
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
 
   if (!docState.pdfFile) {
     return <PDFUploader />;
@@ -28,6 +31,7 @@ const Home = () => {
       <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
         <div className="flex flex-col h-screen overflow-hidden bg-background relative pb-12">
           <Canvas />
+          {/* Sidebars are hidden for TECH on mobile by not rendering them and restricting MobileBottomBar */}
           <MobileBottomBar />
         </div>
       </Suspense>

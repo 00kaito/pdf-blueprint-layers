@@ -23,3 +23,22 @@
  server/auth.ts                                     |   9 +-
  server/routes.ts                                   |   6 +-
  13 files changed, 311 insertions(+), 121 deletions(-) (432 lines)
+2026-05-04 16:42:01,821 [INFO] [TASK-67B1F8] Phase: REVIEWING (iteration 1)
+2026-05-04 16:42:01,843 [INFO] Review using full diff from SHA 7da0938f
+2026-05-04 16:42:01,843 [INFO] [gemini] Calling Gemini CLI (timeout=1200s, json=True, cwd=None)
+2026-05-04 16:53:47,946 [WARNING] [gemini] JSON parse failed: Invalid control character at: line 59 column 99 (char 3186)
+2026-05-04 16:53:47,947 [WARNING] [gemini] attempt 1 — Expected JSON but got: {
+  "iteration": 1,
+  "overall_status": "APPROVED",
+  "criteria_results": [
+    {
+      "id": "c1",
+      "description": "Użytkownik z rolą TECH nie może usunąć obiektu klawiszem Delete ani Backspace.
+2026-05-04 16:53:47,947 [INFO] [gemini] retrying in 5s...
+2026-05-04 17:13:52,981 [WARNING] [gemini] attempt 2 timed out
+2026-05-04 17:13:52,982 [INFO] [gemini] retrying in 10s...
+2026-05-04 17:17:50,403 [INFO] [gemini] success on attempt 3 (227.4s)
+2026-05-04 17:17:50,403 [INFO] Review result: APPROVED, open criteria: [], blocking issues: 0
+2026-05-04 17:17:50,411 [INFO] ═══ Task TASK-67B1F8 finished with status=TaskStatus.APPROVED ═══
+2026-05-04 18:31:17,064 [INFO] ═══ Starting task TASK-67B1F8 (status=TaskStatus.APPROVED) ═══
+2026-05-04 18:31:17,065 [INFO] ═══ Task TASK-67B1F8 finished with status=TaskStatus.APPROVED ═══

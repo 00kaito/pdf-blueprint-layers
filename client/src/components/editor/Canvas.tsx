@@ -44,6 +44,22 @@ export const Canvas = () => {
   });
 
   const state = { ...docState, ...uiState };
+  const mousePosRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      // Calculate coordinates relative to the canvas, accounting for scale
+      mousePosRef.current = {
+        x: (e.clientX - rect.left) / state.scale,
+        y: (e.clientY - rect.top) / state.scale
+      };
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [state.scale]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -68,7 +84,7 @@ export const Canvas = () => {
           dispatch({ type: 'COPY_OBJECT' });
         } else if (e.code === 'KeyV') {
           e.preventDefault();
-          dispatch({ type: 'PASTE_OBJECT' });
+          dispatch({ type: 'PASTE_OBJECT', payload: mousePosRef.current });
         }
       }
     };

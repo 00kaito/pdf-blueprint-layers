@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDocument, useUI } from '@/lib/editor-context';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
+import { ObjectComments } from './ObjectComments';
 import { MobileAddObjectPanel } from './MobileAddObjectPanel';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { 
@@ -8,7 +9,8 @@ import {
   ChevronDown, 
   Plus, 
   Camera,
-  Layers
+  Layers,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,12 +70,14 @@ export const MobileBottomBar: React.FC = () => {
     });
   };
 
-  const openEditSheet = (section?: 'photos' | 'properties') => {
+  const openEditSheet = (section?: 'photos' | 'properties' | 'comments') => {
     setEditSheetOpen(true);
     if (section) {
       // Small delay to allow sheet to render
       setTimeout(() => {
-        const id = section === 'photos' ? 'photo-gallery-section' : 'full-properties-section';
+        const id = section === 'photos' ? 'photo-gallery-section' : 
+                   section === 'comments' ? 'comments-section' : 
+                   'full-properties-section';
         const element = document.getElementById(id);
         element?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
@@ -83,8 +87,11 @@ export const MobileBottomBar: React.FC = () => {
   if (!isBarVisible) {
     return (
       <Button
-        onClick={() => setIsBarVisible(true)}
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-lg z-[100] h-12 w-12 p-0 bg-primary hover:bg-primary/90"
+        onClick={() => !isTech && setIsBarVisible(true)}
+        className={cn(
+          "fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-lg z-[100] h-12 w-12 p-0 bg-primary hover:bg-primary/90",
+          isTech && "hidden"
+        )}
       >
         <Plus className="h-6 w-6 text-primary-foreground" />
       </Button>
@@ -143,12 +150,17 @@ export const MobileBottomBar: React.FC = () => {
         <div className="flex items-center gap-1 shrink-0">
           {selectedObject ? (
             <>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('comments')}>
+                <MessageSquare className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('photos')}>
                 <Camera className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('properties')}>
-                <ChevronUp className="h-4 w-4" />
-              </Button>
+              {!isTech && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditSheet('properties')}>
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+              )}
             </>
           ) : (
             !isTech && (
@@ -157,9 +169,11 @@ export const MobileBottomBar: React.FC = () => {
               </Button>
             )
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsBarVisible(false)}>
-            <ChevronDown className="h-4 w-4" />
-          </Button>
+          {!isTech && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsBarVisible(false)}>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -209,12 +223,21 @@ export const MobileBottomBar: React.FC = () => {
               </div>
 
               {selectedObject && (
-                <div id="photo-gallery-section">
-                  <ObjectPhotoGallery 
-                    objectId={selectedObject.id} 
-                    photos={selectedObject.photos || []} 
-                  />
-                </div>
+                <>
+                  <div id="photo-gallery-section">
+                    <ObjectPhotoGallery 
+                      objectId={selectedObject.id} 
+                      photos={selectedObject.photos || []} 
+                    />
+                  </div>
+                  
+                  <div id="comments-section">
+                    <ObjectComments 
+                      objectId={selectedObject.id} 
+                      comments={selectedObject.comments || []} 
+                    />
+                  </div>
+                </>
               )}
             </div>
           </ScrollArea>

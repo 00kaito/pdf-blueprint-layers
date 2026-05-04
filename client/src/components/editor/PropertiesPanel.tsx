@@ -11,6 +11,7 @@ import {CheckCircle2, AlertCircle, Maximize2, Network, Palette, Settings2, Tag, 
 import {Button} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
 import {ObjectPhotoGallery} from './ObjectPhotoGallery';
+import {ObjectComments} from './ObjectComments';
 import {useCurrentUser} from '@/hooks/useAuth';
 
 export const PropertiesPanel = () => {
@@ -344,6 +345,11 @@ export const PropertiesPanel = () => {
                 <ObjectPhotoGallery
                   objectId={firstObject.id}
                   photos={firstObject.photos ?? []}
+                />
+                <Separator />
+                <ObjectComments
+                  objectId={firstObject.id}
+                  comments={firstObject.comments ?? []}
                 />
               </>
             )}

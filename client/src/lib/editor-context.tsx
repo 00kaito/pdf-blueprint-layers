@@ -192,28 +192,53 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       const objectsToCopy = state.objects.filter(o => state.selectedObjectIds.includes(o.id));
       if (objectsToCopy.length === 0) return state;
 
-      // Copy only basic parameters: name, color, dimensions, label (content), device type (type/metadata), status
+      // Copy only basic parameters: name, color, dimensions (width/height), label (content), device type (type/metadata), status
       // Explicitly exclude photos/gallery
       const cleanedObjects = objectsToCopy.map(o => ({
-        ...o,
-        photos: [] // Ensure photos are not copied
+        id: o.id, // placeholder
+        type: o.type,
+        x: o.x,
+        y: o.y,
+        width: o.width,
+        height: o.height,
+        layerId: o.layerId, // placeholder
+        name: o.name,
+        content: o.content,
+        color: o.color,
+        status: o.status,
+        metadata: o.metadata ? { ...o.metadata } : undefined,
+        strokeWidth: o.strokeWidth,
+        fontSize: o.fontSize,
+        fontWeight: o.fontWeight,
+        opacity: o.opacity,
+        rotation: o.rotation,
+        pathData: o.pathData,
+        // photos is EXCLUDED
       }));
 
-      return { ...state, clipboardObjects: cleanedObjects };
+      return { ...state, clipboardObjects: cleanedObjects as EditorObject[] };
     }
     case 'PASTE_OBJECT': {
       if (state.clipboardObjects.length === 0 || !state.activeLayerId) return state;
       
-      const newObjects = state.clipboardObjects.map((o, index) => {
+      // Calculate the center of the clipboard object group to align with cursor
+      const minX = Math.min(...state.clipboardObjects.map(obj => obj.x));
+      const minY = Math.min(...state.clipboardObjects.map(obj => obj.y));
+      const maxX = Math.max(...state.clipboardObjects.map(obj => obj.x + (obj.width || 0)));
+      const maxY = Math.max(...state.clipboardObjects.map(obj => obj.y + (obj.height || 0)));
+      
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      const newObjects = state.clipboardObjects.map((o) => {
         const id = uuidv4();
         let x = o.x;
         let y = o.y;
 
         if (action.payload) {
-          // Paste at cursor position. If multiple objects, maintain relative positions.
-          const firstObj = state.clipboardObjects[0];
-          const offsetX = o.x - firstObj.x;
-          const offsetY = o.y - firstObj.y;
+          // Paste centered at cursor position. Maintain relative positions for multiple objects.
+          const offsetX = o.x - centerX;
+          const offsetY = o.y - centerY;
           x = action.payload.x + offsetX;
           y = action.payload.y + offsetY;
         } else {
@@ -229,7 +254,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
           x,
           y,
           layerId: state.activeLayerId,
-          name: o.name
+          photos: [] // Double check photos are empty
         };
       });
 

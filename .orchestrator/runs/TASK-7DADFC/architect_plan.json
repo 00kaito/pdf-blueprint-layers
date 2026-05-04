@@ -1,0 +1,104 @@
+{
+  "summary": "Implement role-based restrictions and capabilities for mobile users, specifically limiting TECH role to view-only status coloring while granting PM role enhanced object editing, commenting, and gallery management.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Update Schema and Types for Comments",
+      "description": "Add 'comments' field to EditorObject interface in client/src/lib/types.ts and ensure shared/schema.ts supports storing these within the project state JSON.",
+      "files_affected": [
+        "client/src/lib/types.ts",
+        "shared/schema.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Role-Based UI Filtering in Home Page",
+      "description": "Modify home.tsx to detect 'isMobile' and 'user.role'. If role is TECH and isMobile is true, hide Sidebars (LayerPanel, PropertiesPanel) and the AddObjectPanel.",
+      "files_affected": [
+        "client/src/pages/home.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Disable Canvas Interactions for Mobile TECH",
+      "description": "Update Canvas.tsx and ObjectRenderer.tsx to disable dragging, resizing, and drawing tools when the user is a TECH on a mobile device.",
+      "files_affected": [
+        "client/src/components/editor/Canvas.tsx",
+        "client/src/components/editor/Canvas/ObjectRenderer.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Enable Status Coloring for TECH on Mobile",
+      "description": "Ensure the 'Color by Status' toggle is available in the MobileBottomBar or a simplified mobile menu for TECH users.",
+      "files_affected": [
+        "client/src/components/editor/MobileBottomBar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 5,
+      "title": "Enhance Mobile PM Object Editing",
+      "description": "Modify PropertiesPanel.tsx (or create a MobilePropertiesDialog) to allow PMs to edit labels, add/view comments, and manage the ObjectPhotoGallery on mobile.",
+      "files_affected": [
+        "client/src/components/editor/PropertiesPanel.tsx",
+        "client/src/components/editor/ObjectPhotoGallery.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 6,
+      "title": "Implement Mobile Comment System",
+      "description": "Create or update a component to allow PMs to input and display comments for a selected object on mobile.",
+      "files_affected": [
+        "client/src/components/editor/ObjectComments.tsx"
+      ],
+      "type": "CREATE"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "On mobile devices, users with role 'TECH' cannot see or open LayerPanel or PropertiesPanel sidebars.",
+      "how_to_verify": "Check conditional rendering in client/src/pages/home.tsx for TECH role + isMobile."
+    },
+    {
+      "id": "c2",
+      "description": "Object dragging and resizing (react-rnd) is disabled for TECH role on mobile.",
+      "how_to_verify": "Verify 'disableDragging' and 'enableResizing={false}' props in ObjectRenderer.tsx when role is TECH and isMobile is true."
+    },
+    {
+      "id": "c3",
+      "description": "The 'Color by Status' feature is accessible to TECH users on mobile via the UI.",
+      "how_to_verify": "Confirm MobileBottomBar.tsx contains a toggle or button for status coloring visible to TECH role."
+    },
+    {
+      "id": "c4",
+      "description": "PM users on mobile can edit the 'name' (label) field of a selected object.",
+      "how_to_verify": "Check for an enabled Input or Textarea for 'name' in the mobile properties view for PM role."
+    },
+    {
+      "id": "c5",
+      "description": "PM users on mobile can view and add photos via the ObjectPhotoGallery component.",
+      "how_to_verify": "Verify ObjectPhotoGallery.tsx is rendered and functional for PM role on mobile."
+    },
+    {
+      "id": "c6",
+      "description": "The EditorObject type in types.ts includes an optional 'comments' string or string array.",
+      "how_to_verify": "Inspect client/src/lib/types.ts for the presence of 'comments' field in EditorObject interface."
+    },
+    {
+      "id": "c7",
+      "description": "Drawing mode is forced to 'select' and tool selection is disabled for TECH role on mobile.",
+      "how_to_verify": "Check dispatch logic or tool filtering in Toolbar.tsx/MobileBottomBar.tsx for TECH role on mobile."
+    }
+  ],
+  "risks": [
+    "Race conditions if role state isn't immediately available on page load.",
+    "Mobile detection (use-mobile.tsx) might not catch all tablet devices correctly without viewport adjustments.",
+    "Hardcoded role strings ('TECH', 'PM') might diverge from database values if not centralized in schema.ts."
+  ]
+}
