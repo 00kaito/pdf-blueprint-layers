@@ -20,7 +20,7 @@ Zarządza danymi "ciężkimi" i wolnozmiennymi. Zmiana powoduje re-render całeg
 *   `pdfFile`, `overlayPdfFile`: Surowe pliki dokumentów.
 *   `layers`, `objects`: Struktura warstw i elementów blueprintu.
 *   `customIcons`, `exportSettings`, `autoNumbering`: Dane konfiguracyjne użytkownika.
-*   `clipboardObject`: Obiekt schowka.
+*   `clipboardObjects`: Lista obiektów w schowku.
 
 ### 2.2. UIContext (`UIState`)
 Zarządza danymi szybkozmiennymi. Scroll i zmiana narzędzia nie wymuszają re-renderu ciężkich komponentów.

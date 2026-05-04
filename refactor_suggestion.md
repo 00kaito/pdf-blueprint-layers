@@ -43,7 +43,7 @@ tree — including `Toolbar.tsx`, which has expensive JSX subtrees.
 **`DocumentContext`** — slow-changing, consumed by both Toolbar and Canvas:
 ```ts
 { pdfFile, overlayPdfFile, overlayOpacity, layers, objects,
-  clipboardObject, autoNumbering, exportSettings, customIcons }
+  clipboardObjects, autoNumbering, exportSettings, customIcons }
 ```
 
 **`UIContext`** — fast-changing, consumed only by Canvas and partially Toolbar:

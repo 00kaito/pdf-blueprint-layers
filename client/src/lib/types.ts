@@ -47,7 +47,7 @@ export type DocumentState = {
   overlayOpacity: number;
   layers: Layer[];
   objects: EditorObject[];
-  clipboardObject: EditorObject | null;
+  clipboardObjects: EditorObject[];
   autoNumbering: {
     enabled: boolean;
     prefix: string;

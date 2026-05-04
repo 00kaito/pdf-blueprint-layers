@@ -12,7 +12,7 @@ const initialDocumentState: DocumentState = {
   overlayOpacity: 0.5,
   layers: [],
   objects: [],
-  clipboardObject: null,
+  clipboardObjects: [],
   autoNumbering: {
     enabled: false,
     prefix: 'IDF1-P1-',
@@ -189,28 +189,28 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
     }
     case 'COPY_OBJECT': {
       if (state.selectedObjectIds.length === 0) return state;
-      // For now, only copy the last selected object
-      const objectToCopy = state.objects.find(o => o.id === state.selectedObjectIds[state.selectedObjectIds.length - 1]);
-      if (!objectToCopy) return state;
-      return { ...state, clipboardObject: { ...objectToCopy } };
+      const objectsToCopy = state.objects.filter(o => state.selectedObjectIds.includes(o.id));
+      if (objectsToCopy.length === 0) return state;
+      return { ...state, clipboardObjects: objectsToCopy.map(o => ({ ...o })) };
     }
     case 'PASTE_OBJECT': {
-      if (!state.clipboardObject || !state.activeLayerId) return state;
-      const newId = uuidv4();
+      if (state.clipboardObjects.length === 0 || !state.activeLayerId) return state;
+      
       const offset = 20 / state.scale;
-      const newObject = {
-        ...state.clipboardObject,
-        id: newId,
-        x: state.clipboardObject.x + offset,
-        y: state.clipboardObject.y + offset,
-        layerId: state.activeLayerId, // Paste into active layer
-        name: state.clipboardObject.name // Preserve original name without suffix
-      };
+      const newObjects = state.clipboardObjects.map(o => ({
+        ...o,
+        id: uuidv4(),
+        x: o.x + offset,
+        y: o.y + offset,
+        layerId: state.activeLayerId,
+        name: o.name
+      }));
+
       return {
         ...state,
-        objects: [...state.objects, newObject],
-        selectedObjectIds: [newId],
-        clipboardObject: newObject
+        objects: [...state.objects, ...newObjects],
+        selectedObjectIds: newObjects.map(o => o.id),
+        clipboardObjects: newObjects // Update clipboard with new objects for sequential pasting
       };
     }
     case 'SET_AUTO_NUMBERING':
@@ -288,14 +288,14 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       overlayOpacity: state.overlayOpacity,
       layers: state.layers,
       objects: state.objects,
-      clipboardObject: state.clipboardObject,
+      clipboardObjects: state.clipboardObjects,
       autoNumbering: state.autoNumbering,
       exportSettings: state.exportSettings,
       customIcons: state.customIcons,
       pdfCanvasHeight: state.pdfCanvasHeight,
     },
     dispatch
-  }), [state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.layers, state.objects, state.clipboardObject, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight, dispatch]);
+  }), [state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight, dispatch]);
 
   const uiValue = useMemo(() => ({
     state: {

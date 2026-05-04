@@ -47,7 +47,6 @@ export const Canvas = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isTech) return;
       // Don't delete if user is typing in an input or contentEditable
       if (
         e.target instanceof HTMLInputElement || 
@@ -62,10 +61,10 @@ export const Canvas = () => {
       }
 
       if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'c' || e.key === 'C') {
+        if (e.code === 'KeyC') {
           e.preventDefault();
           dispatch({ type: 'COPY_OBJECT' });
-        } else if (e.key === 'v' || e.key === 'V') {
+        } else if (e.code === 'KeyV') {
           e.preventDefault();
           dispatch({ type: 'PASTE_OBJECT' });
         }
@@ -74,7 +73,7 @@ export const Canvas = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.selectedObjectIds, dispatch, isTech]);
+  }, [state.selectedObjectIds, dispatch]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isTech) {
