@@ -107,7 +107,7 @@ export type EditorAction =
   | { type: 'IMPORT_PROJECT'; payload: Partial<EditorState> }
   | { type: 'REORDER_LAYERS'; payload: { sourceIndex: number; destinationIndex: number } }
   | { type: 'COPY_OBJECT' }
-  | { type: 'PASTE_OBJECT' }
+  | { type: 'PASTE_OBJECT'; payload?: { x: number; y: number } }
   | { type: 'SET_AUTO_NUMBERING'; payload: Partial<DocumentState['autoNumbering']> }
   | { type: 'INCREMENT_COUNTER' }
   | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<DocumentState['exportSettings']> }

@@ -56,6 +56,8 @@ export const Canvas = () => {
         return;
       }
 
+      if (isTech) return;
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedObjectIds.length > 0) {
         dispatch({ type: 'DELETE_OBJECTS', payload: state.selectedObjectIds });
       }
@@ -73,7 +75,7 @@ export const Canvas = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.selectedObjectIds, dispatch]);
+  }, [state.selectedObjectIds, dispatch, isTech]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isTech) {

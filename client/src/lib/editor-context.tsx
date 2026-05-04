@@ -191,20 +191,47 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       if (state.selectedObjectIds.length === 0) return state;
       const objectsToCopy = state.objects.filter(o => state.selectedObjectIds.includes(o.id));
       if (objectsToCopy.length === 0) return state;
-      return { ...state, clipboardObjects: objectsToCopy.map(o => ({ ...o })) };
+
+      // Copy only basic parameters: name, color, dimensions, label (content), device type (type/metadata), status
+      // Explicitly exclude photos/gallery
+      const cleanedObjects = objectsToCopy.map(o => ({
+        ...o,
+        photos: [] // Ensure photos are not copied
+      }));
+
+      return { ...state, clipboardObjects: cleanedObjects };
     }
     case 'PASTE_OBJECT': {
       if (state.clipboardObjects.length === 0 || !state.activeLayerId) return state;
       
-      const offset = 20 / state.scale;
-      const newObjects = state.clipboardObjects.map(o => ({
-        ...o,
-        id: uuidv4(),
-        x: o.x + offset,
-        y: o.y + offset,
-        layerId: state.activeLayerId,
-        name: o.name
-      }));
+      const newObjects = state.clipboardObjects.map((o, index) => {
+        const id = uuidv4();
+        let x = o.x;
+        let y = o.y;
+
+        if (action.payload) {
+          // Paste at cursor position. If multiple objects, maintain relative positions.
+          const firstObj = state.clipboardObjects[0];
+          const offsetX = o.x - firstObj.x;
+          const offsetY = o.y - firstObj.y;
+          x = action.payload.x + offsetX;
+          y = action.payload.y + offsetY;
+        } else {
+          // Default offset if no cursor position provided
+          const offset = 20 / state.scale;
+          x += offset;
+          y += offset;
+        }
+
+        return {
+          ...o,
+          id,
+          x,
+          y,
+          layerId: state.activeLayerId,
+          name: o.name
+        };
+      });
 
       return {
         ...state,

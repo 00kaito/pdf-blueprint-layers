@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDocument, useUI } from '@/lib/editor-context';
 import { useObjectCreation } from '@/hooks/useObjectCreation';
+import { useCurrentUser } from '@/hooks/useAuth';
 import { 
   Camera, 
   Square, 
@@ -29,20 +30,34 @@ export const MobileAddObjectPanel: React.FC<MobileAddObjectPanelProps> = ({ onCl
   const { state: docState } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
   const { handleAddText, handleAddIcon, handleImageUpload } = useObjectCreation();
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
 
   const handleIconClick = (type: string) => {
+    if (isTech) return;
     handleAddIcon(type);
     onClose();
   };
 
   const handleTextClick = () => {
+    if (isTech) return;
     handleAddText();
     onClose();
   };
 
   const handleLayerChange = (layerId: string) => {
+    if (isTech) return;
     uiDispatch({ type: 'SET_ACTIVE_LAYER', payload: layerId });
   };
+
+  if (isTech) {
+    return (
+      <div className="p-8 text-center space-y-2">
+        <p className="text-sm font-medium">Read-only Mode</p>
+        <p className="text-xs text-muted-foreground">Technicians cannot add objects or change layers.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-4">

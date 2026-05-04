@@ -18,6 +18,7 @@ export const PDFUploader = () => {
   const { handleFileImport } = useImport();
   const { dispatch } = useDocument();
   const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
   const { data: projects, isLoading } = useProjectList();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
@@ -135,6 +136,8 @@ export const PDFUploader = () => {
     }
   };
 
+  console.log('[PDFUploader] Rendering. User:', user ? { username: user.username, role: user.role } : 'null');
+
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col p-4 md:p-8">
       <div className="max-w-6xl mx-auto w-full space-y-8">
@@ -146,9 +149,9 @@ export const PDFUploader = () => {
           <div className="flex items-center gap-2">
             {user?.role === 'admin' && (
               <Link href="/admin">
-                <Button variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Ustawienia
+                <Button variant="outline" className="border-primary/50 hover:bg-primary/5">
+                  <Settings className="h-4 w-4 mr-2 text-primary" />
+                  Zarządzaj użytkownikami
                 </Button>
               </Link>
             )}
@@ -156,38 +159,40 @@ export const PDFUploader = () => {
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
-            <Dialog open={newProjectDialogOpen} onOpenChange={setNewProjectDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Project
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Project</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleCreateProject} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Project Name</Label>
-                    <Input id="name" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pdf">Blueprint PDF</Label>
-                    <Input id="pdf" type="file" accept="application/pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="overlay">Overlay PDF (Optional)</Label>
-                    <Input id="overlay" type="file" accept="application/pdf" onChange={e => setOverlayFile(e.target.files?.[0] || null)} />
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit" disabled={isCreating}>
-                      {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Project"}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            {!isTech && (
+              <Dialog open={newProjectDialogOpen} onOpenChange={setNewProjectDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Project
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Project</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateProject} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Project Name</Label>
+                      <Input id="name" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pdf">Blueprint PDF</Label>
+                      <Input id="pdf" type="file" accept="application/pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="overlay">Overlay PDF (Optional)</Label>
+                      <Input id="overlay" type="file" accept="application/pdf" onChange={e => setOverlayFile(e.target.files?.[0] || null)} />
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit" disabled={isCreating}>
+                        {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Project"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </header>
 
@@ -218,12 +223,16 @@ export const PDFUploader = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => setSharingProjectId(project.id)}>
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteProject.mutate(project.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {!isTech && (
+                        <>
+                          <Button variant="ghost" size="icon" onClick={() => setSharingProjectId(project.id)}>
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteProject.mutate(project.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                       <Button onClick={() => handleOpenProject(project.id)}>
                         Open
                       </Button>
@@ -233,45 +242,49 @@ export const PDFUploader = () => {
               </Card>
             ))}
             
-            <Card className="border-dashed flex flex-col items-center justify-center py-10 text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setNewProjectDialogOpen(true)}>
-              <Plus className="h-10 w-10 mb-2" />
-              <p className="font-medium">Create another project</p>
-            </Card>
+            {!isTech && (
+              <Card className="border-dashed flex flex-col items-center justify-center py-10 text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setNewProjectDialogOpen(true)}>
+                <Plus className="h-10 w-10 mb-2" />
+                <p className="font-medium">Create another project</p>
+              </Card>
+            )}
           </div>
         )}
 
-        <div className="pt-8 border-t space-y-4">
-          <h2 className="text-xl font-semibold">More Options</h2>
-          <div className="flex flex-wrap gap-4">
-            <div className="relative group">
+        {!isTech && (
+          <div className="pt-8 border-t space-y-4">
+            <h2 className="text-xl font-semibold">More Options</h2>
+            <div className="flex flex-wrap gap-4">
+              <div className="relative group">
+                <input
+                  type="file"
+                  accept=".json,.zip"
+                  onChange={onFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <Button variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import from ZIP / JSON
+                </Button>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => dirInputRef.current?.click()}
+              >
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Import Project Folder
+              </Button>
               <input
                 type="file"
-                accept=".json,.zip"
+                ref={dirInputRef}
+                multiple
+                {...{ webkitdirectory: "", directory: "" } as any}
                 onChange={onFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                className="hidden"
               />
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Import from ZIP / JSON
-              </Button>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => dirInputRef.current?.click()}
-            >
-              <FolderOpen className="h-4 w-4 mr-2" />
-              Import Project Folder
-            </Button>
-            <input
-              type="file"
-              ref={dirInputRef}
-              multiple
-              {...{ webkitdirectory: "", directory: "" } as any}
-              onChange={onFileChange}
-              className="hidden"
-            />
           </div>
-        </div>
+        )}
       </div>
 
       <Dialog open={!!sharingProjectId} onOpenChange={(open) => !open && setSharingProjectId(null)}>

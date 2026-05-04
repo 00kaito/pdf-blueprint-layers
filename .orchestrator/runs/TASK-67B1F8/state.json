@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-67B1F8",
+  "description": "przeanalizuj czy mechanizm rol dziala w dobry sposob, czy rola TECH rzeczywiscie nie moze nic edytowac i ma tylko okno do podgladu, bez mozliwosci przesuwania obiekto lub zmiany labels, oraz ze rola ADMIN na mozliwosc zarzadznia uprawnieniami uzytkownikow",
+  "title": "przeanalizuj czy mechanizm rol dziala w dobry sposob, czy rola TECH rzeczywiscie nie moze nic edytow",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Użytkownik z rolą TECH nie może usunąć obiektu klawiszem Delete ani Backspace.",
+      "how_to_verify": "Weryfikacja kodu w Canvas.tsx: funkcja handleKeyDown musi zawierać warunek `if (isTech) return` przed dispatch('DELETE_OBJECTS').",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "Użytkownik z rolą TECH nie może kopiować ani wklejać obiektów skrótami klawiszowymi.",
+      "how_to_verify": "Weryfikacja kodu w Canvas.tsx: obsługa Ctrl+C/V musi być zablokowana dla TECH.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "W widoku mobilnym pole edycji nazwy obiektu jest wyłączone (disabled) dla TECH.",
+      "how_to_verify": "Weryfikacja kodu w MobileBottomBar.tsx: Input musi posiadać atrybut `disabled={isTech}`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "W widoku mobilnym przyciski zmiany statusu są wyłączone dla TECH.",
+      "how_to_verify": "Weryfikacja kodu w MobileBottomBar.tsx: przyciski statusu muszą posiadać atrybut `disabled={isTech}`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "Sekcja dodawania obiektów w panelu mobilnym jest niewidoczna dla TECH.",
+      "how_to_verify": "Weryfikacja kodu w MobileAddObjectPanel.tsx: sekcja renderująca przyciski dodawania musi być warunkowo ukryta `{!isTech && ...}`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c6",
+      "description": "Na ekranie startowym (PDFUploader) przyciski New Project, Share i Delete są niewidoczne dla TECH.",
+      "how_to_verify": "Weryfikacja kodu w PDFUploader.tsx: przyciski te muszą być owinięte w `!isTech && ...`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c7",
+      "description": "ADMIN posiada wgląd do listy wszystkich użytkowników i może zmieniać ich role.",
+      "how_to_verify": "Weryfikacja istnienia AdminPage.tsx oraz endpointów /api/admin/users w server/routes.ts.",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Analiza wykazała, że mechanizm ról jest w większości poprawnie zaimplementowany po stronie serwera i w kluczowych elementach UI, jednak istnieją luki pozwalające roli TECH na edycję poprzez skróty klawiszowe oraz w interfejsie mobilnym. Plan zakłada uszczelnienie tych braków.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Zabezpieczenie skrótów klawiszowych w Canvas.tsx\",\n      \"description\": \"Dodanie sprawdzenia `isTech` wewnątrz `handleKeyDown` w komponencie `Canvas.tsx`, aby zablokować usuwanie obiektów (Delete/Backspace) oraz kopiowanie i wklejanie (Ctrl+C/V) dla użytkowników z rolą TECH.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Canvas.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Blokada edycji w MobileBottomBar.tsx\",\n      \"description\": \"Wyłączenie pola wprowadzania nazwy obiektu (`Input`) oraz przycisków zmiany statusu dla roli TECH w komponencie `MobileBottomBar.tsx`.\",\n      \"files_affected\": [\n        \"client/src/components/editor/MobileBottomBar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Blokada dodawania obiektów w MobileAddObjectPanel.tsx\",\n      \"description\": \"Ukrycie sekcji 'Add Object' oraz 'Target Layer' dla roli TECH w komponencie `MobileAddObjectPanel.tsx`, aby uniemożliwić dodawanie nowych elementów na plan w widoku mobilnym.\",\n      \"files_affected\": [\n        \"client/src/components/editor/MobileAddObjectPanel.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 4,\n      \"title\": \"Ukrycie akcji zarządzania projektami w PDFUploader.tsx\",\n      \"description\": \"Ukrycie przycisków 'New Project', 'Share', 'Delete' oraz opcji importu dla roli TECH na liście projektów w `PDFUploader.tsx`.\",\n      \"files_affected\": [\n        \"client/src/components/editor/PDFUploader.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"Użytkownik z rolą TECH nie może usunąć obiektu klawiszem Delete ani Backspace.\",\n      \"how_to_verify\": \"Weryfikacja kodu w Canvas.tsx: funkcja handleKeyDown musi zawierać warunek `if (isTech) return` przed dispatch('DELETE_OBJECTS').\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"Użytkownik z rolą TECH nie może kopiować ani wklejać obiektów skrótami klawiszowymi.\",\n      \"how_to_verify\": \"Weryfikacja kodu w Canvas.tsx: obsługa Ctrl+C/V musi być zablokowana dla TECH.\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"W widoku mobilnym pole edycji nazwy obiektu jest wyłączone (disabled) dla TECH.\",\n      \"how_to_verify\": \"Weryfikacja kodu w MobileBottomBar.tsx: Input musi posiadać atrybut `disabled={isTech}`.\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"W widoku mobilnym przyciski zmiany statusu są wyłączone dla TECH.\",\n      \"how_to_verify\": \"Weryfikacja kodu w MobileBottomBar.tsx: przyciski statusu muszą posiadać atrybut `disabled={isTech}`.\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"Sekcja dodawania obiektów w panelu mobilnym jest niewidoczna dla TECH.\",\n      \"how_to_verify\": \"Weryfikacja kodu w MobileAddObjectPanel.tsx: sekcja renderująca przyciski dodawania musi być warunkowo ukryta `{!isTech && ...}`.\"\n    },\n    {\n      \"id\": \"c6\",\n      \"description\": \"Na ekranie startowym (PDFUploader) przyciski New Project, Share i Delete są niewidoczne dla TECH.\",\n      \"how_to_verify\": \"Weryfikacja kodu w PDFUploader.tsx: przyciski te muszą być owinięte w `!isTech && ...`.\"\n    },\n    {\n      \"id\": \"c7\",\n      \"description\": \"ADMIN posiada wgląd do listy wszystkich użytkowników i może zmieniać ich role.\",\n      \"how_to_verify\": \"Weryfikacja istnienia AdminPage.tsx oraz endpointów /api/admin/users w server/routes.ts.\"\n    }\n  ],\n  \"risks\": [\n    \"Możliwość ominięcia blokad UI przez bezpośrednie zapytania API (choć serwer posiada własne zabezpieczenia requireRole).\",\n    \"Stale dane w cache'u przeglądarki po zmianie roli (użytkownik może musieć odświeżyć stronę).\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "7da0938ff19ea955eadde51fc94b3c0d4181b4a2",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777925554.7219753,
+  "updated_at": 1777925864.8419948
+}

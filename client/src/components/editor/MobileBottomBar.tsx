@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDocument, useUI } from '@/lib/editor-context';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
 import { MobileAddObjectPanel } from './MobileAddObjectPanel';
+import { useCurrentUser } from '@/hooks/useAuth';
 import { 
   ChevronUp, 
   ChevronDown, 
@@ -22,6 +23,8 @@ import { cn } from '@/lib/utils';
 export const MobileBottomBar: React.FC = () => {
   const { state: docState, dispatch: docDispatch } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
 
   const [isBarVisible, setIsBarVisible] = useState(true);
   const [addSheetOpen, setAddSheetOpen] = useState(false);
@@ -40,11 +43,12 @@ export const MobileBottomBar: React.FC = () => {
   }, [selectedObject?.id, selectedObject?.name]);
 
   const handleNameChange = (newName: string) => {
+    if (isTech) return;
     setLocalName(newName);
   };
 
   useEffect(() => {
-    if (!selectedObjectId || !selectedObject || localName === selectedObject.name) return;
+    if (!selectedObjectId || !selectedObject || localName === selectedObject.name || isTech) return;
 
     const timer = setTimeout(() => {
       docDispatch({
@@ -54,10 +58,10 @@ export const MobileBottomBar: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [localName, selectedObjectId, selectedObject, docDispatch]);
+  }, [localName, selectedObjectId, selectedObject, docDispatch, isTech]);
 
   const handleStatusChange = (status: 'PLANNED' | 'CABLE_PULLED' | 'TERMINATED' | 'TESTED' | 'APPROVED' | 'ISSUE') => {
-    if (!selectedObjectId) return;
+    if (!selectedObjectId || isTech) return;
     docDispatch({
       type: 'UPDATE_OBJECTS',
       payload: { ids: [selectedObjectId], updates: { status } }
@@ -117,11 +121,15 @@ export const MobileBottomBar: React.FC = () => {
               onChange={(e) => handleNameChange(e.target.value)}
               className="h-8 text-xs px-2"
               placeholder="Object name..."
+              disabled={isTech}
             />
           ) : (
             <div 
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 max-w-full cursor-pointer"
-              onClick={() => setAddSheetOpen(true)}
+              className={cn(
+                "flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 max-w-full",
+                !isTech && "cursor-pointer"
+              )}
+              onClick={() => !isTech && setAddSheetOpen(true)}
             >
               <Layers className="h-3 w-3 text-muted-foreground shrink-0" />
               <span className="text-[10px] font-medium truncate">
@@ -143,9 +151,11 @@ export const MobileBottomBar: React.FC = () => {
               </Button>
             </>
           ) : (
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setAddSheetOpen(true)}>
-              <Plus className="h-4 w-4" />
-            </Button>
+            !isTech && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setAddSheetOpen(true)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            )
           )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsBarVisible(false)}>
             <ChevronDown className="h-4 w-4" />
@@ -173,6 +183,7 @@ export const MobileBottomBar: React.FC = () => {
                   value={localName} 
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="Enter label..."
+                  disabled={isTech}
                 />
               </div>
 
@@ -188,6 +199,7 @@ export const MobileBottomBar: React.FC = () => {
                         selectedObject?.status === status.value && status.color
                       )}
                       onClick={() => handleStatusChange(status.value)}
+                      disabled={isTech}
                     >
                       <div className={cn("w-2 h-2 rounded-full", status.color)} />
                       {status.label}

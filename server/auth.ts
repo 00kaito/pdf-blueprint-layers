@@ -97,16 +97,19 @@ export async function seedAdminUser() {
   try {
     const adminUser = await storage.getUserByUsername("admin");
     if (!adminUser) {
-      console.log("[Auth] Seeding admin user...");
+      console.log("[Auth] Admin user NOT found. Seeding admin user...");
       const passwordHash = await bcrypt.hash("2Park", 10);
       await storage.createUser({
         username: "admin",
         passwordHash,
         role: "admin",
       });
-      console.log("[Auth] Admin user seeded successfully (admin/2Park)");
+      console.log("[Auth] Admin user seeded successfully (username: admin, role: admin, pass: 2Park)");
     } else {
-      console.log("[Auth] Admin user already exists");
+      console.log(`[Auth] Admin user already exists. Username: ${adminUser.username}, Role: ${adminUser.role}, ID: ${adminUser.id}`);
+      if (adminUser.role !== "admin") {
+        console.warn(`[Auth] WARNING: User 'admin' exists but has role '${adminUser.role}' instead of 'admin'!`);
+      }
     }
   } catch (err) {
     console.error("[Auth] Failed to seed admin user:", err);

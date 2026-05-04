@@ -1,0 +1,82 @@
+{
+  "summary": "Analiza wykazała, że mechanizm ról jest w większości poprawnie zaimplementowany po stronie serwera i w kluczowych elementach UI, jednak istnieją luki pozwalające roli TECH na edycję poprzez skróty klawiszowe oraz w interfejsie mobilnym. Plan zakłada uszczelnienie tych braków.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Zabezpieczenie skrótów klawiszowych w Canvas.tsx",
+      "description": "Dodanie sprawdzenia `isTech` wewnątrz `handleKeyDown` w komponencie `Canvas.tsx`, aby zablokować usuwanie obiektów (Delete/Backspace) oraz kopiowanie i wklejanie (Ctrl+C/V) dla użytkowników z rolą TECH.",
+      "files_affected": [
+        "client/src/components/editor/Canvas.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Blokada edycji w MobileBottomBar.tsx",
+      "description": "Wyłączenie pola wprowadzania nazwy obiektu (`Input`) oraz przycisków zmiany statusu dla roli TECH w komponencie `MobileBottomBar.tsx`.",
+      "files_affected": [
+        "client/src/components/editor/MobileBottomBar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Blokada dodawania obiektów w MobileAddObjectPanel.tsx",
+      "description": "Ukrycie sekcji 'Add Object' oraz 'Target Layer' dla roli TECH w komponencie `MobileAddObjectPanel.tsx`, aby uniemożliwić dodawanie nowych elementów na plan w widoku mobilnym.",
+      "files_affected": [
+        "client/src/components/editor/MobileAddObjectPanel.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Ukrycie akcji zarządzania projektami w PDFUploader.tsx",
+      "description": "Ukrycie przycisków 'New Project', 'Share', 'Delete' oraz opcji importu dla roli TECH na liście projektów w `PDFUploader.tsx`.",
+      "files_affected": [
+        "client/src/components/editor/PDFUploader.tsx"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "Użytkownik z rolą TECH nie może usunąć obiektu klawiszem Delete ani Backspace.",
+      "how_to_verify": "Weryfikacja kodu w Canvas.tsx: funkcja handleKeyDown musi zawierać warunek `if (isTech) return` przed dispatch('DELETE_OBJECTS')."
+    },
+    {
+      "id": "c2",
+      "description": "Użytkownik z rolą TECH nie może kopiować ani wklejać obiektów skrótami klawiszowymi.",
+      "how_to_verify": "Weryfikacja kodu w Canvas.tsx: obsługa Ctrl+C/V musi być zablokowana dla TECH."
+    },
+    {
+      "id": "c3",
+      "description": "W widoku mobilnym pole edycji nazwy obiektu jest wyłączone (disabled) dla TECH.",
+      "how_to_verify": "Weryfikacja kodu w MobileBottomBar.tsx: Input musi posiadać atrybut `disabled={isTech}`."
+    },
+    {
+      "id": "c4",
+      "description": "W widoku mobilnym przyciski zmiany statusu są wyłączone dla TECH.",
+      "how_to_verify": "Weryfikacja kodu w MobileBottomBar.tsx: przyciski statusu muszą posiadać atrybut `disabled={isTech}`."
+    },
+    {
+      "id": "c5",
+      "description": "Sekcja dodawania obiektów w panelu mobilnym jest niewidoczna dla TECH.",
+      "how_to_verify": "Weryfikacja kodu w MobileAddObjectPanel.tsx: sekcja renderująca przyciski dodawania musi być warunkowo ukryta `{!isTech && ...}`."
+    },
+    {
+      "id": "c6",
+      "description": "Na ekranie startowym (PDFUploader) przyciski New Project, Share i Delete są niewidoczne dla TECH.",
+      "how_to_verify": "Weryfikacja kodu w PDFUploader.tsx: przyciski te muszą być owinięte w `!isTech && ...`."
+    },
+    {
+      "id": "c7",
+      "description": "ADMIN posiada wgląd do listy wszystkich użytkowników i może zmieniać ich role.",
+      "how_to_verify": "Weryfikacja istnienia AdminPage.tsx oraz endpointów /api/admin/users w server/routes.ts."
+    }
+  ],
+  "risks": [
+    "Możliwość ominięcia blokad UI przez bezpośrednie zapytania API (choć serwer posiada własne zabezpieczenia requireRole).",
+    "Stale dane w cache'u przeglądarki po zmianie roli (użytkownik może musieć odświeżyć stronę)."
+  ]
+}
