@@ -28,6 +28,8 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/drizzle.config.ts ./
+# Copy table.sql for connect-pg-simple session store
+COPY --from=builder /app/node_modules/connect-pg-simple/table.sql ./dist/table.sql
 
 # Expose port
 EXPOSE 5000

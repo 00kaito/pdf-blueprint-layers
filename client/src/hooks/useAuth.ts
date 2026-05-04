@@ -48,3 +48,22 @@ export function useRegister() {
     },
   });
 }
+
+export function useAdminUsers() {
+  return useQuery<Array<{ id: string; username: string; role: string; createdAt: string }>>({
+    queryKey: ["/api/admin/users"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
+}
+
+export function useUpdateUserRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      await apiRequest("PUT", `/api/admin/users/${userId}/role`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+  });
+}

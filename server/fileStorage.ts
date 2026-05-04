@@ -64,16 +64,29 @@ export class FileStorage {
     return Array.from(this.users.values()).find(u => u.username === username);
   }
 
-  async createUser(insertUser: { username: string; passwordHash: string }): Promise<User> {
+  async createUser(insertUser: { username: string; passwordHash: string; role?: string }): Promise<User> {
     const id = uuidv4();
     const user: User = {
       ...insertUser,
       id,
+      role: insertUser.role || 'PM',
       createdAt: new Date().toISOString()
     };
     this.users.set(id, user);
     this.flushUsers();
     return user;
+  }
+
+  async listAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      user.role = role;
+      this.flushUsers();
+    }
   }
 
   async getProject(id: string): Promise<Project | undefined> {

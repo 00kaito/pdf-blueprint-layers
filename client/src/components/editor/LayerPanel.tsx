@@ -31,6 +31,7 @@ import {Progress} from "@/components/ui/progress";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Label} from "@/components/ui/label";
 import {cn} from '@/lib/utils';
+import {useCurrentUser} from '@/hooks/useAuth';
 
 const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
   if (type === 'text') return <Type className="w-3 h-3" />;
@@ -52,6 +53,8 @@ const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
 };
 
 export const LayerPanel = () => {
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const state = { ...docState, ...uiState };
@@ -64,12 +67,14 @@ export const LayerPanel = () => {
   const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
 
   const startEditing = (layer: { id: string, name: string }) => {
+    if (isTech) return;
     setEditingLayerId(layer.id);
     setEditingName(layer.name);
     setEditingObjectId(null); // Clear object editing
   };
   
   const startObjectEditing = (obj: { id: string, name?: string, type: string, content?: string }, index: number) => {
+    if (isTech) return;
     setEditingObjectId(obj.id);
     const defaultName = obj.name || (obj.type === 'text' 
         ? (obj.content || 'Text Object') 
@@ -110,13 +115,17 @@ export const LayerPanel = () => {
   };
 
   const handleObjectDragStart = (e: React.DragEvent, objectId: string) => {
+    if (isTech) {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData('application/move-object-id', objectId);
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleLayerDragOver = (e: React.DragEvent, layerId: string) => {
     e.preventDefault();
-    if (e.dataTransfer.types.includes('application/move-object-id')) {
+    if (!isTech && e.dataTransfer.types.includes('application/move-object-id')) {
       setDragOverLayerId(layerId);
       e.dataTransfer.dropEffect = 'move';
     }
@@ -125,6 +134,7 @@ export const LayerPanel = () => {
   const handleLayerDrop = (e: React.DragEvent, layerId: string) => {
     e.preventDefault();
     setDragOverLayerId(null);
+    if (isTech) return;
     const objectId = e.dataTransfer.getData('application/move-object-id');
     if (objectId) {
       dispatch({
@@ -155,19 +165,28 @@ export const LayerPanel = () => {
         
         {!state.overlayPdfFile ? (
           <div className="relative">
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) dispatch({ type: 'SET_OVERLAY_PDF', payload: file });
-              }}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <Button variant="outline" size="sm" className="w-full border-dashed">
-              <Plus className="w-3 h-3 mr-2" />
-              Add Overlay PDF
-            </Button>
+            {!isTech && (
+              <>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) dispatch({ type: 'SET_OVERLAY_PDF', payload: file });
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Button variant="outline" size="sm" className="w-full border-dashed">
+                  <Plus className="w-3 h-3 mr-2" />
+                  Add Overlay PDF
+                </Button>
+              </>
+            )}
+            {isTech && (
+              <div className="text-xs text-muted-foreground italic text-center py-2 border border-dashed rounded">
+                No overlay blueprint
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -176,14 +195,16 @@ export const LayerPanel = () => {
                 <FileText className="w-3 h-3 text-muted-foreground" />
                 <span className="text-xs truncate font-medium">{state.overlayPdfFile.name}</span>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-5 w-5 hover:text-destructive"
-                onClick={() => dispatch({ type: 'SET_OVERLAY_PDF', payload: null })}
-              >
-                <X className="w-3 h-3" />
-              </Button>
+              {!isTech && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-5 w-5 hover:text-destructive"
+                  onClick={() => dispatch({ type: 'SET_OVERLAY_PDF', payload: null })}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
             </div>
             
             <div className="space-y-1.5">
@@ -258,9 +279,11 @@ export const LayerPanel = () => {
           <Layers className="w-4 h-4" />
           Layers & Objects
         </div>
-        <Button variant="ghost" size="icon" onClick={handleAddLayer} className="h-6 w-6">
-          <Plus className="w-4 h-4" />
-        </Button>
+        {!isTech && (
+          <Button variant="ghost" size="icon" onClick={handleAddLayer} className="h-6 w-6">
+            <Plus className="w-4 h-4" />
+          </Button>
+        )}
       </div>
       
       <ScrollArea className="flex-1">
@@ -274,7 +297,7 @@ export const LayerPanel = () => {
                 key={layer.id} 
                 className={cn(
                   "space-y-1 rounded-md transition-colors pb-1",
-                  dragOverLayerId === layer.id && "bg-primary/5 ring-1 ring-primary/20"
+                  !isTech && dragOverLayerId === layer.id && "bg-primary/5 ring-1 ring-primary/20"
                 )}
                 onDragOver={(e) => handleLayerDragOver(e, layer.id)}
                 onDragLeave={() => setDragOverLayerId(null)}
@@ -309,22 +332,24 @@ export const LayerPanel = () => {
                       {layer.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 opacity-50" />}
                     </button>
                     
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Prevent deleting the last layer
-                        if (state.layers.length > 1) {
-                            dispatch({ type: 'DELETE_LAYER', payload: layer.id });
-                        }
-                      }}
-                      className={cn(
-                          "text-muted-foreground hover:text-destructive", 
-                          state.layers.length <= 1 ? "opacity-30 cursor-not-allowed" : ""
-                      )}
-                      disabled={state.layers.length <= 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!isTech && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Prevent deleting the last layer
+                          if (state.layers.length > 1) {
+                              dispatch({ type: 'DELETE_LAYER', payload: layer.id });
+                          }
+                        }}
+                        className={cn(
+                            "text-muted-foreground hover:text-destructive", 
+                            state.layers.length <= 1 ? "opacity-30 cursor-not-allowed" : ""
+                        )}
+                        disabled={state.layers.length <= 1}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
 
                     {editingLayerId === layer.id ? (
                         <Input 
@@ -357,10 +382,11 @@ export const LayerPanel = () => {
                     {layerObjects.map((obj, index) => (
                       <div
                         key={obj.id}
-                        draggable
+                        draggable={!isTech}
                         onDragStart={(e) => handleObjectDragStart(e, obj.id)}
                         className={cn(
-                          "flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors cursor-grab active:cursor-grabbing group",
+                          "flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors group",
+                          isTech ? "cursor-default" : "cursor-grab active:cursor-grabbing",
                           state.selectedObjectIds.includes(obj.id)
                             ? "bg-primary/20 text-primary"
                             : "hover:bg-accent text-muted-foreground"
@@ -423,15 +449,17 @@ export const LayerPanel = () => {
                           )}
                         </div>
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            dispatch({ type: 'DELETE_OBJECT', payload: obj.id });
-                          }}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-0.5"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!isTech && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dispatch({ type: 'DELETE_OBJECT', payload: obj.id });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-0.5"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     ))}
                     {layerObjects.length === 0 && (
@@ -449,3 +477,4 @@ export const LayerPanel = () => {
     </div>
   );
 };
+

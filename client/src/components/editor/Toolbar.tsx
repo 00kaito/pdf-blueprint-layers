@@ -13,8 +13,11 @@ import {useExport} from '@/hooks/useExport';
 import {useImport} from '@/hooks/useImport';
 import {useManualSave} from '@/hooks/useManualSave';
 import {ShareProjectDialog} from './ShareProjectDialog';
+import {useCurrentUser} from '@/hooks/useAuth';
 
 export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const { handleFlattenAndDownload, handleExportProject } = useExport();
@@ -59,7 +62,7 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
         <Separator orientation="vertical" className="h-6" />
 
         <div className="flex items-center gap-2">
-          {selectedObjects.length > 0 && (
+          {selectedObjects.length > 0 && !isTech && (
             <>
                <div className="flex items-center gap-2 mx-2">
                  {/* Universal Label Editor for all objects */}
@@ -124,7 +127,7 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           )}
         </div>
 
-        {isSaving !== undefined && docState.projectId && (
+        {isSaving !== undefined && docState.projectId && !isTech && (
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 text-[10px] font-medium text-muted-foreground transition-all">
             {isSaving ? (
               <>
@@ -149,62 +152,68 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_SCALE', payload: Math.min(10, uiState.scale + 0.25) })}><ZoomIn className="w-4 h-4" /></Button>
         </div>
 
-        {docState.projectId && (
+        {docState.projectId && !isTech && (
           <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
             <Share2 className="w-4 h-4 mr-2" />
             Share
           </Button>
         )}
 
-        {docState.pdfFile && (
+        {docState.pdfFile && !isTech && (
           <Button variant="outline" size="sm" onClick={handleSave} disabled={isManualSaving}>
             {isManualSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Save
           </Button>
         )}
 
-        <Button variant="outline" size="sm" onClick={handleExportProject}><Save className="w-4 h-4 mr-2" />Export Project Files</Button>
-        <Button variant="outline" size="sm" asChild>
-          <label htmlFor="project-upload" className="cursor-pointer">
-            <FolderOpen className="w-4 h-4 mr-2" />Open
-            <input type="file" accept=".json,.zip" className="hidden" id="project-upload" onChange={onProjectUpload} />
-          </label>
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => dirInputRef.current?.click()}>
-          <FolderOpen className="w-4 h-4 mr-2" />Open Folder
-        </Button>
-        <input
-          type="file"
-          ref={dirInputRef}
-          multiple
-          {...{ webkitdirectory: "", directory: "" } as any}
-          onChange={onProjectUpload}
-          className="hidden"
-        />
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="mr-2">
-              <Settings2 className="w-4 h-4" />
+        {!isTech && (
+          <>
+            <Button variant="outline" size="sm" onClick={handleExportProject}><Save className="w-4 h-4 mr-2" />Export Project Files</Button>
+            <Button variant="outline" size="sm" asChild>
+              <label htmlFor="project-upload" className="cursor-pointer">
+                <FolderOpen className="w-4 h-4 mr-2" />Open
+                <input type="file" accept=".json,.zip" className="hidden" id="project-upload" onChange={onProjectUpload} />
+              </label>
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
-            <div className="space-y-4">
-              <h4 className="font-medium leading-none">Export Settings</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>Label Font Size (PDF)</Label>
-                  <span className="text-sm text-muted-foreground">{docState.exportSettings.labelFontSize}px</span>
+            <Button variant="outline" size="sm" onClick={() => dirInputRef.current?.click()}>
+              <FolderOpen className="w-4 h-4 mr-2" />Open Folder
+            </Button>
+            <input
+              type="file"
+              ref={dirInputRef}
+              multiple
+              {...{ webkitdirectory: "", directory: "" } as any}
+              onChange={onProjectUpload}
+              className="hidden"
+            />
+          </>
+        )}
+
+        {!isTech && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="mr-2">
+                <Settings2 className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-4">
+                <h4 className="font-medium leading-none">Export Settings</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label>Label Font Size (PDF)</Label>
+                    <span className="text-sm text-muted-foreground">{docState.exportSettings.labelFontSize}px</span>
+                  </div>
+                  <Slider
+                    min={1} max={30} step={1}
+                    value={[docState.exportSettings.labelFontSize]}
+                    onValueChange={([value]) => dispatch({ type: 'SET_EXPORT_SETTINGS', payload: { labelFontSize: value } })}
+                  />
                 </div>
-                <Slider
-                  min={1} max={30} step={1}
-                  value={[docState.exportSettings.labelFontSize]}
-                  onValueChange={([value]) => dispatch({ type: 'SET_EXPORT_SETTINGS', payload: { labelFontSize: value } })}
-                />
               </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+            </PopoverContent>
+          </Popover>
+        )}
 
         <Button size="sm" onClick={handleFlattenAndDownload}><Download className="w-4 h-4 mr-2" />Merge Layers and Export as PDF</Button>
       </div>
@@ -217,3 +226,4 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
     </div>
   );
 };
+

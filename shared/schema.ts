@@ -6,6 +6,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   email: text("email").unique(),
   passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("PM"),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
 });
 
@@ -44,7 +45,7 @@ export const files = pgTable("files", {
 ]);
 
 // Types
-export type User = Omit<typeof users.$inferSelect, "email"> & { email?: string | null };
+export type User = Omit<typeof users.$inferSelect, "email"> & { email?: string | null; role: string };
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Project = Omit<typeof projects.$inferSelect, "state"> & { state?: any; sharedWith: string[] };
 export type InsertProject = z.infer<typeof insertProjectSchema>;
@@ -72,6 +73,10 @@ export type ProjectState = z.infer<typeof projectStateSchema>;
 export const insertUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
+});
+
+export const updateUserRoleSchema = z.object({
+  role: z.enum(["admin", "PM", "TECH"]),
 });
 
 export const insertProjectSchema = z.object({

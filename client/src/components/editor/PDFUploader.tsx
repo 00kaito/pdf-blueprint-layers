@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut } from 'lucide-react';
+import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield } from 'lucide-react';
 import { useImport } from '@/hooks/useImport';
 import { useProjectList, useCreateProject, useDeleteProject, useShareProject, useUploadFile } from '@/hooks/useProjects';
 import { useDocument } from '@/lib/editor-context';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { useCurrentUser, useLogout } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
+import { Link } from 'wouter';
 
 export const PDFUploader = () => {
   const { handleFileImport } = useImport();
@@ -143,6 +144,14 @@ export const PDFUploader = () => {
             <p className="text-muted-foreground">Welcome back, {user?.username}. Manage your blueprint projects.</p>
           </div>
           <div className="flex items-center gap-2">
+            {user?.role === 'admin' && (
+              <Link href="/admin">
+                <Button variant="outline">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Zarządzaj użytkownikami
+                </Button>
+              </Link>
+            )}
             <Button variant="outline" onClick={() => logout.mutate()}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
@@ -289,3 +298,4 @@ export const PDFUploader = () => {
     </div>
   );
 };
+

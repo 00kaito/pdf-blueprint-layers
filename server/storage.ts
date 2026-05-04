@@ -5,7 +5,9 @@ import { DatabaseStorage } from "./databaseStorage";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(insertUser: { username: string; passwordHash: string }): Promise<User>;
+  createUser(insertUser: { username: string; passwordHash: string; role?: string }): Promise<User>;
+  listAllUsers(): Promise<User[]>;
+  updateUserRole(userId: string, role: string): Promise<void>;
   
   getProject(id: string): Promise<Project | undefined>;
   listProjectsForUser(userId: string): Promise<Project[]>;

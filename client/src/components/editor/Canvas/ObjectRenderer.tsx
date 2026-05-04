@@ -5,6 +5,7 @@ import {useDocument, useUI} from '@/lib/editor-context';
 import {useTouchGestures} from '@/hooks/useTouchGestures';
 import {cn} from '@/lib/utils';
 import {EditorObject, Layer} from '@/lib/types';
+import {useCurrentUser} from '@/hooks/useAuth';
 
 interface ObjectRendererProps {
   obj: EditorObject;
@@ -50,6 +51,8 @@ const getStatusCategoryColor = (status?: string) => {
 };
 
 export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
   const { dispatch } = useDocument();
   const { state: uiState } = useUI();
   const [isRotating, setIsRotating] = useState(false);
@@ -75,6 +78,7 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
   const indicatorColor = getStatusColor(obj.status);
 
   const handleRotationMouseDown = (e: React.MouseEvent) => {
+    if (isTech) return;
     e.stopPropagation();
     e.preventDefault();
     setIsRotating(true);
@@ -107,6 +111,7 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
   };
 
   const handleRotationTouchStart = (e: React.TouchEvent) => {
+    if (isTech) return;
     e.stopPropagation();
     setIsRotating(true);
 
@@ -145,19 +150,25 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       key={obj.id}
       position={{ x: obj.x * uiState.scale, y: obj.y * uiState.scale }}
       size={{ width: obj.width * uiState.scale, height: obj.height * uiState.scale }}
-      onDragStop={(e: any, d) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: d.x / uiState.scale, y: d.y / uiState.scale } } })}
-      onResizeStop={(e: any, dir, ref, delta, pos) => dispatch({ 
-        type: 'UPDATE_OBJECT', 
-        payload: { 
-          id: obj.id, 
-          updates: { 
-            width: parseFloat(ref.style.width) / uiState.scale, 
-            height: parseFloat(ref.style.height) / uiState.scale, 
-            x: pos.x / uiState.scale, 
-            y: pos.y / uiState.scale 
+      onDragStop={(e: any, d) => {
+        if (isTech) return;
+        dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: d.x / uiState.scale, y: d.y / uiState.scale } } });
+      }}
+      onResizeStop={(e: any, dir, ref, delta, pos) => {
+        if (isTech) return;
+        dispatch({ 
+          type: 'UPDATE_OBJECT', 
+          payload: { 
+            id: obj.id, 
+            updates: { 
+              width: parseFloat(ref.style.width) / uiState.scale, 
+              height: parseFloat(ref.style.height) / uiState.scale, 
+              x: pos.x / uiState.scale, 
+              y: pos.y / uiState.scale 
+            } 
           } 
-        } 
-      })}
+        });
+      }}
       onClick={(e: any) => {
         e.stopPropagation();
         if (e.ctrlKey || e.metaKey) {
@@ -168,8 +179,8 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       }}
       scale={1}
       bounds="parent"
-      disableDragging={layer.locked || uiState.tool !== 'select' || isRotating}
-      enableResizing={!layer.locked && uiState.selectedObjectIds.includes(obj.id)}
+      disableDragging={isTech || layer.locked || uiState.tool !== 'select' || isRotating}
+      enableResizing={isTech ? {} : (!layer.locked && uiState.selectedObjectIds.includes(obj.id))}
       resizeHandleClasses={{
         bottomRight: "bg-primary w-2 h-2 rounded-full",
         bottomLeft:  "bg-primary w-2 h-2 rounded-full",
@@ -202,12 +213,18 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
             <div 
               className={cn("w-full h-full p-1 break-words overflow-hidden outline-none", obj.fontWeight === 'bold' ? 'font-bold' : '')} 
               style={{ fontSize: (obj.fontSize || 16) * uiState.scale, color: displayColor }}
-              contentEditable={uiState.tool === 'text'}
+              contentEditable={isTech ? false : (uiState.tool === 'text')}
               suppressContentEditableWarning
-              onBlur={(e) => dispatch({ 
-                type: 'UPDATE_OBJECT', 
-                payload: { id: obj.id, updates: { content: e.currentTarget.textContent || '' } } 
-              })}
+              onDoubleClick={(e) => {
+                if (isTech) e.stopPropagation();
+              }}
+              onBlur={(e) => {
+                if (isTech) return;
+                dispatch({ 
+                  type: 'UPDATE_OBJECT', 
+                  payload: { id: obj.id, updates: { content: e.currentTarget.textContent || '' } } 
+                });
+              }}
             >
               {obj.content}
             </div>

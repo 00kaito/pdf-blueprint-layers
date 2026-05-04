@@ -79,3 +79,36 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+export function requireRole(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!roles.includes(req.user!.role)) {
+      console.log(`[Auth] Forbidden: User ${req.user!.username} (role: ${req.user!.role}) attempted to access ${req.path} which requires one of: ${roles.join(", ")}`);
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    next();
+  };
+}
+
+export async function seedAdminUser() {
+  try {
+    const adminUser = await storage.getUserByUsername("admin");
+    if (!adminUser) {
+      console.log("[Auth] Seeding admin user...");
+      const passwordHash = await bcrypt.hash("2Park", 10);
+      await storage.createUser({
+        username: "admin",
+        passwordHash,
+        role: "admin",
+      });
+      console.log("[Auth] Admin user seeded successfully (admin/2Park)");
+    } else {
+      console.log("[Auth] Admin user already exists");
+    }
+  } catch (err) {
+    console.error("[Auth] Failed to seed admin user:", err);
+  }
+}

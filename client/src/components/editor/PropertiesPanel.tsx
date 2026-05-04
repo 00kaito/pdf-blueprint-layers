@@ -11,8 +11,11 @@ import {CheckCircle2, AlertCircle, Maximize2, Network, Palette, Settings2, Tag, 
 import {Button} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
 import {ObjectPhotoGallery} from './ObjectPhotoGallery';
+import {useCurrentUser} from '@/hooks/useAuth';
 
 export const PropertiesPanel = () => {
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
 
@@ -29,11 +32,12 @@ export const PropertiesPanel = () => {
   }
 
   const handleUpdate = (updates: Partial<typeof firstObject>) => {
+    if (isTech) return;
     const finalUpdates = { ...updates };
     
     if (updates.status) {
       finalUpdates.statusUpdatedAt = new Date().toISOString();
-      finalUpdates.statusUpdatedBy = localStorage.getItem('technician_name') || 'Unknown';
+      finalUpdates.statusUpdatedBy = user?.username || 'Unknown';
     }
 
     dispatch({
@@ -46,6 +50,7 @@ export const PropertiesPanel = () => {
   };
 
   const handleMetadataChange = (key: string, value: string) => {
+    if (isTech) return;
     selectedObjects.forEach(obj => {
         dispatch({
             type: 'UPDATE_OBJECT',
@@ -67,6 +72,15 @@ export const PropertiesPanel = () => {
     const isMixed = selectedObjects.some(o => o[key] !== val);
     return isMixed ? '' : (val as string);
   };
+
+  const ReadOnlyField = ({ label, value }: { label: string, value?: string }) => (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium">{label}</Label>
+      <div className="text-xs bg-muted/50 p-2 rounded border border-border min-h-[32px] flex items-center">
+        {value || <span className="text-muted-foreground italic">None</span>}
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -92,35 +106,43 @@ export const PropertiesPanel = () => {
                 Identification
               </div>
               
-              <div className="space-y-1.5">
-                <Label htmlFor="obj-label" className="text-xs font-medium">Label {isMultiSelect ? '(Bulk)' : '(Visible)'}</Label>
-                <Input
-                  id="obj-label"
-                  placeholder={isMultiSelect ? "Mixed values..." : "Main label"}
-                  value={isMultiSelect ? (getCommonValue('name')) : (firstObject.name || '')}
-                  onChange={(e) => handleUpdate({ name: e.target.value })}
-                  className="h-8 text-xs"
-                />
-              </div>
+              {isTech ? (
+                <ReadOnlyField label={`Label ${isMultiSelect ? '(Bulk)' : '(Visible)'}`} value={isMultiSelect ? (getCommonValue('name')) : (firstObject.name || '')} />
+              ) : (
+                <div className="space-y-1.5">
+                  <Label htmlFor="obj-label" className="text-xs font-medium">Label {isMultiSelect ? '(Bulk)' : '(Visible)'}</Label>
+                  <Input
+                    id="obj-label"
+                    placeholder={isMultiSelect ? "Mixed values..." : "Main label"}
+                    value={isMultiSelect ? (getCommonValue('name')) : (firstObject.name || '')}
+                    onChange={(e) => handleUpdate({ name: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="obj-purpose" className="text-xs font-medium">Device Type (Purpose)</Label>
-                <Select 
-                  value={selectedObjects.every(o => o.metadata?.purpose === firstObject.metadata?.purpose) ? (firstObject.metadata?.purpose || 'Other') : ''} 
-                  onValueChange={(v) => handleMetadataChange('purpose', v)}
-                >
-                  <SelectTrigger id="obj-purpose" className="h-8 text-xs">
-                    <SelectValue placeholder={isMultiSelect ? "Mixed types" : "Select type"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Data">Data</SelectItem>
-                    <SelectItem value="Mic">Mic</SelectItem>
-                    <SelectItem value="CAM">CAM</SelectItem>
-                    <SelectItem value="TV">TV</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {isTech ? (
+                <ReadOnlyField label="Device Type (Purpose)" value={selectedObjects.every(o => o.metadata?.purpose === firstObject.metadata?.purpose) ? (firstObject.metadata?.purpose || 'Other') : 'Mixed'} />
+              ) : (
+                <div className="space-y-1.5">
+                  <Label htmlFor="obj-purpose" className="text-xs font-medium">Device Type (Purpose)</Label>
+                  <Select 
+                    value={selectedObjects.every(o => o.metadata?.purpose === firstObject.metadata?.purpose) ? (firstObject.metadata?.purpose || 'Other') : ''} 
+                    onValueChange={(v) => handleMetadataChange('purpose', v)}
+                  >
+                    <SelectTrigger id="obj-purpose" className="h-8 text-xs">
+                      <SelectValue placeholder={isMultiSelect ? "Mixed types" : "Select type"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Data">Data</SelectItem>
+                      <SelectItem value="Mic">Mic</SelectItem>
+                      <SelectItem value="CAM">CAM</SelectItem>
+                      <SelectItem value="TV">TV</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Progress Status</Label>
@@ -137,6 +159,7 @@ export const PropertiesPanel = () => {
                       key={s.id}
                       variant="outline"
                       size="sm"
+                      disabled={isTech}
                       className={cn(
                         "h-8 text-[10px] px-1 justify-start gap-1.5 font-semibold",
                         selectedObjects.every(o => o.status === s.id) ? "ring-2 ring-primary ring-offset-1" : ""
@@ -156,13 +179,19 @@ export const PropertiesPanel = () => {
                     <AlertCircle className="w-3 h-3" />
                     Issue Description
                   </Label>
-                  <Textarea
-                    id="obj-issue"
-                    placeholder="Describe the issue..."
-                    value={selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || '') : ''}
-                    onChange={(e) => handleUpdate({ issueDescription: e.target.value })}
-                    className="text-xs min-h-[60px]"
-                  />
+                  {isTech ? (
+                    <div className="text-xs bg-red-50 text-red-900 p-2 rounded border border-red-200 min-h-[60px] whitespace-pre-wrap">
+                      {selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || 'No description provided') : 'Mixed descriptions'}
+                    </div>
+                  ) : (
+                    <Textarea
+                      id="obj-issue"
+                      placeholder="Describe the issue..."
+                      value={selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || '') : ''}
+                      onChange={(e) => handleUpdate({ issueDescription: e.target.value })}
+                      className="text-xs min-h-[60px]"
+                    />
+                  )}
                 </div>
               )}
 
@@ -172,33 +201,42 @@ export const PropertiesPanel = () => {
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="obj-switch" className="text-xs font-medium">Switch ID</Label>
-                <div className="relative">
-                  <Network className="absolute left-2 top-2.5 w-3 h-3 text-muted-foreground" />
-                  <Input
-                    id="obj-switch"
-                    placeholder="e.g. SW-01"
-                    value={selectedObjects.every(o => o.metadata?.switchId === firstObject.metadata?.switchId) ? (firstObject.metadata?.switchId || '') : ''}
-                    onChange={(e) => handleMetadataChange('switchId', e.target.value)}
-                    className="h-8 text-xs pl-7"
-                  />
-                </div>
-              </div>
+              {isTech ? (
+                <>
+                  <ReadOnlyField label="Switch ID" value={selectedObjects.every(o => o.metadata?.switchId === firstObject.metadata?.switchId) ? (firstObject.metadata?.switchId || '') : 'Mixed'} />
+                  <ReadOnlyField label="Cable ID" value={selectedObjects.every(o => o.metadata?.cableId === firstObject.metadata?.cableId) ? (firstObject.metadata?.cableId || '') : 'Mixed'} />
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="obj-switch" className="text-xs font-medium">Switch ID</Label>
+                    <div className="relative">
+                      <Network className="absolute left-2 top-2.5 w-3 h-3 text-muted-foreground" />
+                      <Input
+                        id="obj-switch"
+                        placeholder="e.g. SW-01"
+                        value={selectedObjects.every(o => o.metadata?.switchId === firstObject.metadata?.switchId) ? (firstObject.metadata?.switchId || '') : ''}
+                        onChange={(e) => handleMetadataChange('switchId', e.target.value)}
+                        className="h-8 text-xs pl-7"
+                      />
+                    </div>
+                  </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="obj-cable" className="text-xs font-medium">Cable ID</Label>
-                <div className="relative">
-                  <Zap className="absolute left-2 top-2.5 w-3 h-3 text-muted-foreground" />
-                  <Input
-                    id="obj-cable"
-                    placeholder="e.g. C-102"
-                    value={selectedObjects.every(o => o.metadata?.cableId === firstObject.metadata?.cableId) ? (firstObject.metadata?.cableId || '') : ''}
-                    onChange={(e) => handleMetadataChange('cableId', e.target.value)}
-                    className="h-8 text-xs pl-7"
-                  />
-                </div>
-              </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="obj-cable" className="text-xs font-medium">Cable ID</Label>
+                    <div className="relative">
+                      <Zap className="absolute left-2 top-2.5 w-3 h-3 text-muted-foreground" />
+                      <Input
+                        id="obj-cable"
+                        placeholder="e.g. C-102"
+                        value={selectedObjects.every(o => o.metadata?.cableId === firstObject.metadata?.cableId) ? (firstObject.metadata?.cableId || '') : ''}
+                        onChange={(e) => handleMetadataChange('cableId', e.target.value)}
+                        className="h-8 text-xs pl-7"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <Separator />
@@ -213,21 +251,29 @@ export const PropertiesPanel = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                     <Label className="text-[10px] uppercase text-muted-foreground">X Pos</Label>
-                    <Input
-                        type="number"
-                        value={Math.round(firstObject.x)}
-                        onChange={(e) => handleUpdate({ x: parseInt(e.target.value) || 0 })}
-                        className="h-8 text-xs"
-                    />
+                    {isTech ? (
+                      <div className="text-xs bg-muted/30 p-1 rounded border border-border h-8 flex items-center">{Math.round(firstObject.x)}</div>
+                    ) : (
+                      <Input
+                          type="number"
+                          value={Math.round(firstObject.x)}
+                          onChange={(e) => handleUpdate({ x: parseInt(e.target.value) || 0 })}
+                          className="h-8 text-xs"
+                      />
+                    )}
                     </div>
                     <div className="space-y-1.5">
                     <Label className="text-[10px] uppercase text-muted-foreground">Y Pos</Label>
-                    <Input
-                        type="number"
-                        value={Math.round(firstObject.y)}
-                        onChange={(e) => handleUpdate({ y: parseInt(e.target.value) || 0 })}
-                        className="h-8 text-xs"
-                    />
+                    {isTech ? (
+                      <div className="text-xs bg-muted/30 p-1 rounded border border-border h-8 flex items-center">{Math.round(firstObject.y)}</div>
+                    ) : (
+                      <Input
+                          type="number"
+                          value={Math.round(firstObject.y)}
+                          onChange={(e) => handleUpdate({ y: parseInt(e.target.value) || 0 })}
+                          className="h-8 text-xs"
+                      />
+                    )}
                     </div>
                 </div>
               )}
@@ -241,13 +287,15 @@ export const PropertiesPanel = () => {
                         : `${Math.round((firstObject.opacity ?? 1) * 100)}%`}
                   </span>
                 </div>
-                <Slider
-                  value={[firstObject.opacity ?? 1]}
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  onValueChange={([val]) => handleUpdate({ opacity: val })}
-                />
+                {!isTech && (
+                  <Slider
+                    value={[firstObject.opacity ?? 1]}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    onValueChange={([val]) => handleUpdate({ opacity: val })}
+                  />
+                )}
               </div>
             </div>
 
@@ -261,12 +309,16 @@ export const PropertiesPanel = () => {
               
               <div className="flex items-center justify-between">
                   <Label className="text-xs">Object Color</Label>
-                  <input 
-                    type="color" 
-                    value={selectedObjects.every(o => o.color === firstObject.color) ? (firstObject.color || "#000000") : "#000000"} 
-                    onChange={(e) => handleUpdate({ color: e.target.value })} 
-                    className="w-8 h-8 p-0.5 border border-input rounded bg-transparent cursor-pointer" 
-                  />
+                  {isTech ? (
+                    <div className="w-8 h-8 rounded border border-border" style={{ backgroundColor: firstObject.color || "#000000" }} />
+                  ) : (
+                    <input 
+                      type="color" 
+                      value={selectedObjects.every(o => o.color === firstObject.color) ? (firstObject.color || "#000000") : "#000000"} 
+                      onChange={(e) => handleUpdate({ color: e.target.value })} 
+                      className="w-8 h-8 p-0.5 border border-input rounded bg-transparent cursor-pointer" 
+                    />
+                  )}
               </div>
 
               {!isMultiSelect && firstObject.type === 'path' && (
@@ -275,11 +327,13 @@ export const PropertiesPanel = () => {
                     <Label className="text-xs">Stroke Width</Label>
                     <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded">{firstObject.strokeWidth || 2}px</span>
                   </div>
-                  <Slider
-                    value={[firstObject.strokeWidth || 2]}
-                    min={1} max={20} step={1}
-                    onValueChange={([val]) => handleUpdate({ strokeWidth: val })}
-                  />
+                  {!isTech && (
+                    <Slider
+                      value={[firstObject.strokeWidth || 2]}
+                      min={1} max={20} step={1}
+                      onValueChange={([val]) => handleUpdate({ strokeWidth: val })}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -294,18 +348,21 @@ export const PropertiesPanel = () => {
               </>
             )}
 
-            <Separator />
-
-            <div className="pt-2">
-              <Button 
-                variant="destructive" 
-                className="w-full gap-2 h-9"
-                onClick={() => dispatch({ type: 'DELETE_OBJECTS', payload: selectedObjects.map(o => o.id) })}
-              >
-                <Trash2 className="w-4 h-4" />
-                {isMultiSelect ? `Delete ${selectedObjects.length} Objects` : 'Delete Object'}
-              </Button>
-            </div>
+            {!isTech && (
+              <>
+                <Separator />
+                <div className="pt-2">
+                  <Button 
+                    variant="destructive" 
+                    className="w-full gap-2 h-9"
+                    onClick={() => dispatch({ type: 'DELETE_OBJECTS', payload: selectedObjects.map(o => o.id) })}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {isMultiSelect ? `Delete ${selectedObjects.length} Objects` : 'Delete Object'}
+                  </Button>
+                </div>
+              </>
+            )}
 
           </CardContent>
         </Card>
@@ -313,3 +370,4 @@ export const PropertiesPanel = () => {
     </div>
   );
 };
+

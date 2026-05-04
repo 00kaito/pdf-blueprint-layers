@@ -7,6 +7,7 @@ import {EditorProvider} from "@/lib/editor-context";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import AuthPage from "@/pages/AuthPage";
+import AdminPage from "@/pages/AdminPage";
 import {useCurrentUser} from "@/hooks/useAuth";
 import {Loader2} from "lucide-react";
 
@@ -50,6 +51,10 @@ function AppContent() {
         {user ? <Redirect to="/" /> : <AuthPage />}
       </Route>
       
+      <Route path="/admin">
+        {!user ? <Redirect to="/auth" /> : (user.role !== 'admin' ? <Redirect to="/" /> : <AdminPage />)}
+      </Route>
+
       <Route path="/">
         {!user ? <Redirect to="/auth" /> : (
           <EditorProvider>
@@ -75,3 +80,4 @@ function App() {
 }
 
 export default App;
+

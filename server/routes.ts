@@ -1,11 +1,11 @@
 import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
-import { requireAuth } from "./auth";
+import { requireAuth, requireRole } from "./auth";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import { insertUserSchema, projectStateSchema } from "@shared/schema";
+import { insertUserSchema, projectStateSchema, updateUserRoleSchema } from "@shared/schema";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -29,7 +29,7 @@ export async function registerRoutes(
     const user = await storage.createUser({ username, passwordHash });
     req.login(user, (err) => {
       if (err) return res.status(500).json(err);
-      res.status(201).json({ id: user.id, username: user.username });
+      res.status(201).json({ id: user.id, username: user.username, role: user.role });
     });
   });
 
@@ -39,7 +39,7 @@ export async function registerRoutes(
       if (!user) return res.status(401).json({ message: info?.message || "Invalid credentials" });
       req.login(user, (err) => {
         if (err) return next(err);
-        res.json({ id: user.id, username: user.username });
+        res.json({ id: user.id, username: user.username, role: user.role });
       });
     })(req, res, next);
   });
@@ -56,8 +56,8 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    console.log(`[Auth] Session active for user: ${req.user!.username}`);
-    res.json({ id: req.user!.id, username: req.user!.username });
+    console.log(`[Auth] Session active for user: ${req.user!.username} (role: ${req.user!.role})`);
+    res.json({ id: req.user!.id, username: req.user!.username, role: req.user!.role });
   });
 
   // Project Routes
@@ -66,7 +66,7 @@ export async function registerRoutes(
     res.json(projects);
   });
 
-  app.post("/api/projects", requireAuth, async (req, res) => {
+  app.post("/api/projects", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
     const { name } = req.body;
     if (!name) return res.status(400).json({ message: "Name is required" });
     const project = await storage.createProject({ name, ownerId: req.user!.id });
@@ -83,7 +83,7 @@ export async function registerRoutes(
     res.json(state || {});
   });
 
-  app.put("/api/projects/:id", requireAuth, async (req, res) => {
+  app.put("/api/projects/:id", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
     if (project.ownerId !== req.user!.id && !project.sharedWith.includes(req.user!.id)) {
@@ -99,7 +99,7 @@ export async function registerRoutes(
     res.sendStatus(200);
   });
 
-  app.delete("/api/projects/:id", requireAuth, async (req, res) => {
+  app.delete("/api/projects/:id", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
     if (project.ownerId !== req.user!.id) {
@@ -117,7 +117,7 @@ export async function registerRoutes(
     res.sendStatus(200);
   });
 
-  app.post("/api/projects/:id/share", requireAuth, async (req, res) => {
+  app.post("/api/projects/:id/share", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
     if (project.ownerId !== req.user!.id) {
@@ -136,7 +136,7 @@ export async function registerRoutes(
   });
 
   // File Routes
-  app.post("/api/files", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/files", requireAuth, requireRole('PM', 'admin'), upload.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
     const { originalname, mimetype, buffer } = req.file;
     const { projectId } = req.body;
@@ -172,6 +172,24 @@ export async function registerRoutes(
     
     res.setHeader("Content-Type", meta.mimeType);
     res.send(buffer);
+  });
+
+  // Admin Routes
+  app.get("/api/admin/users", requireAuth, requireRole('admin'), async (req, res) => {
+    const users = await storage.listAllUsers();
+    res.json(users.map(({ passwordHash, email, ...rest }) => rest));
+  });
+
+  app.put("/api/admin/users/:id/role", requireAuth, requireRole('admin'), async (req, res) => {
+    if (req.params.id === req.user!.id) {
+      return res.status(400).json({ message: "Cannot change your own role" });
+    }
+    const parsed = updateUserRoleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json(parsed.error);
+    }
+    await storage.updateUserRole(req.params.id, parsed.data.role);
+    res.sendStatus(200);
   });
 
   return httpServer;

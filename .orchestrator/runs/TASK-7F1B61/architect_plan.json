@@ -1,0 +1,189 @@
+{
+  "summary": "Add RBAC with three roles (admin, PM, TECH): a seeded admin user (admin/2Park) manages roles via a new admin panel; PM retains all current permissions; TECH gets a fully read-only view with status-color toggle and ISSUE description visible, enforced both on the server (403 on write endpoints) and in the UI (disabled drag/resize/add/edit controls).",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Add role column to users schema",
+      "description": "In shared/schema.ts: add `role: text('role').notNull().default('PM')` to the users pgTable. Update the exported `User` type to include `role: string`. Add `updateUserRoleSchema = z.object({ role: z.enum(['admin','PM','TECH']) })` and export it. Update `createUser` insert type to accept optional role.",
+      "files_affected": [
+        "shared/schema.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Generate and apply DB migration for role column",
+      "description": "Run `npx drizzle-kit push` (or `drizzle-kit generate` + `drizzle-kit migrate`) to apply the new `role` column to the PostgreSQL database. Existing rows receive the default value 'PM'. This is a CLI step, not a code change.",
+      "files_affected": [],
+      "type": "CREATE"
+    },
+    {
+      "step": 3,
+      "title": "Extend IStorage interface and DatabaseStorage with user-management methods",
+      "description": "In server/storage.ts IStorage interface: (a) change createUser signature to `createUser(data: { username: string; passwordHash: string; role?: string }): Promise<User>`; (b) add `listAllUsers(): Promise<User[]>`; (c) add `updateUserRole(userId: string, role: string): Promise<void>`. In server/databaseStorage.ts: update createUser to pass role through to db.insert; implement listAllUsers as `db.select().from(users)` returning all users; implement updateUserRole as `db.update(users).set({ role }).where(eq(users.id, userId))`.",
+      "files_affected": [
+        "server/storage.ts",
+        "server/databaseStorage.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Add requireRole middleware and seedAdminUser to auth module",
+      "description": "In server/auth.ts: (a) Add `export function requireRole(...roles: string[])` that returns an Express middleware checking `req.user?.role` is in the allowed list — returns 403 `{ message: 'Forbidden' }` if not. (b) Add `export async function seedAdminUser()` that calls `storage.getUserByUsername('admin')`; if null, hashes password '2Park' with bcrypt and calls `storage.createUser({ username: 'admin', passwordHash, role: 'admin' })` with a console.log confirmation.",
+      "files_affected": [
+        "server/auth.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 5,
+      "title": "Update routes: include role in auth responses, protect write endpoints, add admin endpoints",
+      "description": "In server/routes.ts: (a) In POST /api/auth/login success handler, change `res.json({ id, username })` to `res.json({ id, username, role: user.role })`. (b) In GET /api/auth/me, change response to `res.json({ id: req.user!.id, username: req.user!.username, role: req.user!.role })`. (c) Add `requireRole('PM','admin')` as middleware on PUT /api/projects/:id, POST /api/projects, DELETE /api/projects/:id, and POST /api/files — placed after requireAuth. (d) Add GET /api/admin/users with [requireAuth, requireRole('admin')] that calls `storage.listAllUsers()` and returns the array (omitting passwordHash — map to `{ id, username, role, createdAt }`). (e) Add PUT /api/admin/users/:id/role with [requireAuth, requireRole('admin')] that validates body with updateUserRoleSchema and calls `storage.updateUserRole(req.params.id, parsed.data.role)`; prevent admin from changing their own role (return 400 if req.params.id === req.user!.id).",
+      "files_affected": [
+        "server/routes.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 6,
+      "title": "Call seedAdminUser on server startup",
+      "description": "In server/index.ts, import `seedAdminUser` from `./auth`. Inside the async IIFE, call `await seedAdminUser()` immediately before `await registerRoutes(httpServer, app)` so the admin user exists before any request is handled.",
+      "files_affected": [
+        "server/index.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 7,
+      "title": "Add admin API hooks to useAuth",
+      "description": "In client/src/hooks/useAuth.ts: add `export function useAdminUsers()` returning `useQuery<Array<{id:string;username:string;role:string;createdAt:string}>>({ queryKey: ['/api/admin/users'], queryFn: getQueryFn({ on401: 'returnNull' }) })`. Add `export function useUpdateUserRole()` returning a useMutation that calls `apiRequest('PUT', '/api/admin/users/'+id+'/role', { role })` and on success invalidates the '/api/admin/users' query key.",
+      "files_affected": [
+        "client/src/hooks/useAuth.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 8,
+      "title": "Disable write interactions in Canvas for TECH",
+      "description": "In client/src/components/editor/Canvas.tsx: import useCurrentUser. Derive `const isTech = user?.role === 'TECH'`. (a) In the onMouseDown handler, guard tool-based object creation (stamp, text, icon, image, draw) with `if (isTech) return`. (b) In the onKeyDown handler for Delete/Backspace that dispatches DELETE_OBJECT, guard with `if (isTech) return`. (c) When isTech and the current tool is not 'select', dispatch SET_TOOL with 'select' in a useEffect on mount.",
+      "files_affected": [
+        "client/src/components/editor/Canvas.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 9,
+      "title": "Make ObjectRenderer read-only for TECH",
+      "description": "In client/src/components/editor/Canvas/ObjectRenderer.tsx: import useCurrentUser and derive isTech. On the Rnd component: set `disableDragging={isTech}` and `enableResizing={isTech ? {} : enableResizingConfig}` (empty object means all handles disabled). Wrap the rotation-handle mousedown listener in `if (!isTech)`. For text objects, set `contentEditable={isTech ? false : 'true'}` and suppress double-click-to-edit when isTech.",
+      "files_affected": [
+        "client/src/components/editor/Canvas/ObjectRenderer.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 10,
+      "title": "Hide add-object tools in ObjectToolbar for TECH",
+      "description": "In client/src/components/editor/ObjectToolbar.tsx: import useCurrentUser and derive isTech. Wrap all tool buttons that create objects (text, image, icon, draw, stamp) in `{!isTech && (...)}`. The 'select' tool button and the 'Color by status' toggle (TOGGLE_STATUS_COLORS dispatch) must remain visible and functional for TECH. If auto-numbering controls exist here, hide them for TECH.",
+      "files_affected": [
+        "client/src/components/editor/ObjectToolbar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 11,
+      "title": "Hide write operations in Toolbar for TECH",
+      "description": "In client/src/components/editor/Toolbar.tsx: import useCurrentUser and derive isTech. When isTech: hide the Save/AutoSave indicator, Import project button, Delete selected button, and Share dialog trigger. Keep visible: Back-to-projects button, Export-PDF button (read-only operation), page navigation, zoom controls. Wrap each hidden control in `{!isTech && (...)}` guards.",
+      "files_affected": [
+        "client/src/components/editor/Toolbar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 12,
+      "title": "Make LayerPanel read-only for TECH",
+      "description": "In client/src/components/editor/LayerPanel.tsx: import useCurrentUser and derive isTech. When isTech: hide 'Add Layer' button; hide delete-layer icon/button per layer row; disable drag-to-reorder by wrapping drag handles in `{!isTech && (...)}` or passing `isDragDisabled={isTech}` to DnD components. Layer visibility toggle (eye icon) may remain active since it is a local view-only preference.",
+      "files_affected": [
+        "client/src/components/editor/LayerPanel.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 13,
+      "title": "Make PropertiesPanel read-only for TECH, show issue description",
+      "description": "In client/src/components/editor/PropertiesPanel.tsx: import useCurrentUser and derive isTech. When isTech: replace all `<Input>` / `<Textarea>` / `<Select>` controls with read-only `<span>` or `<p>` elements showing the current value. Additionally, when `isTech && selectedObject?.status === 'ISSUE'`, render a clearly labelled section (e.g. 'Issue Description') that displays `selectedObject.issueDescription` (or 'No description provided' if empty).",
+      "files_affected": [
+        "client/src/components/editor/PropertiesPanel.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 14,
+      "title": "Create AdminPage for user role management",
+      "description": "Create client/src/pages/AdminPage.tsx: a page component that calls useCurrentUser to guard access (redirect to '/' if role !== 'admin'). Calls useAdminUsers() to fetch user list. Renders a table with columns: Username, Role (a Select with options PM/TECH — admin role not assignable to protect against privilege issues), Actions. On role change, calls useUpdateUserRole mutate. Includes a 'Back' link/button navigating to '/'. Show a loading spinner while fetching.",
+      "files_affected": [
+        "client/src/pages/AdminPage.tsx"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 15,
+      "title": "Add /admin route and admin navigation entry",
+      "description": "In client/src/App.tsx: import AdminPage (lazy or direct) and add `<Route path='/admin'><AdminPage /></Route>` inside the Switch, before the catch-all NotFound route, wrapped in the same auth guard as '/'. In client/src/components/editor/PDFUploader.tsx (the project-list screen shown before opening a project): import useCurrentUser and add a button 'Zarządzaj użytkownikami' visible only when `user?.role === 'admin'` that navigates to '/admin' using wouter's `useLocation` or `<Link>`.",
+      "files_affected": [
+        "client/src/App.tsx",
+        "client/src/components/editor/PDFUploader.tsx"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "The `users` PostgreSQL table has a `role` text column that is NOT NULL with default 'PM'. The `User` type in shared/schema.ts includes `role: string`.",
+      "how_to_verify": "Read shared/schema.ts and confirm `role` field exists on `users` pgTable. Run `\\d users` in psql and confirm the column exists with default 'PM'."
+    },
+    {
+      "id": "c2",
+      "description": "GET /api/auth/me returns `{ id, username, role }` for an authenticated user; POST /api/auth/login success response includes `role`.",
+      "how_to_verify": "Read server/routes.ts lines for /api/auth/me handler and login success handler and confirm `role: req.user!.role` / `role: user.role` is present in the res.json call."
+    },
+    {
+      "id": "c3",
+      "description": "PUT /api/projects/:id, POST /api/projects, DELETE /api/projects/:id, and POST /api/files each have `requireRole('PM','admin')` middleware in their handler chain after `requireAuth`.",
+      "how_to_verify": "Read server/routes.ts and grep for `requireRole` in those four route definitions."
+    },
+    {
+      "id": "c4",
+      "description": "Logging in as `admin` with password `2Park` succeeds — the user exists in the database with role 'admin'. seedAdminUser() creates this user on startup if not found.",
+      "how_to_verify": "Read server/auth.ts and confirm `seedAdminUser` function: checks for username='admin', hashes '2Park', calls createUser with role='admin'. Read server/index.ts and confirm `await seedAdminUser()` is called before registerRoutes."
+    },
+    {
+      "id": "c5",
+      "description": "GET /api/admin/users and PUT /api/admin/users/:id/role both require role 'admin' — a PM or TECH user receives 403.",
+      "how_to_verify": "Read server/routes.ts admin route definitions and confirm both have `requireRole('admin')` in the middleware array."
+    },
+    {
+      "id": "c6",
+      "description": "In ObjectRenderer.tsx, the Rnd component receives `disableDragging={isTech}` and `enableResizing={isTech ? {} : ...}` where isTech is derived from useCurrentUser().data?.role === 'TECH'.",
+      "how_to_verify": "Read client/src/components/editor/Canvas/ObjectRenderer.tsx and confirm the isTech derivation and the Rnd props."
+    },
+    {
+      "id": "c7",
+      "description": "In PropertiesPanel.tsx, when isTech is true AND selectedObject.status === 'ISSUE', a section rendering `selectedObject.issueDescription` is present in the JSX.",
+      "how_to_verify": "Read client/src/components/editor/PropertiesPanel.tsx and grep for `issueDescription` and `status === 'ISSUE'` conditional block."
+    },
+    {
+      "id": "c8",
+      "description": "File client/src/pages/AdminPage.tsx exists and contains a user table with role selectors. The /admin route is registered in App.tsx.",
+      "how_to_verify": "Check that AdminPage.tsx exists at client/src/pages/AdminPage.tsx. Read client/src/App.tsx and confirm `<Route path='/admin'>` is present."
+    }
+  ],
+  "risks": [
+    "Existing active sessions (cookies) won't carry the new `role` field until the user logs out and back in — deserialization fetches user from DB so role will be present after the migration, but frontend query cache may hold stale user objects without role until page refresh.",
+    "The admin password '2Park' is hardcoded in seedAdminUser — in production this should be pulled from an environment variable; document this in the seed function.",
+    "drizzle-kit push on a live database will ALTER TABLE to add the role column — this is safe (adds nullable with default) but should be done during a maintenance window if the DB has many concurrent connections.",
+    "TECH can still call PUT /api/projects/:id via direct API calls to update their own technician status fields — if TECH should be able to update object statuses (as per ARCHITECTURAL_EVOLUTION.md Technician role), the current plan blocks all writes. Clarify with stakeholders whether status updates should be a TECH write permission.",
+    "PDFUploader.tsx may not currently import useCurrentUser — ensure the hook import and the admin navigation button do not break the existing project-list rendering for non-admin users."
+  ]
+}

@@ -12,6 +12,7 @@ import {useTouchGestures} from '@/hooks/useTouchGestures';
 import {ObjectRenderer} from './Canvas/ObjectRenderer';
 import {DrawingLayer} from './Canvas/DrawingLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
+import {useCurrentUser} from '@/hooks/useAuth';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -22,11 +23,19 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 export const Canvas = () => {
+  const { data: user } = useCurrentUser();
+  const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const containerRef = useRef<HTMLDivElement>(null);
   const { drawingPath, isDrawing, onMouseDown, onMouseMove, onMouseUp } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const [, setNumPages] = useState<number>(0);
+
+  useEffect(() => {
+    if (isTech && docState.tool !== 'select') {
+      dispatch({ type: 'SET_TOOL', payload: 'select' });
+    }
+  }, [isTech, docState.tool, dispatch]);
 
   const touchGestures = useTouchGestures({
     onTap: () => {
@@ -38,6 +47,7 @@ export const Canvas = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTech) return;
       // Don't delete if user is typing in an input or contentEditable
       if (
         e.target instanceof HTMLInputElement || 
@@ -57,6 +67,10 @@ export const Canvas = () => {
   }, [state.selectedObjectIds, dispatch]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (isTech) {
+      dispatch({ type: 'SELECT_OBJECT', payload: null });
+      return;
+    }
     if (state.tool === 'draw') { onMouseDown(e); }
     else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
        const rect = containerRef.current?.getBoundingClientRect();
@@ -97,6 +111,7 @@ export const Canvas = () => {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (isTech) return;
     const type = e.dataTransfer.getData('application/editor-object');
     const content = e.dataTransfer.getData('application/editor-content');
     if (type && state.activeLayerId) {
@@ -158,8 +173,12 @@ export const Canvas = () => {
           ) : (
              <div className="bg-white flex flex-col gap-4 items-center justify-center text-muted-foreground border border-dashed border-border relative" style={{ width: CANVAS_BASE_WIDTH * state.scale, height: CANVAS_BASE_HEIGHT * state.scale }}>
                <p>No PDF Loaded</p>
-               <input type="file" accept="application/pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) dispatch({ type: 'SET_PDF', payload: file }); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-               <Button variant="outline" size="sm"><Upload className="mr-2 h-4 w-4" />Upload PDF</Button>
+               {!isTech && (
+                 <>
+                   <input type="file" accept="application/pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) dispatch({ type: 'SET_PDF', payload: file }); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                   <Button variant="outline" size="sm"><Upload className="mr-2 h-4 w-4" />Upload PDF</Button>
+                 </>
+               )}
              </div>
           )}
 
