@@ -71,11 +71,11 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
     },
   });
 
-  const displayColor = uiState.showStatusColors 
+  const displayColor = uiState.showStatusColors && obj.type !== 'text'
     ? (getStatusCategoryColor(obj.status) || obj.color || '#000000')
     : (obj.color || '#000000');
   
-  const indicatorColor = getStatusColor(obj.status);
+  const indicatorColor = obj.type !== 'text' ? getStatusColor(obj.status) : null;
 
   const handleRotationMouseDown = (e: React.MouseEvent) => {
     if (isTech) return;

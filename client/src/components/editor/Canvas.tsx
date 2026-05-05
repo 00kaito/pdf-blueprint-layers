@@ -79,12 +79,19 @@ export const Canvas = () => {
       }
 
       if (e.ctrlKey || e.metaKey) {
-        if (e.code === 'KeyC') {
+        const key = e.key.toLowerCase();
+        if (key === 'c') {
           e.preventDefault();
+          console.log('[Canvas] CTRL+C detected');
           dispatch({ type: 'COPY_OBJECT' });
-        } else if (e.code === 'KeyV') {
+        } else if (key === 'v') {
           e.preventDefault();
-          dispatch({ type: 'PASTE_OBJECT', payload: mousePosRef.current });
+          const isIncremental = e.shiftKey;
+          console.log('[Canvas] CTRL+V detected. Shift (isIncremental):', isIncremental, 'Pos:', mousePosRef.current);
+          dispatch({ 
+            type: 'PASTE_OBJECT', 
+            payload: { ...mousePosRef.current, isIncremental } 
+          });
         }
       }
     };

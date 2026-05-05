@@ -7,7 +7,7 @@ import {Label} from '@/components/ui/label';
 import {Slider} from '@/components/ui/slider';
 import {Separator} from '@/components/ui/separator';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
-import {CheckCircle2, AlertCircle, Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
+import {AlertCircle, Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
 import {ObjectPhotoGallery} from './ObjectPhotoGallery';
@@ -145,61 +145,65 @@ export const PropertiesPanel = () => {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Progress Status</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'PLANNED', label: 'Planned', color: 'bg-red-400' },
-                    { id: 'CABLE_PULLED', label: 'Cable Pulled', color: 'bg-blue-500' },
-                    { id: 'TERMINATED', label: 'Terminated', color: 'bg-purple-500' },
-                    { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
-                    { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
-                    { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
-                  ].map((s) => (
-                    <Button
-                      key={s.id}
-                      variant="outline"
-                      size="sm"
-                      disabled={isTech}
-                      className={cn(
-                        "h-8 text-[10px] px-1 justify-start gap-1.5 font-semibold",
-                        selectedObjects.every(o => o.status === s.id) ? "ring-2 ring-primary ring-offset-1" : ""
-                      )}
-                      onClick={() => handleUpdate({ status: s.id as any })}
-                    >
-                      <div className={cn("w-2 h-2 rounded-full", s.color)} />
-                      {s.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {selectedObjects.some(o => o.status === 'ISSUE') && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="obj-issue" className="text-xs font-medium text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    Issue Description
-                  </Label>
-                  {isTech ? (
-                    <div className="text-xs bg-red-50 text-red-900 p-2 rounded border border-red-200 min-h-[60px] whitespace-pre-wrap">
-                      {selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || 'No description provided') : 'Mixed descriptions'}
+              {selectedObjects.every(o => o.type !== 'text') && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Progress Status</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 'PLANNED', label: 'Planned', color: 'bg-red-400' },
+                        { id: 'CABLE_PULLED', label: 'Cable Pulled', color: 'bg-blue-500' },
+                        { id: 'TERMINATED', label: 'Terminated', color: 'bg-purple-500' },
+                        { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
+                        { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
+                        { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
+                      ].map((s) => (
+                        <Button
+                          key={s.id}
+                          variant="outline"
+                          size="sm"
+                          disabled={isTech}
+                          className={cn(
+                            "h-8 text-[10px] px-1 justify-start gap-1.5 font-semibold",
+                            selectedObjects.every(o => o.status === s.id) ? "ring-2 ring-primary ring-offset-1" : ""
+                          )}
+                          onClick={() => handleUpdate({ status: s.id as any })}
+                        >
+                          <div className={cn("w-2 h-2 rounded-full", s.color)} />
+                          {s.label}
+                        </Button>
+                      ))}
                     </div>
-                  ) : (
-                    <Textarea
-                      id="obj-issue"
-                      placeholder="Describe the issue..."
-                      value={selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || '') : ''}
-                      onChange={(e) => handleUpdate({ issueDescription: e.target.value })}
-                      className="text-xs min-h-[60px]"
-                    />
-                  )}
-                </div>
-              )}
+                  </div>
 
-              {firstObject.statusUpdatedAt && !isMultiSelect && (
-                <div className="text-[10px] text-muted-foreground italic px-1">
-                  Last updated: {new Date(firstObject.statusUpdatedAt).toLocaleString()} by {firstObject.statusUpdatedBy}
-                </div>
+                  {selectedObjects.some(o => o.status === 'ISSUE') && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="obj-issue" className="text-xs font-medium text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Issue Description
+                      </Label>
+                      {isTech ? (
+                        <div className="text-xs bg-red-50 text-red-900 p-2 rounded border border-red-200 min-h-[60px] whitespace-pre-wrap">
+                          {selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || 'No description provided') : 'Mixed descriptions'}
+                        </div>
+                      ) : (
+                        <Textarea
+                          id="obj-issue"
+                          placeholder="Describe the issue..."
+                          value={selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || '') : ''}
+                          onChange={(e) => handleUpdate({ issueDescription: e.target.value })}
+                          className="text-xs min-h-[60px]"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {firstObject.statusUpdatedAt && !isMultiSelect && (
+                    <div className="text-[10px] text-muted-foreground italic px-1">
+                      Last updated: {new Date(firstObject.statusUpdatedAt).toLocaleString()} by {firstObject.statusUpdatedBy}
+                    </div>
+                  )}
+                </>
               )}
 
               {isTech ? (

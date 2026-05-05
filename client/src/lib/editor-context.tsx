@@ -1,5 +1,5 @@
 import React, {createContext, ReactNode, useContext, useMemo, useReducer} from 'react';
-import {DocumentState, EditorAction, EditorObject, EditorState, Layer, UIState} from './types';
+import {DocumentState, EditorAction, EditorObject, EditorState, UIState} from './types';
 import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 
@@ -219,9 +219,38 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, clipboardObjects: cleanedObjects as EditorObject[] };
     }
     case 'PASTE_OBJECT': {
-      if (state.clipboardObjects.length === 0 || !state.activeLayerId) return state;
+      if (state.clipboardObjects.length === 0) {
+        console.log('[Paste] Failed: Clipboard empty');
+        return state;
+      }
       
-      // Calculate the center of the clipboard object group to align with cursor
+      // Default to active layer, or first layer if none active
+      const activeLayerId = state.activeLayerId || (state.layers.length > 0 ? state.layers[0].id : null);
+      if (!activeLayerId) {
+        console.log('[Paste] Failed: No layer available');
+        return state;
+      }
+      
+      const incrementString = (str: string) => {
+        const match = str.match(/^(.*?)(\d+)([^\d]*)$/);
+        if (!match) {
+          console.log(`[Paste] No number found to increment in: "${str}"`);
+          return str;
+        }
+        
+        const prefix = match[1];
+        const numStr = match[2];
+        const suffix = match[3];
+        
+        const nextNum = parseInt(numStr, 10) + 1;
+        const nextNumStr = nextNum.toString().padStart(numStr.length, '0');
+        
+        const result = `${prefix}${nextNumStr}${suffix}`;
+        console.log(`[Paste] Incremented "${str}" -> "${result}"`);
+        return result;
+      };
+
+      // Calculate the center of the group
       const minX = Math.min(...state.clipboardObjects.map(obj => obj.x));
       const minY = Math.min(...state.clipboardObjects.map(obj => obj.y));
       const maxX = Math.max(...state.clipboardObjects.map(obj => obj.x + (obj.width || 0)));
@@ -230,25 +259,34 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
 
-      const activeLayerId = state.activeLayerId;
-      if (!activeLayerId) return state;
+      console.log(`[Paste] PASTE_OBJECT action.payload:`, action.payload);
 
       const newObjects = state.clipboardObjects.map((o) => {
         const id = uuidv4();
         let x = o.x;
         let y = o.y;
 
-        if (action.payload) {
-          // Paste centered at cursor position. Maintain relative positions for multiple objects.
+        if (action.payload && action.payload.x !== undefined && action.payload.y !== undefined) {
           const offsetX = o.x - centerX;
           const offsetY = o.y - centerY;
           x = action.payload.x + offsetX;
           y = action.payload.y + offsetY;
         } else {
-          // Default offset if no cursor position provided
-          const offset = 20 / state.scale;
+          const offset = 20 / (state.scale || 1);
           x += offset;
           y += offset;
+        }
+
+        let content = o.content;
+        let name = o.name;
+
+        if (action.payload?.isIncremental) {
+          console.log(`[Paste] Incremental paste for object type: ${o.type}, current content: "${content}", name: "${name}"`);
+          if (o.type === 'text' && content) {
+            content = incrementString(content);
+          } else if (o.type !== 'text' && name) {
+            name = incrementString(name);
+          }
         }
 
         return {
@@ -257,15 +295,17 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
           x,
           y,
           layerId: activeLayerId,
-          photos: [] // Double check photos are empty
-        } as EditorObject;
+          content,
+          name,
+          photos: []
+        };
       });
 
       return {
         ...state,
         objects: [...state.objects, ...newObjects],
         selectedObjectIds: newObjects.map(o => o.id),
-        clipboardObjects: newObjects // Update clipboard with new objects for sequential pasting
+        clipboardObjects: newObjects
       };
     }
     case 'SET_AUTO_NUMBERING':

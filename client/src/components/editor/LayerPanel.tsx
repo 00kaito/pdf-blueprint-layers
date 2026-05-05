@@ -144,7 +144,7 @@ export const LayerPanel = () => {
     }
   };
 
-  const trackableObjects = state.objects.filter(obj => obj.type !== 'path');
+  const trackableObjects = state.objects.filter(obj => obj.type !== 'path' && obj.type !== 'text');
   const counts = {
     total: trackableObjects.length,
     planned: trackableObjects.filter(o => o.status === 'PLANNED').length,
