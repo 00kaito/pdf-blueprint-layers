@@ -1,0 +1,66 @@
+{
+  "summary": "I will analyze the codebase to synthesize a comprehensive architectural overview, a detailed developer file guide, and an updated main README reflecting the current project state.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Analyze System Architecture",
+      "description": "Examine the relationship between the Split Context API (Document vs UI), the core math engines in `client/src/core`, and the export logic in `useExport.ts` to document the logical flow.",
+      "files_affected": [],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Create architecture.md",
+      "description": "Draft the architectural overview, highlighting the 'Split Context' pattern, coordinate transformation logic (Screen TL to PDF BL), and the vector export pipeline.",
+      "files_affected": [
+        "architecture.md"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 3,
+      "title": "Create DEV_README.md",
+      "description": "Map every significant file in `client/` and `server/` to its functional responsibility, describing how they communicate (e.g., TanStack Query for API, Context for local state).",
+      "files_affected": [
+        "DEV_README.md"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 4,
+      "title": "Update README.md",
+      "description": "Refresh the main README to include current features like Status Life Cycle, Auto-Numbering, multi-tenancy auth, and database persistence (Drizzle/Postgres).",
+      "files_affected": [
+        "README.md"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "File `architecture.md` exists and contains sections for 'Overview', 'State Management (Split Context)', and 'Coordinate Transformation'.",
+      "how_to_verify": "Verify file existence and presence of specified headers."
+    },
+    {
+      "id": "c2",
+      "description": "File `DEV_README.md` exists and provides a file-by-file description for at least 15 core files in `client/src` and `server/`.",
+      "how_to_verify": "Check file content for mapping of core files like `editor-context.tsx`, `useExport.ts`, `routes.ts`, and `schema.ts`."
+    },
+    {
+      "id": "c3",
+      "description": "`README.md` is updated to mention the Postgres/Drizzle backend and the current 'Network Passportization' features.",
+      "how_to_verify": "Check `README.md` for 'Tech Stack' updates (Postgres, Drizzle) and 'Key Features' section updates."
+    },
+    {
+      "id": "c4",
+      "description": "The logic flow of object creation and PDF export is explicitly described in `architecture.md`.",
+      "how_to_verify": "Verify the 'Logic Flow' section in `architecture.md` covers the path from UI interaction to `pdf-lib` execution."
+    }
+  ],
+  "risks": [
+    "Omission of critical backend routes or schema details if not fully scanned.",
+    "Documentation becoming outdated if recently added features (like the latest status tracking) are missed.",
+    "Overlapping content between `architecture.md` and `DEV_README.md` creating maintenance burden."
+  ]
+}

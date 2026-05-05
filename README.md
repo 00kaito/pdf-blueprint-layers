@@ -20,6 +20,15 @@ A specialized React-based application designed for infrastructure workers and IT
 - **Audit Trail**: Every status change automatically records the technician's name and a timestamp.
 - **Photo Documentation**: Attach multiple photos to any object for visual proof of installation or to document site issues.
 
+### 🔐 Enterprise-Ready Backend
+- **Multi-Tenant Authentication**: Role-based access control (RBAC) with three levels:
+  - **Admin**: Full system control and user management.
+  - **Project Manager (PM)**: Create, edit, and share projects.
+  - **Technician (TECH)**: Preview-only access with status updating capabilities.
+- **Database Persistence**: Robust storage using **PostgreSQL** and **Drizzle ORM**, replacing simple file-based storage.
+- **Project Sharing**: Collaboratively work on blueprints by sharing projects with specific users.
+- **Auto-Save**: Background synchronization ensures no data loss during long editing sessions.
+
 ### ⚡ Productivity Tools
 - **Auto-Numbering System**: 
   - Toggle `#` mode to automatically increment labels.
@@ -85,6 +94,8 @@ docker run -p 5000:5000 pdf-editor
 Access the application at `http://localhost:5000`.
 
 ## Tech Stack
-- **Frontend**: React, Vite, TypeScript, Tailwind CSS
-- **PDF Handling**: react-pdf, pdf-lib
+- **Frontend**: React, Vite, TypeScript, Tailwind CSS, TanStack Query
+- **PDF Handling**: pdf-lib, react-pdf
 - **UI Components**: Shadcn/UI, Lucide React
+- **Backend**: Node.js, Express, Passport.js
+- **Database**: PostgreSQL, Drizzle ORM
