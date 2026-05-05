@@ -32,10 +32,10 @@ export const Canvas = () => {
   const [, setNumPages] = useState<number>(0);
 
   useEffect(() => {
-    if (isTech && docState.tool !== 'select') {
+    if (isTech && uiState.tool !== 'select') {
       dispatch({ type: 'SET_TOOL', payload: 'select' });
     }
-  }, [isTech, docState.tool, dispatch]);
+  }, [isTech, uiState.tool, dispatch]);
 
   const touchGestures = useTouchGestures({
     onTap: () => {

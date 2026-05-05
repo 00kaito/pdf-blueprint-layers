@@ -1,5 +1,5 @@
 import React, {createContext, ReactNode, useContext, useMemo, useReducer} from 'react';
-import {DocumentState, EditorAction, EditorState, UIState} from './types';
+import {DocumentState, EditorAction, EditorObject, EditorState, Layer, UIState} from './types';
 import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 
@@ -230,6 +230,9 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
 
+      const activeLayerId = state.activeLayerId;
+      if (!activeLayerId) return state;
+
       const newObjects = state.clipboardObjects.map((o) => {
         const id = uuidv4();
         let x = o.x;
@@ -253,9 +256,9 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
           id,
           x,
           y,
-          layerId: state.activeLayerId,
+          layerId: activeLayerId,
           photos: [] // Double check photos are empty
-        };
+        } as EditorObject;
       });
 
       return {

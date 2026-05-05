@@ -1,20 +1,24 @@
-# Implementation Report — Iteration 1
+# Implementation Report — Iteration 2
 
 ## Changes made
-- Refactored `client/src/components/editor/MobileBottomBar.tsx` to remove the complex sliding panel and "Add Object" functionality.
-- Implemented role-based minimal bottom bars for mobile:
-  - **Technicians (TECH):** Only see a "Color by status" checkbox/toggle.
-  - **Managers/Admins (PM):** See the selected object's name and an "Add Photo" button that directly triggers the camera/file picker and uploads photos to the selected object.
-- Removed `MobileAddObjectPanel` and associated sheets from the mobile view.
-- Verified that Technicians are in "preview-only" mode on mobile (dragging, resizing, and deleting are disabled via the `isTech` role check in `ObjectRenderer.tsx` and `Canvas.tsx`).
+- **Mobile UI Restructuring**: Refactored `MobileBottomBar.tsx` to provide a minimal role-based interface.
+    - Removed all "Add Object" functionality and sliding sheets from the mobile view.
+    - Implemented a shared "Color by status" toggle for both PM and Technician roles.
+    - Added a photo gallery access button (Image icon) for PMs when an object is selected, allowing them to view and manage photos via a Dialog.
+    - Retained the "Add Photo" button for PMs for quick site documentation.
+    - Enforced a strictly minimal 48px height bottom bar.
+- **Photo Deletion Safety**: Enhanced `ObjectPhotoGallery.tsx` with an `AlertDialog` confirmation prompt.
+    - Users are now prompted with "Are you sure?" before a photo is permanently removed from an object.
+- **Role-Based Restrictions**: Confirmed and verified that Technicians are in "preview-only" mode on mobile.
+    - Dragging, resizing, and deleting objects are disabled for the TECH role (implemented in `ObjectRenderer.tsx` and `Canvas.tsx`).
+    - Tool selection is forced to 'select' for Technicians.
 
 ## Files affected
 - MODIFIED: `client/src/components/editor/MobileBottomBar.tsx`
+- MODIFIED: `client/src/components/editor/ObjectPhotoGallery.tsx`
 
 ## Deviations from plan
-- Did not modify `client/src/pages/home.tsx` or `client/src/components/editor/Toolbar.tsx` for "plus" buttons because `Toolbar` is already not rendered on mobile, and `MobileBottomBar` was the only place where mobile-specific "plus" buttons existed.
-- `MobileAddObjectPanel.tsx` was not deleted but is no longer used in the mobile UI.
+None
 
 ## Potential issues
-- PMs can no longer add new objects on mobile. This is per request ("wyrzuc z wersji telefonicznej add objects") but might be a limitation if they need to add something on-site.
-- Viewing photos/comments on mobile is now hidden as the request specified "only" a bar for adding photos.
+None

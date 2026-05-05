@@ -3,9 +3,16 @@ import { useDocument, useUI } from '@/lib/editor-context';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { useUploadFile } from '@/hooks/useProjects';
 import { compressImage } from '@/core/image-compress';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ObjectPhotoGallery } from './ObjectPhotoGallery';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const dataUrlToFile = (dataUrl: string, filename: string): File => {
   const arr = dataUrl.split(',');
@@ -28,6 +35,7 @@ export const MobileBottomBar: React.FC = () => {
   const uploadFileMutation = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
@@ -61,17 +69,21 @@ export const MobileBottomBar: React.FC = () => {
     }
   };
 
+  const StatusToggle = () => (
+    <div className="flex items-center gap-2 shrink-0">
+      <Checkbox 
+        id="status-colors-mobile" 
+        checked={uiState.showStatusColors} 
+        onCheckedChange={() => uiDispatch({ type: 'TOGGLE_STATUS_COLORS' })}
+      />
+      <label htmlFor="status-colors-mobile" className="text-[10px] font-bold uppercase tracking-tight leading-none whitespace-nowrap">By status</label>
+    </div>
+  );
+
   if (isTech) {
     return (
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-12 flex items-center px-4">
-        <div className="flex items-center gap-2">
-          <Checkbox 
-            id="status-colors-mobile" 
-            checked={uiState.showStatusColors} 
-            onCheckedChange={() => uiDispatch({ type: 'TOGGLE_STATUS_COLORS' })}
-          />
-          <label htmlFor="status-colors-mobile" className="text-xs font-medium leading-none">Color by status</label>
-        </div>
+        <StatusToggle />
       </div>
     );
   }
@@ -79,29 +91,44 @@ export const MobileBottomBar: React.FC = () => {
   // PM version
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-12 flex items-center px-4 justify-between">
-       <div className="flex items-center gap-2 min-w-0 mr-4">
-          <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider shrink-0">Object:</span>
-          <span className="text-xs font-medium truncate">
-            {selectedObject ? (selectedObject.name || 'Untitled') : "Select an object"}
-          </span>
+       <div className="flex items-center gap-4 min-w-0 mr-2">
+          <StatusToggle />
+
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-tighter shrink-0">OBJ:</span>
+            <span className="text-xs font-semibold truncate">
+              {selectedObject ? (selectedObject.name || 'Untitled') : "Select..."}
+            </span>
+          </div>
        </div>
        
-       <div className="flex items-center gap-2">
+       <div className="flex items-center gap-1.5 shrink-0">
          {selectedObject && (
-           <Button 
-             size="sm" 
-             variant="default" 
-             className="h-8 gap-1.5 px-3 rounded-full"
-             disabled={isUploading}
-             onClick={() => fileInputRef.current?.click()}
-           >
-             {isUploading ? (
-               <Loader2 className="h-4 w-4 animate-spin" />
-             ) : (
-               <Camera className="h-4 w-4" />
-             )}
-             <span className="text-xs">Add Photo</span>
-           </Button>
+           <>
+             <Button 
+               size="icon" 
+               variant="outline" 
+               className="h-8 w-8 rounded-full"
+               onClick={() => setIsGalleryOpen(true)}
+             >
+               <ImageIcon className="h-4 w-4" />
+             </Button>
+             
+             <Button 
+               size="sm" 
+               variant="default" 
+               className="h-8 gap-1 px-3 rounded-full"
+               disabled={isUploading}
+               onClick={() => fileInputRef.current?.click()}
+             >
+               {isUploading ? (
+                 <Loader2 className="h-3 w-3 animate-spin" />
+               ) : (
+                 <Camera className="h-3 w-3" />
+               )}
+               <span className="text-[10px] font-bold uppercase">Photo</span>
+             </Button>
+           </>
          )}
          
          <input
@@ -114,6 +141,18 @@ export const MobileBottomBar: React.FC = () => {
             {...({ capture: 'environment' } as any)}
           />
        </div>
+
+       {selectedObject && (
+         <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
+            <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-y-auto p-4">
+              <DialogHeader className="pb-2">
+                <DialogTitle className="text-sm">Photos: {selectedObject.name || 'Untitled'}</DialogTitle>
+              </DialogHeader>
+              <ObjectPhotoGallery objectId={selectedObject.id} photos={selectedObject.photos || []} />
+            </DialogContent>
+         </Dialog>
+       )}
     </div>
   );
 };
+

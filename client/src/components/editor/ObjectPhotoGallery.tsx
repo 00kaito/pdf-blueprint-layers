@@ -7,10 +7,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Camera, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { compressImage } from '@/core/image-compress';
 import { useUploadFile } from '@/hooks/useProjects';
 import { Progress } from '@/components/ui/progress';
+import { useCurrentUser } from '@/hooks/useAuth';
 
 interface ObjectPhotoGalleryProps {
   objectId: string;
@@ -44,6 +55,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [uploadQueue, setUploadQueue] = useState<Record<string, UploadStatus>>({});
+  const [photoToDelete, setPhotoToDelete] = useState<number | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -105,9 +117,10 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
         setUploadQueue(prev => ({
           ...prev,
           [uploadId]: { 
-            ...prev[uploadId], 
             status: 'error', 
-            error: error.message || 'Unknown error' 
+            error: error.message || 'Unknown error',
+            fileName: file.name,
+            progress: prev[uploadId].progress
           }
         }));
       }
@@ -118,16 +131,25 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
     }
   };
 
-  const removePhoto = (index: number) => {
+  const confirmDelete = (index: number) => {
+    setPhotoToDelete(index);
+  };
+
+  const removePhoto = () => {
+    if (photoToDelete === null) return;
+    
     dispatch({
       type: 'REMOVE_OBJECT_PHOTO',
-      payload: { id: objectId, index },
+      payload: { id: objectId, index: photoToDelete },
     });
-    if (lightboxIndex === index) {
+    
+    if (lightboxIndex === photoToDelete) {
       setLightboxIndex(null);
-    } else if (lightboxIndex !== null && lightboxIndex > index) {
+    } else if (lightboxIndex !== null && lightboxIndex > photoToDelete) {
       setLightboxIndex(lightboxIndex - 1);
     }
+    
+    setPhotoToDelete(null);
   };
 
   const openLightbox = (index: number) => {
@@ -244,7 +266,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
                 className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => {
                   e.stopPropagation();
-                  removePhoto(index);
+                  confirmDelete(index);
                 }}
               >
                 <Trash2 className="h-3 w-3" />
@@ -300,7 +322,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
                 {!isTech && (
                   <button
                     className="absolute top-4 right-12 p-2 bg-black/50 text-white rounded-full hover:bg-red-500/80 transition-colors"
-                    onClick={() => removePhoto(lightboxIndex)}
+                    onClick={() => confirmDelete(lightboxIndex)}
                   >
                     <Trash2 className="h-5 w-5" />
                   </button>
@@ -310,6 +332,24 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={photoToDelete !== null} onOpenChange={(open) => !open && setPhotoToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the photo from the object.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={removePhoto} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
+
