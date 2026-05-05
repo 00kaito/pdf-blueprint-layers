@@ -35,3 +35,85 @@
 
 ---
 
+## IMPLEMENTING — iter 1 — 2026-05-04 20:09:10
+
+### Gemini (Programista)
+
+**Open criteria do adresowania:**
+- `[c1]` File `architecture.md` exists and contains sections for 'Overview', 'State Management (Split Context)', and 'Coordinate Transformation'.
+- `[c2]` File `DEV_README.md` exists and provides a file-by-file description for at least 15 core files in `client/src` and `server/`.
+- `[c3]` `README.md` is updated to mention the Postgres/Drizzle backend and the current 'Network Passportization' features.
+- `[c4]` The logic flow of object creation and PDF export is explicitly described in `architecture.md`.
+
+**Git diff:** .orchestrator/orchestrator.db                   | Bin 561152 -> 565248 bytes
+ .orchestrator/runs/TASK-452459/conversation.md  | 121 ++++++++++++++++++++++++
+ .orchestrator/runs/TASK-452459/orchestrator.log |   6 ++
+ .orchestrator/runs/TASK-452459/state.json       |  29 ++++--
+ README.md                                       |  15 ++-
+ implementation_report.md                        |  23 ++---
+ 6 files changed, 168 insertions(+), 26 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 1
+
+## Changes made
+- **Analyzed System Architecture**: Researched the "Split Context" pattern, coordinate transformation logic, and vector export pipeline.
+- **Created `architecture.md`**: Provided a high-level overview of the system, detailed the Split Context state management, and explained the Screen-to-PDF coordinate mapping.
+- **Created `DEV_README.md`**: Mapped 16 core files across the client and server directories to their functional responsibilities and communication patterns.
+- **Updated `README.md`**: Refreshed the main README to include the PostgreSQL/Drizzle backend, multi-tenant authentication, project sharing, and the full technical stack.
+- **Improved Project Visibility**: Documented the "Network Passportization" features and "Construction Progress Tracking" logic.
+
+## Files affected
+- CREATED: `architecture.md`
+- CREATED: `DEV_README.md`
+- MODIFIED: `README.md`
+
+## Deviations from plan
+None
+
+## Potential issues
+None
+
+<details>
+<summary>Gemini stdout (raw)</summary>
+
+```
+I have completed the documentation update for the project. The following files have been created or modified to accurately reflect the current architecture, file structure, and feature set:
+
+1.  **`architecture.md`**: Provides a high-level architectural overview, specifically detailing the "Split Context" state management pattern (Document vs. UI) and the coordinate transformation pipeline used for mapping screen interactions to physical PDF coordinates.
+2.  **`DEV_README.md`**: A comprehensive developer's guide that maps 16 core files across the `client/` and `server/` directories to their functional responsibilities, explaining how the frontend and backend communicate.
+3.  **`README.md`**: Updated to include the current technical stack (PostgreSQL, Drizzle ORM, TanStack Query), the multi-tenant authentication system (Admin, PM, TECH roles), and the "Network Passportization" features.
+
+All acceptance criteria have been met, and the project's documentation is now in sync with its latest implementation. Detailed changes can be found in the `implementation_report.md` file in the root directory.
+```
+</details>
+
+---
+
+## REVIEWING — iter 1 — 2026-05-04 20:09:29
+
+### Gemini (Reviewer)
+
+**Overall:** ✅ APPROVED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — architecture.md contains '## Overview', '## State Management: Split Context Pattern', and '## Coordinate Transformation Logic' headers.  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — DEV_README.md describes 11 files in client/src (editor-context.tsx, pdf-math.ts, useExport.ts, useObjectCreation.ts, useAutoSave.ts, useAuth.ts, Canvas.tsx, Toolbar.tsx, LayerPanel.tsx, PropertiesPanel.tsx, App.tsx) and 4 files in server/ (routes.ts, databaseStorage.ts, db.ts, auth.ts), totaling 15 files.  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — README.md includes a 'Network Passportization' section under 'Key Features' and mentions 'PostgreSQL' and 'Drizzle ORM' in both the 'Enterprise-Ready Backend' and 'Tech Stack' sections.  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — architecture.md contains a '## Logic Flows' section with detailed 'Object Creation' and 'Project Export (PDF & ZIP)' sub-sections.  
+  *confidence:* HIGH
+
+**Blocking issues:**
+*None*
+
+**Suggestions:**
+- 💡 Consider adding a Mermaid.js diagram to architecture.md to visualize the Screen-to-PDF coordinate mapping pipeline for even better clarity.
+
+**Next focus:** Task completed successfully.
+
+---
+
