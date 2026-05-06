@@ -38,35 +38,31 @@ export const files = pgTable("files", {
   mimeType: text("mime_type").notNull(),
   storagePath: text("storage_path").notNull(),
   size: integer("size").notNull(),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
-}, (t) => [
-  index("files_project_id_idx").on(t.projectId),
-  index("files_owner_id_idx").on(t.ownerId),
-]);
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+});
 
-// Types
-export type User = Omit<typeof users.$inferSelect, "email"> & { email?: string | null; role: string };
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type Project = Omit<typeof projects.$inferSelect, "state"> & { state?: any; sharedWith: string[] };
-export type InsertProject = z.infer<typeof insertProjectSchema>;
-export type FileMetadata = Omit<typeof files.$inferSelect, "projectId" | "storagePath" | "size"> & { 
-  projectId?: string | null;
-  storagePath?: string;
-  size?: number;
-};
+// Tabela sesji dla connect-pg-simple
+export const session = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire", { mode: 'string' }).notNull(),
+});
 
-// Zod Schemas
 export const projectStateSchema = z.object({
-  layers: z.array(z.any()),
-  objects: z.array(z.any()),
-  customIcons: z.array(z.any()),
-  exportSettings: z.any(),
-  autoNumbering: z.any(),
-  overlayOpacity: z.number(),
+  layers: z.array(z.any()).default([]),
+  objects: z.array(z.any()).default([]),
+  customIcons: z.array(z.any()).optional(),
+  exportSettings: z.any().optional(),
+  autoNumbering: z.any().optional(),
+  overlayOpacity: z.number().optional(),
   pdfFileId: z.string().optional().nullable(),
   overlayPdfFileId: z.string().optional().nullable(),
   activeLayerId: z.string().optional().nullable(),
 });
+
+export type User = typeof users.$inferSelect;
+export type Project = typeof projects.$inferSelect & { sharedWith: string[] };
+export type FileMetadata = typeof files.$inferSelect;
 
 export type ProjectState = z.infer<typeof projectStateSchema>;
 

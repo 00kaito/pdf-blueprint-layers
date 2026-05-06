@@ -40,4 +40,4 @@ ENV PORT=5000
 
 # Run migrations and start the server
 # We use npx drizzle-kit push to sync schema on start (convenient for this setup)
-CMD npx drizzle-kit push && npm start
+CMD npx drizzle-kit push --force && npm start
