@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings } from 'lucide-react';
+import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings, User } from 'lucide-react';
 import { useImport } from '@/hooks/useImport';
 import { useProjectList, useCreateProject, useDeleteProject, useShareProject, useUploadFile } from '@/hooks/useProjects';
 import { useDocument } from '@/lib/editor-context';
@@ -147,6 +147,17 @@ export const PDFUploader = () => {
             <p className="text-muted-foreground">Welcome back, {user?.username}. Manage your blueprint projects.</p>
           </div>
           <div className="flex items-center gap-2">
+            {user && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-md bg-white border border-border shadow-sm mr-2">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex flex-col -space-y-1">
+                  <span className="text-sm font-bold">{user.username}</span>
+                  <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{user.role}</span>
+                </div>
+              </div>
+            )}
             {user?.role === 'admin' && (
               <Link href="/admin">
                 <Button variant="outline" className="border-primary/50 hover:bg-primary/5">

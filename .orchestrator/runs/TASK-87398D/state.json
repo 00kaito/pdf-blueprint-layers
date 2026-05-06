@@ -1,0 +1,47 @@
+{
+  "task_id": "TASK-87398D",
+  "description": "chce widziec w przycisku logowania albo gdzies na gorze jako kto jestem obecnie zalogowany",
+  "title": "chce widziec w przycisku logowania albo gdzies na gorze jako kto jestem obecnie zalogowany",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Toolbar component in client/src/components/editor/Toolbar.tsx imports User from lucide-react and renders it conditionally based on user data.",
+      "how_to_verify": "Read client/src/components/editor/Toolbar.tsx and verify the presence of {user && ...} rendering the username.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "PDFUploader component in client/src/components/editor/PDFUploader.tsx displays both username and role in a badge at the top right.",
+      "how_to_verify": "Read client/src/components/editor/PDFUploader.tsx and verify the added user information block in the header.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "AdminPage component in client/src/pages/AdminPage.tsx displays the current user's identity in the header.",
+      "how_to_verify": "Read client/src/pages/AdminPage.tsx and verify the added user identity section in the header.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "The project passes TypeScript compilation.",
+      "how_to_verify": "Run 'npm run check' (tsc) and ensure no errors are reported.",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Added a user identification badge to the Toolbar, Project Uploader, and Admin Page to show the currently logged-in user at the top of the interface.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Add user badge to Toolbar\",\n      \"description\": \"Modify client/src/components/editor/Toolbar.tsx to display the current username next to the zoom controls.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Toolbar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Enhance user display in Project Uploader\",\n      \"description\": \"Modify client/src/components/editor/PDFUploader.tsx to show a prominent user badge with username and role next to the logout button.\",\n      \"files_affected\": [\n        \"client/src/components/editor/PDFUploader.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Add user badge to Admin Page\",\n      \"description\": \"Modify client/src/pages/AdminPage.tsx to display the current user in the header for consistency.\",\n      \"files_affected\": [\n        \"client/src/pages/AdminPage.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"Toolbar component in client/src/components/editor/Toolbar.tsx imports User from lucide-react and renders it conditionally based on user data.\",\n      \"how_to_verify\": \"Read client/src/components/editor/Toolbar.tsx and verify the presence of {user && ...} rendering the username.\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"PDFUploader component in client/src/components/editor/PDFUploader.tsx displays both username and role in a badge at the top right.\",\n      \"how_to_verify\": \"Read client/src/components/editor/PDFUploader.tsx and verify the added user information block in the header.\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"AdminPage component in client/src/pages/AdminPage.tsx displays the current user's identity in the header.\",\n      \"how_to_verify\": \"Read client/src/pages/AdminPage.tsx and verify the added user identity section in the header.\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"The project passes TypeScript compilation.\",\n      \"how_to_verify\": \"Run 'npm run check' (tsc) and ensure no errors are reported.\"\n    }\n  ],\n  \"risks\": [\n    \"Potential UI layout shifts on small screens if the username is too long (mitigated by truncate and hidden/sm:flex classes).\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "3831b0c91c890a202218e6471a552bc9fee0e109",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1778066831.2450237,
+  "updated_at": 1778067031.9405067
+}

@@ -1,0 +1,57 @@
+{
+  "summary": "Added a user identification badge to the Toolbar, Project Uploader, and Admin Page to show the currently logged-in user at the top of the interface.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Add user badge to Toolbar",
+      "description": "Modify client/src/components/editor/Toolbar.tsx to display the current username next to the zoom controls.",
+      "files_affected": [
+        "client/src/components/editor/Toolbar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Enhance user display in Project Uploader",
+      "description": "Modify client/src/components/editor/PDFUploader.tsx to show a prominent user badge with username and role next to the logout button.",
+      "files_affected": [
+        "client/src/components/editor/PDFUploader.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Add user badge to Admin Page",
+      "description": "Modify client/src/pages/AdminPage.tsx to display the current user in the header for consistency.",
+      "files_affected": [
+        "client/src/pages/AdminPage.tsx"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "Toolbar component in client/src/components/editor/Toolbar.tsx imports User from lucide-react and renders it conditionally based on user data.",
+      "how_to_verify": "Read client/src/components/editor/Toolbar.tsx and verify the presence of {user && ...} rendering the username."
+    },
+    {
+      "id": "c2",
+      "description": "PDFUploader component in client/src/components/editor/PDFUploader.tsx displays both username and role in a badge at the top right.",
+      "how_to_verify": "Read client/src/components/editor/PDFUploader.tsx and verify the added user information block in the header."
+    },
+    {
+      "id": "c3",
+      "description": "AdminPage component in client/src/pages/AdminPage.tsx displays the current user's identity in the header.",
+      "how_to_verify": "Read client/src/pages/AdminPage.tsx and verify the added user identity section in the header."
+    },
+    {
+      "id": "c4",
+      "description": "The project passes TypeScript compilation.",
+      "how_to_verify": "Run 'npm run check' (tsc) and ensure no errors are reported."
+    }
+  ],
+  "risks": [
+    "Potential UI layout shifts on small screens if the username is too long (mitigated by truncate and hidden/sm:flex classes)."
+  ]
+}

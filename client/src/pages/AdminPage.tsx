@@ -74,6 +74,17 @@ const AdminPage = () => {
               <p className="text-muted-foreground">Admin panel for managing user roles and permissions.</p>
             </div>
           </div>
+          {user && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-md bg-white border border-border shadow-sm">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <UserIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex flex-col -space-y-1">
+                <span className="text-sm font-bold">{user.username}</span>
+                <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{user.role}</span>
+              </div>
+            </div>
+          )}
         </header>
 
         <div className="bg-card rounded-lg border shadow-sm overflow-hidden">

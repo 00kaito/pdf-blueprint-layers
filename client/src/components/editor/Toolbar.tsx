@@ -1,6 +1,6 @@
 import React from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
-import {ChevronLeft, Loader2, Check} from 'lucide-react';
+import {ChevronLeft, Loader2, Check, User} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
 import {useCurrentUser} from '@/hooks/useAuth';
@@ -58,6 +58,24 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
       </div>
 
       <div className="flex items-center gap-4">
+        {user && (
+          <div className="hidden md:flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
+            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <User className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <div className="flex flex-col -space-y-1">
+              <span className="text-xs font-bold text-foreground truncate max-w-[80px]">
+                {user.username}
+              </span>
+              <span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest">
+                {user.role}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <Separator orientation="vertical" className="h-6 hidden md:block" />
+
         <ZoomControls scale={uiState.scale} />
         
         <Separator orientation="vertical" className="h-6" />
