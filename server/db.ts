@@ -1,16 +1,17 @@
 import pg from 'pg';
 import {drizzle} from 'drizzle-orm/node-postgres';
 import * as schema from '@shared/schema';
+import { config } from "./config";
 
-if (!process.env.DATABASE_URL) {
+if (!config.database.url) {
   throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+    "DATABASE_URL must be set when using database storage. Did you forget to provision a database?",
   );
 }
 
 const { Pool } = pg;
 export const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false
+  connectionString: config.database.url,
+  ssl: config.database.ssl ? { rejectUnauthorized: false } : false
 });
 export const db = drizzle(pool, { schema });

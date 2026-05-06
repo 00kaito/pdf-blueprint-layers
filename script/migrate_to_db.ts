@@ -6,25 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-// 1. Load .env synchronously before any DB import
-try {
-  const envContent = fs.readFileSync(path.join(rootDir, '.env'), 'utf-8');
-  envContent.split('\n').forEach(line => {
-    const trimmedLine = line.trim();
-    if (!trimmedLine || trimmedLine.startsWith('#')) return;
-    const firstEqual = trimmedLine.indexOf('=');
-    if (firstEqual === -1) return;
-    const key = trimmedLine.substring(0, firstEqual).trim();
-    let value = trimmedLine.substring(firstEqual + 1).trim();
-    // Remove surrounding quotes if present
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.substring(1, value.length - 1);
-    }
-    process.env[key] = value;
-  });
-} catch (err) {
-  console.warn('.env file not found or could not be read. Continuing with existing environment variables.');
-}
+import { config } from '../server/config';
 
 async function migrate() {
   // Dynamically import db and schema

@@ -6,15 +6,22 @@
     "createdAt": "2026-05-02T18:07:39.764Z"
   },
   {
-    "username": "Tech",
+    "username": "tech",
     "passwordHash": "$2b$10$T/4QxAVogRPs7dVG0mJcqOVTTEBAanVtvsevjTOeSmD5zNfzZK2LO",
     "id": "9a43e12c-37a2-467d-9e26-ae24df5ccbbe",
     "createdAt": "2026-05-02T18:28:36.092Z"
   },
   {
-    "username": "Note",
+    "username": "note",
     "passwordHash": "$2b$10$I0jK0h4xp5eRv0jd7abJEu5RvZa3VBEJvSprhiSjNuV68NsML933K",
     "id": "dec963d5-09dc-4a71-b8fe-45dc90ac07d1",
     "createdAt": "2026-05-02T20:35:09.723Z"
+  },
+  {
+    "username": "admin",
+    "passwordHash": "$2b$10$.Hhj050jMcLXQ24.tG36veVoOzmb2Tiye7sr2G4yYJ1D4Ls9dLjXq",
+    "role": "admin",
+    "id": "59e8163e-8871-459d-97da-6487f68e9f3a",
+    "createdAt": "2026-05-06T15:27:22.091Z"
   }
 ]

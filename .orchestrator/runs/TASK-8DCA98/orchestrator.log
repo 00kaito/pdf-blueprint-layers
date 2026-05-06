@@ -369,3 +369,86 @@
  server/storage.ts                                  |   1 +
  shared/schema.ts                                   |   2 +-
  11 files changed, 117 insertions(+), 12 deletions(-) (129 lines)
+2026-05-06 09:12:02,905 [INFO] [TASK-8DCA98] Phase: REVIEWING (iteration 1)
+2026-05-06 09:12:02,921 [INFO] Review using full diff from SHA a9c9cf66
+2026-05-06 09:12:02,922 [INFO] Requesting review from gemini...
+2026-05-06 09:12:02,922 [INFO] [gemini] Calling Gemini CLI via prompt file (timeout=1200s, json=True, cwd=None)
+2026-05-06 09:12:08,328 [INFO] [gemini][ERR] YOLO mode is enabled. All tool calls will be automatically approved.
+2026-05-06 09:12:08,329 [INFO] [gemini][ERR] YOLO mode is enabled. All tool calls will be automatically approved.
+2026-05-06 09:12:08,329 [INFO] [gemini][ERR] Ripgrep is not available. Falling back to GrepTool.
+2026-05-06 09:13:40,376 [INFO] [gemini] {
+2026-05-06 09:13:40,377 [INFO] [gemini]   "iteration": 1,
+2026-05-06 09:13:40,377 [INFO] [gemini]   "overall_status": "APPROVED",
+2026-05-06 09:13:40,483 [INFO] [gemini]   "criteria_results": [
+2026-05-06 09:13:40,483 [INFO] [gemini]     {
+2026-05-06 09:13:40,484 [INFO] [gemini]       "id": "c1",
+2026-05-06 09:13:40,599 [INFO] [gemini]       "description": "insertUserSchema in shared/schema.ts transforms username to lowercase",
+2026-05-06 09:13:40,599 [INFO] [gemini]       "status": "DONE",
+2026-05-06 09:13:40,798 [INFO] [gemini]       "evidence": "shared/schema.ts line 73: username: z.string().min(1, \"Username is required\").transform(val => val.toLowerCase())",
+2026-05-06 09:13:40,798 [INFO] [gemini]       "confidence": "HIGH"
+2026-05-06 09:13:40,798 [INFO] [gemini]     },
+2026-05-06 09:13:40,798 [INFO] [gemini]     {
+2026-05-06 09:13:40,906 [INFO] [gemini]       "id": "c2",
+2026-05-06 09:13:40,993 [INFO] [gemini]       "description": "POST /api/projects/:id/share route normalizes username to lowercase",
+2026-05-06 09:13:40,993 [INFO] [gemini]       "status": "DONE",
+2026-05-06 09:13:41,106 [INFO] [gemini]       "evidence": "server/routes.ts line 126: const normalizedUsername = username?.toLowerCase();",
+2026-05-06 09:13:41,107 [INFO] [gemini]       "confidence": "HIGH"
+2026-05-06 09:13:41,241 [INFO] [gemini]     },
+2026-05-06 09:13:41,241 [INFO] [gemini]     {
+2026-05-06 09:13:41,241 [INFO] [gemini]       "id": "c3",
+2026-05-06 09:13:41,357 [INFO] [gemini]       "description": "DatabaseStorage has normalizeUsernames method that merges users",
+2026-05-06 09:13:41,357 [INFO] [gemini]       "status": "DONE",
+2026-05-06 09:13:41,585 [INFO] [gemini]       "evidence": "server/databaseStorage.ts lines 23-67: normalizeUsernames() iterates all users and merges projects, shares, and files when a case-variant collision is found.",
+2026-05-06 09:13:41,585 [INFO] [gemini]       "confidence": "HIGH"
+2026-05-06 09:13:41,586 [INFO] [gemini]     },
+2026-05-06 09:13:41,586 [INFO] [gemini]     {
+2026-05-06 09:13:41,705 [INFO] [gemini]       "id": "c4",
+2026-05-06 09:13:41,863 [INFO] [gemini]       "description": "FileStorage has normalizeUsernames method that merges users",
+2026-05-06 09:13:41,863 [INFO] [gemini]       "status": "DONE",
+2026-05-06 09:13:41,979 [INFO] [gemini]       "evidence": "server/fileStorage.ts lines 66-104: normalizeUsernames() implemented with logic to merge projects and sharedWith arrays between colliding user accounts.",
+2026-05-06 09:13:42,063 [INFO] [gemini]       "confidence": "HIGH"
+2026-05-06 09:13:42,063 [INFO] [gemini]     },
+2026-05-06 09:13:42,063 [INFO] [gemini]     {
+2026-05-06 09:13:42,063 [INFO] [gemini]       "id": "c5",
+2026-05-06 09:13:42,188 [INFO] [gemini]       "description": "Server startup routine includes username normalization",
+2026-05-06 09:13:42,189 [INFO] [gemini]       "status": "DONE",
+2026-05-06 09:13:42,297 [INFO] [gemini]       "evidence": "server/index.ts line 91: await storage.normalizeUsernames(); is called in the startup IIFE.",
+2026-05-06 09:13:42,410 [INFO] [gemini]       "confidence": "HIGH"
+2026-05-06 09:13:42,411 [INFO] [gemini]     },
+2026-05-06 09:13:42,411 [INFO] [gemini]     {
+2026-05-06 09:13:42,411 [INFO] [gemini]       "id": "c6",
+2026-05-06 09:13:42,559 [INFO] [gemini]       "description": "AuthPage username inputs have autoCapitalize='none'",
+2026-05-06 09:13:42,560 [INFO] [gemini]       "status": "DONE",
+2026-05-06 09:13:42,766 [INFO] [gemini]       "evidence": "client/src/pages/AuthPage.tsx lines 79 (login) and 107 (register): Input components for username include autoCapitalize=\"none\".",
+2026-05-06 09:13:42,766 [INFO] [gemini]       "confidence": "HIGH"
+2026-05-06 09:13:42,766 [INFO] [gemini]     },
+2026-05-06 09:13:42,867 [INFO] [gemini]     {
+2026-05-06 09:13:42,867 [INFO] [gemini]       "id": "c7",
+2026-05-06 09:13:43,085 [INFO] [gemini]       "description": "ShareProjectDialog username input has autoCapitalize='none'",
+2026-05-06 09:13:43,085 [INFO] [gemini]       "status": "DONE",
+2026-05-06 09:13:43,086 [INFO] [gemini]       "evidence": "client/src/components/editor/ShareProjectDialog.tsx line 46: Input component includes autoCapitalize=\"none\".",
+2026-05-06 09:13:43,296 [INFO] [gemini]       "confidence": "HIGH"
+2026-05-06 09:13:43,296 [INFO] [gemini]     },
+2026-05-06 09:13:43,297 [INFO] [gemini]     {
+2026-05-06 09:13:43,297 [INFO] [gemini]       "id": "c8",
+2026-05-06 09:13:43,390 [INFO] [gemini]       "description": "All existing tests and type checks pass",
+2026-05-06 09:13:43,390 [INFO] [gemini]       "status": "DONE",
+2026-05-06 09:13:43,448 [INFO] [gemini]       "evidence": "Ran 'npm run check' which executed 'tsc' and completed without any type errors.",
+2026-05-06 09:13:43,682 [INFO] [gemini]       "confidence": "HIGH"
+2026-05-06 09:13:43,682 [INFO] [gemini]     }
+2026-05-06 09:13:43,682 [INFO] [gemini]   ],
+2026-05-06 09:13:43,683 [INFO] [gemini]   "blocking_issues": [],
+2026-05-06 09:13:43,683 [INFO] [gemini]   "suggestions": [
+2026-05-06 09:13:44,000 [INFO] [gemini]     "Consider adding queryClient.invalidateQueries({ queryKey: [\"/api/projects\"] }) to the onSuccess callback of useLogin in client/src/hooks/useAuth.ts for extra safety, although useLogout already handles cache clearing."
+2026-05-06 09:13:44,000 [INFO] [gemini]   ],
+2026-05-06 09:13:44,000 [INFO] [gemini]   "next_focus": null,
+2026-05-06 09:13:44,000 [INFO] [gemini]   "commit_message": {
+2026-05-06 09:13:44,158 [INFO] [gemini]     "subject": "Normalize usernames and ensure case-insensitivity",
+2026-05-06 09:13:44,245 [INFO] [gemini]     "body": "Implemented comprehensive username normalization to lowercase.\nAdded transformation to Zod schema, ensured case-insensitive lookups\nin storage layers, and implemented a startup routine to merge\ncolliding accounts. Updated UI to disable auto-capitalization."
+2026-05-06 09:13:44,245 [INFO] [gemini]   }
+2026-05-06 09:13:44,546 [INFO] [gemini] }
+2026-05-06 09:13:45,084 [INFO] [gemini] success on attempt 1 (102.2s)
+2026-05-06 09:13:45,085 [INFO] Review result: APPROVED, open criteria: [], blocking issues: 0
+2026-05-06 09:13:45,085 [INFO] Squashing intermediate commits into one: Normalize usernames and ensure case-insensitivity
+2026-05-06 09:13:45,109 [INFO] Git squash successful
+2026-05-06 09:13:45,117 [INFO] ═══ Task TASK-8DCA98 finished with status=TaskStatus.APPROVED ═══

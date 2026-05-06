@@ -15,6 +15,9 @@ Aplikacja jest zaawansowanym edytorem webowym służącym do nakładania warstw 
 
 Stan aplikacji jest rozdzielony na dwa niezależne konteksty w `client/src/lib/editor-context.tsx` (264 lines).
 
+### 2.0. Centralized Configuration (`server/config.ts`)
+System wykorzystuje scentralizowany plik konfiguracji `server/config.ts`, który na podstawie zmiennych środowiskowych i trybu `NODE_ENV` definiuje parametry pracy serwera (Port, Storage Type, Database URL, Session Secret). Pozwala to na uniknięcie redundancji i mieszania zależności między trybem lokalnym a produkcyjnym.
+
 ### 2.1. DocumentContext (`DocumentState`)
 Zarządza danymi "ciężkimi" i wolnozmiennymi. Zmiana powoduje re-render całego edytora.
 *   `pdfFile`, `overlayPdfFile`: Surowe pliki dokumentów.

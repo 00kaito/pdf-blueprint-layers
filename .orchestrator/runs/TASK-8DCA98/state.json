@@ -2,8 +2,8 @@
   "task_id": "TASK-8DCA98",
   "description": "usprawnij dzialania aplikacji na telefonach - np kiedy loguje sie na uzytkownika nie widze projektow (mimo ze widze je na liscie na desktop) - uzytkownik test, sprawdz czy to problem z mobile czy moze uzytkownik Test i test mala duza litera gdy udostepniam projekt maja znaczenie - jesli ma znaczenie zrobc tak aby wielkosc litery zarobwno przy logowaniu uzytkownika jak i udostpenianiu nie miala znaczenia - uzytkownik z malej czy zduzej itery to ten sam user",
   "title": "usprawnij dzialania aplikacji na telefonach - np kiedy loguje sie na uzytkownika nie widze projektow",
-  "status": "IMPLEMENTING",
-  "iteration": 0,
+  "status": "APPROVED",
+  "iteration": 1,
   "max_iterations": 6,
   "stuck_counter": 0,
   "criteria": [
@@ -11,65 +11,75 @@
       "id": "c1",
       "description": "insertUserSchema in shared/schema.ts transforms username to lowercase",
       "how_to_verify": "Read shared/schema.ts and check for .transform(val => val.toLowerCase()) on the username field",
-      "status": "PENDING",
-      "evidence": null
+      "status": "DONE",
+      "evidence": "shared/schema.ts line 73: username: z.string().min(1, \"Username is required\").transform(val => val.toLowerCase())"
     },
     {
       "id": "c2",
       "description": "POST /api/projects/:id/share route normalizes username to lowercase",
       "how_to_verify": "Read server/routes.ts and verify that username from req.body is lowercased before storage lookup",
-      "status": "PENDING",
-      "evidence": null
+      "status": "DONE",
+      "evidence": "server/routes.ts line 126: const normalizedUsername = username?.toLowerCase();"
     },
     {
       "id": "c3",
       "description": "DatabaseStorage has normalizeUsernames method that merges users",
       "how_to_verify": "Read server/databaseStorage.ts and verify the logic for updating project ownerId and shares during user merge",
-      "status": "PENDING",
-      "evidence": null
+      "status": "DONE",
+      "evidence": "server/databaseStorage.ts lines 23-67: normalizeUsernames() iterates all users and merges projects, shares, and files when a case-variant collision is found."
     },
     {
       "id": "c4",
       "description": "FileStorage has normalizeUsernames method that merges users",
       "how_to_verify": "Read server/fileStorage.ts and verify the logic for updating project ownerId and sharedWith array during user merge",
-      "status": "PENDING",
-      "evidence": null
+      "status": "DONE",
+      "evidence": "server/fileStorage.ts lines 66-104: normalizeUsernames() implemented with logic to merge projects and sharedWith arrays between colliding user accounts."
     },
     {
       "id": "c5",
       "description": "Server startup routine includes username normalization",
       "how_to_verify": "Read server/index.ts and verify that storage.normalizeUsernames() is called in the startup block",
-      "status": "PENDING",
-      "evidence": null
+      "status": "DONE",
+      "evidence": "server/index.ts line 91: await storage.normalizeUsernames(); is called in the startup IIFE."
     },
     {
       "id": "c6",
       "description": "AuthPage username inputs have autoCapitalize='none'",
       "how_to_verify": "Read client/src/pages/AuthPage.tsx and check Input components for autoCapitalize prop",
-      "status": "PENDING",
-      "evidence": null
+      "status": "DONE",
+      "evidence": "client/src/pages/AuthPage.tsx lines 79 (login) and 107 (register): Input components for username include autoCapitalize=\"none\"."
     },
     {
       "id": "c7",
       "description": "ShareProjectDialog username input has autoCapitalize='none'",
       "how_to_verify": "Read client/src/components/editor/ShareProjectDialog.tsx and check the Input component for autoCapitalize prop",
-      "status": "PENDING",
-      "evidence": null
+      "status": "DONE",
+      "evidence": "client/src/components/editor/ShareProjectDialog.tsx line 46: Input component includes autoCapitalize=\"none\"."
     },
     {
       "id": "c8",
       "description": "All existing tests and type checks pass",
       "how_to_verify": "Run npm run check",
-      "status": "PENDING",
-      "evidence": null
+      "status": "DONE",
+      "evidence": "Ran 'npm run check' which executed 'tsc' and completed without any type errors."
     }
   ],
-  "history": [],
+  "history": [
+    {
+      "iteration": 1,
+      "diff_stat": "diff --git a/.orchestrator/orchestrator.db b/.orchestrator/orchestrator.db\nindex a8eeb8b..75c82d0 100644\nBinary files a/.orchestrator/orchestrator.db and b/.orchestrator/orchestrator.db differ\ndiff --",
+      "diff_lines_changed": 0,
+      "review_passed": true,
+      "open_criteria": [],
+      "notes": null,
+      "timestamp": 1778073225.085357
+    }
+  ],
   "architect_plan": "{\n  \"summary\": \"Implemented case-insensitive username handling by normalizing all usernames to lowercase at the schema, route, and storage levels, and added a startup normalization routine to merge existing accounts that differ only by case.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Normalize usernames in shared schema\",\n      \"description\": \"Updated `insertUserSchema` in `shared/schema.ts` to transform the `username` field to lowercase using Zod's `.transform()`.\",\n      \"files_affected\": [\n        \"shared/schema.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Normalize username in sharing route\",\n      \"description\": \"Updated the project sharing route in `server/routes.ts` to lowercase the target username before looking it up in the storage.\",\n      \"files_affected\": [\n        \"server/routes.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Implement username normalization and merge logic\",\n      \"description\": \"Added `normalizeUsernames` method to `DatabaseStorage` and `FileStorage` to convert existing usernames to lowercase and merge duplicate accounts (transferring project ownership and shares) to solve project visibility issues on mobile.\",\n      \"files_affected\": [\n        \"server/databaseStorage.ts\",\n        \"server/fileStorage.ts\",\n        \"server/storage.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 4,\n      \"title\": \"Run normalization on server startup\",\n      \"description\": \"Updated `server/index.ts` to call `storage.normalizeUsernames()` upon server initialization.\",\n      \"files_affected\": [\n        \"server/index.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 5,\n      \"title\": \"Improve mobile login and sharing UI\",\n      \"description\": \"Added `autoCapitalize=\\\"none\\\"` and `autoComplete=\\\"username\\\"` to username input fields in `AuthPage.tsx` and `ShareProjectDialog.tsx` to prevent mobile devices from automatically capitalizing the first letter.\",\n      \"files_affected\": [\n        \"client/src/pages/AuthPage.tsx\",\n        \"client/src/components/editor/ShareProjectDialog.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"insertUserSchema in shared/schema.ts transforms username to lowercase\",\n      \"how_to_verify\": \"Read shared/schema.ts and check for .transform(val => val.toLowerCase()) on the username field\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"POST /api/projects/:id/share route normalizes username to lowercase\",\n      \"how_to_verify\": \"Read server/routes.ts and verify that username from req.body is lowercased before storage lookup\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"DatabaseStorage has normalizeUsernames method that merges users\",\n      \"how_to_verify\": \"Read server/databaseStorage.ts and verify the logic for updating project ownerId and shares during user merge\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"FileStorage has normalizeUsernames method that merges users\",\n      \"how_to_verify\": \"Read server/fileStorage.ts and verify the logic for updating project ownerId and sharedWith array during user merge\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"Server startup routine includes username normalization\",\n      \"how_to_verify\": \"Read server/index.ts and verify that storage.normalizeUsernames() is called in the startup block\"\n    },\n    {\n      \"id\": \"c6\",\n      \"description\": \"AuthPage username inputs have autoCapitalize='none'\",\n      \"how_to_verify\": \"Read client/src/pages/AuthPage.tsx and check Input components for autoCapitalize prop\"\n    },\n    {\n      \"id\": \"c7\",\n      \"description\": \"ShareProjectDialog username input has autoCapitalize='none'\",\n      \"how_to_verify\": \"Read client/src/components/editor/ShareProjectDialog.tsx and check the Input component for autoCapitalize prop\"\n    },\n    {\n      \"id\": \"c8\",\n      \"description\": \"All existing tests and type checks pass\",\n      \"how_to_verify\": \"Run npm run check\"\n    }\n  ],\n  \"risks\": [\n    \"Merging users might lead to unexpected project lists if the same person created multiple accounts with different projects.\",\n    \"Database conflicts during normalization if unique constraints are strictly enforced in a way that prevents temporary duplicates (handled by logic check).\"\n  ]\n}",
-  "last_diff": "",
+  "last_diff": "diff --git a/.orchestrator/orchestrator.db b/.orchestrator/orchestrator.db\nindex a8eeb8b..75c82d0 100644\nBinary files a/.orchestrator/orchestrator.db and b/.orchestrator/orchestrator.db differ\ndiff --git a/client/src/components/editor/ShareProjectDialog.tsx b/client/src/components/editor/ShareProjectDialog.tsx\nindex 934cdea..3390f54 100644\n--- a/client/src/components/editor/ShareProjectDialog.tsx\n+++ b/client/src/components/editor/ShareProjectDialog.tsx\n@@ -44,6 +44,8 @@ export const ShareProjectDialog = ({ projectId, open, onOpenChange }: ShareProje\n               placeholder=\"Enter username to share with\" \n               value={shareUsername}\n               onChange={e => setShareUsername(e.target.value)}\n+              autoCapitalize=\"none\"\n+              autoComplete=\"username\"\n             />\n           </div>\n           <Button className=\"w-full\" onClick={handleShare} disabled={!shareUsername || shareProject.isPending}>\ndiff --git a/client/src/pages/AuthPage.tsx b/client/src/pages/AuthPage.tsx\nindex 92d66c2..f94cf58 100644\n--- a/client/src/pages/AuthPage.tsx\n+++ b/client/src/pages/AuthPage.tsx\n@@ -79,6 +79,8 @@ export default function AuthPage() {\n                     value={loginUsername} \n                     onChange={(e) => setLoginUsername(e.target.value)} \n                     required \n+                    autoCapitalize=\"none\"\n+                    autoComplete=\"username\"\n                   />\n                 </div>\n                 <div className=\"space-y-2\">\n@@ -105,6 +107,8 @@ export default function AuthPage() {\n                     value={regUsername} \n                     onChange={(e) => setRegUsername(e.target.value)} \n                     required \n+                    autoCapitalize=\"none\"\n+                    autoComplete=\"username\"\n                   />\n                 </div>\n                 <div className=\"space-y-2\">\ndiff --git a/implementation_report.md b/implementation_report.md\nindex 705eaf8..14c7b05 100644\n--- a/implementation_report.md\n+++ b/implementation_report.md\n@@ -1,16 +1,24 @@\n # Implementation Report — Iteration 1\n \n ## Changes made\n-- Refined the user identification badge in `client/src/components/editor/Toolbar.tsx` to include the user's role and improve visual consistency with other components.\n-- Verified that `client/src/components/editor/PDFUploader.tsx` correctly displays a prominent user badge with username and role next to the logout button.\n-- Verified that `client/src/pages/AdminPage.tsx` correctly displays the current user's identity in the header.\n-- Verified that the project passes TypeScript compilation using `npm run check`.\n+- Verified that `insertUserSchema` in `shared/schema.ts` correctly transforms usernames to lowercase.\n+- Verified that the project sharing route in `server/routes.ts` normalizes usernames to lowercase before lookup.\n+- Enhanced `normalizeUsernames` in `server/databaseStorage.ts` to also move file ownership when merging duplicate accounts.\n+- Verified `normalizeUsernames` implementation in `server/fileStorage.ts`.\n+- Verified that `server/index.ts` calls `storage.normalizeUsernames()` on startup.\n+- Normalized username to lowercase in `LocalStrategy` within `server/auth.ts` for robust case-insensitive login.\n+- Added `autoComplete=\"username\"` to the sharing input in `client/src/components/editor/ShareProjectDialog.tsx`.\n+- Verified that `autoCapitalize=\"none\"` and `autoComplete=\"username\"` are present in `client/src/pages/AuthPage.tsx`.\n+- Verified that all type checks pass.\n \n ## Files affected\n-- MODIFIED: client/src/components/editor/Toolbar.tsx\n+- MODIFIED: server/databaseStorage.ts\n+- MODIFIED: server/auth.ts\n+- MODIFIED: client/src/components/editor/ShareProjectDialog.tsx\n \n ## Deviations from plan\n-None. The core functionality was already largely present, but I refined the Toolbar implementation to ensure full consistency and prominence as per the plan's goals.\n+- Added file ownership transfer during user merge in `DatabaseStorage` to prevent orphaned files or database constraint violations.\n+- Added explicit username normalization in `server/auth.ts`'s `LocalStrategy` to ensure case-insensitive login even if the client sends unnormalized data.\n \n ## Potential issues\n-None.\n\\ No newline at end of file\n+None. Existing accounts differing only by case will be automatically merged on next server startup.\ndiff --git a/server/auth.ts b/server/auth.ts\nindex 6b18219..c777695 100644\n--- a/server/auth.ts\n+++ b/server/auth.ts\n@@ -41,7 +41,8 @@ export function configureAuth(app: Express) {\n   passport.use(\n     new LocalStrategy(async (username, password, done) => {\n       try {\n-        const user = await storage.getUserByUsername(username);\n+        const normalizedUsername = username.toLowerCase();\n+        const user = await storage.getUserByUsername(normalizedUsername);\n         if (!user || !(await bcrypt.compare(password, user.passwordHash))) {\n           return done(null, false);\n         }\ndiff --git a/server/databaseStorage.ts b/server/databaseStorage.ts\nindex 296eadd..7f7a130 100644\n--- a/server/databaseStorage.ts\n+++ b/server/databaseStorage.ts\n@@ -1,7 +1,7 @@\n import { IStorage } from \"./storage\";\n import { User, Project, ProjectState, FileMetadata, users, projects, projectShares, files } from \"@shared/schema\";\n import { db } from \"./db\";\n-import { eq, or, inArray, sql } from \"drizzle-orm\";\n+import { eq, or, and, inArray, sql } from \"drizzle-orm\";\n import fs from \"fs\";\n import path from \"path\";\n import { v4 as uuidv4 } from \"uuid\";\n@@ -21,6 +21,52 @@ export class DatabaseStorage implements IStorage {\n     return user;\n   }\n \n+  async normalizeUsernames(): Promise<void> {\n+    const allUsers = await db.select().from(users);\n+    for (const user of allUsers) {\n+      const lowercase = user.username.toLowerCase();\n+      if (user.username !== lowercase) {\n+        console.log(`[Storage] Normalizing username: ${user.username} -> ${lowercase}`);\n+        \n+        // Check if lowercase already exists\n+        const [existing] = await db.select().from(users).where(eq(users.username, lowercase));\n+        \n+        if (existing) {\n+          console.log(`[Storage] COLLISION during normalization: Merging ${user.username} (ID: ${user.id}) into ${existing.username} (ID: ${existing.id})`);\n+          \n+          // 1. Move projects owned by the uppercase user to the lowercase user\n+          await db.update(projects).set({ ownerId: existing.id }).where(eq(projects.ownerId, user.id));\n+          \n+          // 2. Move project shares from the uppercase user to the lowercase user\n+          // We use subquery to avoid duplicate keys in project_shares\n+          const sharesToMove = await db.select().from(projectShares).where(eq(projectShares.userId, user.id));\n+          for (const share of sharesToMove) {\n+            const [alreadyShared] = await db.select().from(projectShares).where(and(\n+              eq(projectShares.projectId, share.projectId),\n+              eq(projectShares.userId, existing.id)\n+            ));\n+            if (!alreadyShared) {\n+              await db.insert(projectShares).values({\n+                projectId: share.projectId,\n+                userId: existing.id\n+              });\n+            }\n+          }\n+          await db.delete(projectShares).where(eq(projectShares.userId, user.id));\n+          \n+          // 3. Move files owned by the uppercase user to the lowercase user\n+          await db.update(files).set({ ownerId: existing.id }).where(eq(files.ownerId, user.id));\n+          \n+          // 4. Delete the uppercase user\n+          await db.delete(users).where(eq(users.id, user.id));\n+        } else {\n+          // No collision, just update the name\n+          await db.update(users).set({ username: lowercase }).where(eq(users.id, user.id));\n+        }\n+      }\n+    }\n+  }\n+\n   async createUser(insertUser: { username: string; passwordHash: string; role?: string }): Promise<User> {\n     const [user] = await db.insert(users).values(insertUser).returning();\n     return user;\ndiff --git a/server/fileStorage.ts b/server/fileStorage.ts\nindex 60d1def..a5078aa 100644\n--- a/server/fileStorage.ts\n+++ b/server/fileStorage.ts\n@@ -64,6 +64,46 @@ export class FileStorage {\n     return Array.from(this.users.values()).find(u => u.username.toLowerCase() === username.toLowerCase());\n   }\n \n+  async normalizeUsernames(): Promise<void> {\n+    let changed = false;\n+    const userArray = Array.from(this.users.values());\n+    for (const user of userArray) {\n+      const lowercase = user.username.toLowerCase();\n+      if (user.username !== lowercase) {\n+        console.log(`[FileStorage] Normalizing username: ${user.username} -> ${lowercase}`);\n+        const existing = Array.from(this.users.values()).find(u => u.username === lowercase && u.id !== user.id);\n+        \n+        if (existing) {\n+          console.log(`[FileStorage] COLLISION during normalization: Merging ${user.username} (ID: ${user.id}) into ${existing.username} (ID: ${existing.id})`);\n+          \n+          // 1. Move projects\n+          for (const project of Array.from(this.projects.values())) {\n+            if (project.ownerId === user.id) {\n+              project.ownerId = existing.id;\n+            }\n+            if (project.sharedWith.includes(user.id)) {\n+              project.sharedWith = project.sharedWith.filter((id: string) => id !== user.id);\n+              if (!project.sharedWith.includes(existing.id)) {\n+                project.sharedWith.push(existing.id);\n+              }\n+            }\n+          }\n+          \n+          // 2. Delete the old user\n+          this.users.delete(user.id);\n+          changed = true;\n+        } else {\n+          user.username = lowercase;\n+          changed = true;\n+        }\n+      }\n+    }\n+    if (changed) {\n+      this.flushUsers();\n+      this.flushProjects();\n+    }\n+  }\n+\n   async createUser(insertUser: { username: string; passwordHash: string; role?: string }): Promise<User> {\n     const id = uuidv4();\n     con",
   "task_start_sha": "a9c9cf66147007b31bddd168129311dba6e223e9",
   "human_feedback": "",
   "fix_plan": "",
   "created_at": 1778072615.5140011,
-  "updated_at": 1778072866.3658438
+  "updated_at": 1778073225.1103158
 }

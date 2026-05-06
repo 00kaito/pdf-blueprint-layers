@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { User, Project, ProjectState, FileMetadata } from '../shared/schema';
+import { User, Project, ProjectState, FileMetadata } from '@shared/schema';
+import { IStorage } from "./storage_interface";
 
-export class FileStorage {
+export class FileStorage implements IStorage {
   private users: Map<string, User> = new Map();
   private projects: Map<string, Project> = new Map();
   private dataDir = path.resolve(process.cwd(), 'data');

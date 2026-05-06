@@ -1,0 +1,11 @@
+.env
+node_modules
+dist
+.git
+.idea
+.claude
+.gemini
+.orchestrator
+.serena
+storage
+data

@@ -1,0 +1,47 @@
+{
+  "task_id": "TASK-668C7C",
+  "description": "przeanalizuj czy nie ma za duzo redundancji w kwestii wersji na produkcje a wersji lokalnej - czy moze da sie podejsc jakosc sprytniej do rozdzielnia by nie mieszac za duzo zaleznosci - czyli w 1-2 miejscach trzymac zmienne albo informacje odpowiedizalne za to czy to jest deploy lokalny czy produkcyjny - cel nie tworzyc zlozonego lancucha zaleznosci",
+  "title": "przeanalizuj czy nie ma za duzo redundancji w kwestii wersji na produkcje a wersji lokalnej - czy mo",
+  "status": "IMPLEMENTING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "File `server/config.ts` exists and centralizes environment variable access.",
+      "how_to_verify": "Check file existence and content of `server/config.ts`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "Database connection in `server/db.ts` is only initialized if `config.storageType` requires it.",
+      "how_to_verify": "Verify dynamic imports in `server/storage.ts` and `server/auth.ts`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "Server starts successfully in both 'file' and 'database' storage modes.",
+      "how_to_verify": "Check logs for '[Storage] Initializing storage: file' or '[Storage] Initializing storage: database'.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "Session store in `server/auth.ts` switches between MemoryStore and PostgresStore based on configuration.",
+      "how_to_verify": "Inspect `configureAuth` implementation in `server/auth.ts`.",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Centralized environment configuration in `server/config.ts` and implemented dynamic storage/session loading to decouple local and production dependencies.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Create server/config.ts\",\n      \"description\": \"Create a centralized configuration file that handles `.env` loading and exports an environment-aware `config` object.\",\n      \"files_affected\": [\n        \"server/config.ts\"\n      ],\n      \"type\": \"CREATE\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Decouple storage interface\",\n      \"description\": \"Move `IStorage` interface to `server/storage_interface.ts` to prevent circular dependencies during dynamic imports.\",\n      \"files_affected\": [\n        \"server/storage_interface.ts\"\n      ],\n      \"type\": \"CREATE\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Refactor storage.ts for dynamic loading\",\n      \"description\": \"Use top-level await and dynamic imports to instantiate either `FileStorage` or `DatabaseStorage` based on `config.storageType`.\",\n      \"files_affected\": [\n        \"server/storage.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 4,\n      \"title\": \"Refactor auth.ts for conditional session store\",\n      \"description\": \"Dynamically select `PostgresStore` or `MemoryStore` at runtime to avoid importing database dependencies when using file storage.\",\n      \"files_affected\": [\n        \"server/auth.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 5,\n      \"title\": \"Unify server entry point\",\n      \"description\": \"Update `server/index.ts` to use the new `config` object and await asynchronous configuration steps.\",\n      \"files_affected\": [\n        \"server/index.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"File `server/config.ts` exists and centralizes environment variable access.\",\n      \"how_to_verify\": \"Check file existence and content of `server/config.ts`.\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"Database connection in `server/db.ts` is only initialized if `config.storageType` requires it.\",\n      \"how_to_verify\": \"Verify dynamic imports in `server/storage.ts` and `server/auth.ts`.\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"Server starts successfully in both 'file' and 'database' storage modes.\",\n      \"how_to_verify\": \"Check logs for '[Storage] Initializing storage: file' or '[Storage] Initializing storage: database'.\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"Session store in `server/auth.ts` switches between MemoryStore and PostgresStore based on configuration.\",\n      \"how_to_verify\": \"Inspect `configureAuth` implementation in `server/auth.ts`.\"\n    }\n  ],\n  \"risks\": [\n    \"Top-level await requires Node.js 14.8+ and ESM support, which is enabled via 'type: module' in package.json.\",\n    \"Circular dependencies if storage implementations incorrectly import the storage factory.\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "1fdb4e9ff2e0484bac43f9a3d97cdfddc33749ba",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1778078244.447603,
+  "updated_at": 1778081051.7692037
+}

@@ -22,13 +22,14 @@ This guide provides a detailed overview of the core files in the `pdf-blueprint-
 ## Backend (server)
 
 ### API & Storage
-12. **`routes.ts`**: Defines all REST API endpoints. Manages the flow between HTTP requests and the storage layer for authentication, project CRUD, and file management.
-13. **`databaseStorage.ts`**: The primary storage implementation using **Drizzle ORM** and **PostgreSQL**. Handles complex queries for shared projects and file metadata.
-14. **`db.ts`**: Initializes the Drizzle database connection using the `postgres` driver.
-15. **`auth.ts`**: Configures **Passport.js** with a local strategy for authentication and defines role-based middleware (`requireRole`).
+12. **`config.ts`**: Centralized configuration management. Loads `.env` and exports a typed `config` object used across the server to handle environment-specific logic (e.g., storage type, database connectivity).
+13. **`routes.ts`**: Defines all REST API endpoints. Manages the flow between HTTP requests and the storage layer for authentication, project CRUD, and file management.
+14. **`databaseStorage.ts`**: The primary storage implementation using **Drizzle ORM** and **PostgreSQL**. Handles complex queries for shared projects and file metadata.
+15. **`db.ts`**: Initializes the Drizzle database connection using the `postgres` driver.
+16. **`auth.ts`**: Configures **Passport.js** with a local strategy for authentication and defines role-based middleware (`requireRole`).
 
 ### Shared
-16. **`shared/schema.ts`**: Single source of truth for the database schema. Defines tables for `users`, `projects`, `project_shares`, and `files` using Drizzle, along with Zod schemas for validation.
+17. **`shared/schema.ts`**: Single source of truth for the database schema. Defines tables for `users`, `projects`, `project_shares`, and `files` using Drizzle, along with Zod schemas for validation.
 
 ## Communication Overview
 *   **State Management**: Local component state is minimized; most logic flows through the `Document` and `UI` contexts via `dispatch`.

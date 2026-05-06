@@ -1,24 +1,22 @@
 # Implementation Report — Iteration 1
 
 ## Changes made
-- Verified that `insertUserSchema` in `shared/schema.ts` correctly transforms usernames to lowercase.
-- Verified that the project sharing route in `server/routes.ts` normalizes usernames to lowercase before lookup.
-- Enhanced `normalizeUsernames` in `server/databaseStorage.ts` to also move file ownership when merging duplicate accounts.
-- Verified `normalizeUsernames` implementation in `server/fileStorage.ts`.
-- Verified that `server/index.ts` calls `storage.normalizeUsernames()` on startup.
-- Normalized username to lowercase in `LocalStrategy` within `server/auth.ts` for robust case-insensitive login.
-- Added `autoComplete="username"` to the sharing input in `client/src/components/editor/ShareProjectDialog.tsx`.
-- Verified that `autoCapitalize="none"` and `autoComplete="username"` are present in `client/src/pages/AuthPage.tsx`.
-- Verified that all type checks pass.
+- **Verified Centralized Configuration**: Confirmed `server/config.ts` handles `.env` loading and exports a unified `config` object.
+- **Verified Storage Decoupling**: Confirmed `IStorage` interface resides in `server/storage_interface.ts`, preventing circular dependencies.
+- **Verified Dynamic Storage Loading**: Confirmed `server/storage.ts` uses top-level await and dynamic imports to instantiate `FileStorage` or `DatabaseStorage` based on configuration.
+- **Verified Conditional Session Store**: Confirmed `server/auth.ts` dynamically imports `PostgresStore` or `MemoryStore` based on the storage type, ensuring database dependencies are only loaded when needed.
+- **Unified Server Entry Point**: Refactored `server/index.ts` to use top-level await consistently, removing the IIFE and ensuring all asynchronous initialization steps (auth, storage normalization, admin seeding, and routes) are properly awaited before starting the server.
+- **Validated Multi-Mode Startup**: Verified that the server correctly identifies and initializes the requested storage mode (file or database) and avoids unnecessary database connections in file mode.
 
 ## Files affected
-- MODIFIED: server/databaseStorage.ts
-- MODIFIED: server/auth.ts
-- MODIFIED: client/src/components/editor/ShareProjectDialog.tsx
+- MODIFIED: server/index.ts
+- VERIFIED (Existing): server/config.ts
+- VERIFIED (Existing): server/storage_interface.ts
+- VERIFIED (Existing): server/storage.ts
+- VERIFIED (Existing): server/auth.ts
 
 ## Deviations from plan
-- Added file ownership transfer during user merge in `DatabaseStorage` to prevent orphaned files or database constraint violations.
-- Added explicit username normalization in `server/auth.ts`'s `LocalStrategy` to ensure case-insensitive login even if the client sends unnormalized data.
+Most of the structural changes (creating `config.ts`, `storage_interface.ts`, and implementing dynamic imports) were already present in the codebase. I focused on verifying their correctness and refactored `server/index.ts` to fully leverage top-level await for a cleaner entry point, which was part of the "Unify server entry point" step.
 
 ## Potential issues
-None. Existing accounts differing only by case will be automatically merged on next server startup.
+None. The use of top-level await is fully supported by the project's ESM configuration (`"type": "module"` in `package.json`).

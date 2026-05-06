@@ -3,9 +3,8 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
-import connectPgSimple from "connect-pg-simple";
-import { pool } from "./db";
 import { storage } from "./storage";
+import { config } from "./config";
 import { User as SelectUser } from "@shared/schema";
 
 declare global {
@@ -14,21 +13,33 @@ declare global {
   }
 }
 
-export function configureAuth(app: Express) {
-  const PostgresStore = connectPgSimple(session);
+export async function configureAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET ?? "dev-secret-change-in-prod",
+    secret: config.session.secret,
     resave: false,
     saveUninitialized: false,
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
-    store: new PostgresStore({
+  };
+
+  if (config.storageType === "database") {
+    console.log("[Auth] Using PostgreSQL session store");
+    const connectPgSimple = (await import("connect-pg-simple")).default;
+    const { pool } = await import("./db");
+    const PostgresStore = connectPgSimple(session);
+    sessionSettings.store = new PostgresStore({
       pool,
       tableName: "session",
       createTableIfMissing: true,
-    }),
-  };
+    });
+  } else {
+    console.log("[Auth] Using MemoryStore session store");
+    const MemoryStore = (await import("memorystore")).default(session);
+    sessionSettings.store = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
+  }
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);

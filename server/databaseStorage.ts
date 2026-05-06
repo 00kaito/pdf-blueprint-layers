@@ -1,4 +1,4 @@
-import { IStorage } from "./storage";
+import { IStorage } from "./storage_interface";
 import { User, Project, ProjectState, FileMetadata, users, projects, projectShares, files } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, and, inArray, sql } from "drizzle-orm";
