@@ -61,7 +61,7 @@ export class FileStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(u => u.username === username);
+    return Array.from(this.users.values()).find(u => u.username.toLowerCase() === username.toLowerCase());
   }
 
   async createUser(insertUser: { username: string; passwordHash: string; role?: string }): Promise<User> {

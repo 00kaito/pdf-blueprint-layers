@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-996069",
+  "description": "przy logowaniu nazwa uzytkownika powinna byc case insensitive, dodatkowo wyglada jakby komunikat o bledzie pojawial sie tylko zalogowanemu uzytkownikowi - tzn widze go jesli najpierw wpisze zle haslo, a pozniej dobre - wtedy otwiera sie strona z projektami i widze komunikat invalid credentials (dotyczacy jak przypuszczam wczesniejszej blednej proby zalogowania)",
+  "title": "przy logowaniu nazwa uzytkownika powinna byc case insensitive, dodatkowo wyglada jakby komunikat o b",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "In `server/databaseStorage.ts`, `getUserByUsername` uses `sql` expression with `LOWER()` on both sides of the comparison.",
+      "how_to_verify": "Verify code change in `server/databaseStorage.ts`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "In `server/fileStorage.ts`, `getUserByUsername` uses `toLowerCase()` for comparison.",
+      "how_to_verify": "Verify code change in `server/fileStorage.ts`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "In `client/src/App.tsx`, `Toaster` and `TooltipProvider` are rendered outside of the `Switch` or conditional route logic.",
+      "how_to_verify": "Verify code change in `client/src/App.tsx`.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "Logging in with 'USER', 'user', or 'User' succeeds for a user registered as 'user'.",
+      "how_to_verify": "Manual test: Register a user and attempt login with different cases.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "Login error messages (toasts) appear immediately on the AuthPage.",
+      "how_to_verify": "Manual test: Enter wrong password on login page and verify toast visibility.",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Fix login case-insensitivity by updating storage lookup logic and resolve delayed error messages by moving the Toaster component to the application root.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Make user lookup case-insensitive in DatabaseStorage\",\n      \"description\": \"Update `getUserByUsername` in `server/databaseStorage.ts` to use `sql` with `LOWER()` for a case-insensitive match.\",\n      \"files_affected\": [\n        \"server/databaseStorage.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Make user lookup case-insensitive in FileStorage\",\n      \"description\": \"Update `getUserByUsername` in `server/fileStorage.ts` to use `toLowerCase()` when comparing usernames.\",\n      \"files_affected\": [\n        \"server/fileStorage.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Globalize Toaster and TooltipProvider in App.tsx\",\n      \"description\": \"Move `Toaster` and `TooltipProvider` in `client/src/App.tsx` from the conditional `/` route to the root of the `App` component, ensuring they are always mounted.\",\n      \"files_affected\": [\n        \"client/src/App.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"In `server/databaseStorage.ts`, `getUserByUsername` uses `sql` expression with `LOWER()` on both sides of the comparison.\",\n      \"how_to_verify\": \"Verify code change in `server/databaseStorage.ts`.\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"In `server/fileStorage.ts`, `getUserByUsername` uses `toLowerCase()` for comparison.\",\n      \"how_to_verify\": \"Verify code change in `server/fileStorage.ts`.\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"In `client/src/App.tsx`, `Toaster` and `TooltipProvider` are rendered outside of the `Switch` or conditional route logic.\",\n      \"how_to_verify\": \"Verify code change in `client/src/App.tsx`.\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"Logging in with 'USER', 'user', or 'User' succeeds for a user registered as 'user'.\",\n      \"how_to_verify\": \"Manual test: Register a user and attempt login with different cases.\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"Login error messages (toasts) appear immediately on the AuthPage.\",\n      \"how_to_verify\": \"Manual test: Enter wrong password on login page and verify toast visibility.\"\n    }\n  ],\n  \"risks\": [\n    \"If existing users have identical usernames differing only by case, `getUserByUsername` will return the first match found by the database.\",\n    \"Moving `Toaster` might conflict with other layout elements if not placed correctly in the DOM hierarchy.\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "4ce79dcb980f3a4d5bdf4b76313439235a5c830f",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1778065751.130823,
+  "updated_at": 1778065826.44845
+}

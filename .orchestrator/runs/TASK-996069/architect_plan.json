@@ -1,0 +1,63 @@
+{
+  "summary": "Fix login case-insensitivity by updating storage lookup logic and resolve delayed error messages by moving the Toaster component to the application root.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Make user lookup case-insensitive in DatabaseStorage",
+      "description": "Update `getUserByUsername` in `server/databaseStorage.ts` to use `sql` with `LOWER()` for a case-insensitive match.",
+      "files_affected": [
+        "server/databaseStorage.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Make user lookup case-insensitive in FileStorage",
+      "description": "Update `getUserByUsername` in `server/fileStorage.ts` to use `toLowerCase()` when comparing usernames.",
+      "files_affected": [
+        "server/fileStorage.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Globalize Toaster and TooltipProvider in App.tsx",
+      "description": "Move `Toaster` and `TooltipProvider` in `client/src/App.tsx` from the conditional `/` route to the root of the `App` component, ensuring they are always mounted.",
+      "files_affected": [
+        "client/src/App.tsx"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "In `server/databaseStorage.ts`, `getUserByUsername` uses `sql` expression with `LOWER()` on both sides of the comparison.",
+      "how_to_verify": "Verify code change in `server/databaseStorage.ts`."
+    },
+    {
+      "id": "c2",
+      "description": "In `server/fileStorage.ts`, `getUserByUsername` uses `toLowerCase()` for comparison.",
+      "how_to_verify": "Verify code change in `server/fileStorage.ts`."
+    },
+    {
+      "id": "c3",
+      "description": "In `client/src/App.tsx`, `Toaster` and `TooltipProvider` are rendered outside of the `Switch` or conditional route logic.",
+      "how_to_verify": "Verify code change in `client/src/App.tsx`."
+    },
+    {
+      "id": "c4",
+      "description": "Logging in with 'USER', 'user', or 'User' succeeds for a user registered as 'user'.",
+      "how_to_verify": "Manual test: Register a user and attempt login with different cases."
+    },
+    {
+      "id": "c5",
+      "description": "Login error messages (toasts) appear immediately on the AuthPage.",
+      "how_to_verify": "Manual test: Enter wrong password on login page and verify toast visibility."
+    }
+  ],
+  "risks": [
+    "If existing users have identical usernames differing only by case, `getUserByUsername` will return the first match found by the database.",
+    "Moving `Toaster` might conflict with other layout elements if not placed correctly in the DOM hierarchy."
+  ]
+}

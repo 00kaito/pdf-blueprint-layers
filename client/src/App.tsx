@@ -49,41 +49,41 @@ function AppContent() {
   }
 
   return (
-    <Switch>
-      <Route path="/auth">
-        {user ? <Redirect to="/" /> : <AuthPage />}
-      </Route>
-      
-      <Route path="/admin">
-        {() => {
-          console.log('[App] Matching /admin route. User role:', user?.role);
-          if (!user) return <Redirect to="/auth" />;
-          if (user.role !== 'admin') {
-            console.warn('[App] User is not admin, redirecting to /');
-            return <Redirect to="/" />;
-          }
-          return <AdminPage />;
-        }}
-      </Route>
+    <TooltipProvider>
+      <Toaster />
+      <Switch>
+        <Route path="/auth">
+          {user ? <Redirect to="/" /> : <AuthPage />}
+        </Route>
+        
+        <Route path="/admin">
+          {() => {
+            console.log('[App] Matching /admin route. User role:', user?.role);
+            if (!user) return <Redirect to="/auth" />;
+            if (user.role !== 'admin') {
+              console.warn('[App] User is not admin, redirecting to /');
+              return <Redirect to="/" />;
+            }
+            return <AdminPage />;
+          }}
+        </Route>
 
-      <Route path="/">
-        {!user ? <Redirect to="/auth" /> : (
-          <EditorProvider>
-            <TooltipProvider>
-              <Toaster />
+        <Route path="/">
+          {!user ? <Redirect to="/auth" /> : (
+            <EditorProvider>
               <Home />
-            </TooltipProvider>
-          </EditorProvider>
-        )}
-      </Route>
+            </EditorProvider>
+          )}
+        </Route>
 
-      <Route>
-        {() => {
-          console.log('[App] No route matched, showing NotFound. Path:', window.location.pathname);
-          return <NotFound />;
-        }}
-      </Route>
-    </Switch>
+        <Route>
+          {() => {
+            console.log('[App] No route matched, showing NotFound. Path:', window.location.pathname);
+            return <NotFound />;
+          }}
+        </Route>
+      </Switch>
+    </TooltipProvider>
   );
 }
 
