@@ -1,7 +1,7 @@
 import { IStorage } from "./storage";
 import { User, Project, ProjectState, FileMetadata, users, projects, projectShares, files } from "@shared/schema";
 import { db } from "./db";
-import { eq, or, inArray, sql } from "drizzle-orm";
+import { eq, or, and, inArray, sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -19,6 +19,52 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(sql`LOWER(${users.username}) = LOWER(${username})`);
     return user;
+  }
+
+  async normalizeUsernames(): Promise<void> {
+    const allUsers = await db.select().from(users);
+    for (const user of allUsers) {
+      const lowercase = user.username.toLowerCase();
+      if (user.username !== lowercase) {
+        console.log(`[Storage] Normalizing username: ${user.username} -> ${lowercase}`);
+        
+        // Check if lowercase already exists
+        const [existing] = await db.select().from(users).where(eq(users.username, lowercase));
+        
+        if (existing) {
+          console.log(`[Storage] COLLISION during normalization: Merging ${user.username} (ID: ${user.id}) into ${existing.username} (ID: ${existing.id})`);
+          
+          // 1. Move projects owned by the uppercase user to the lowercase user
+          await db.update(projects).set({ ownerId: existing.id }).where(eq(projects.ownerId, user.id));
+          
+          // 2. Move project shares from the uppercase user to the lowercase user
+          // We use subquery to avoid duplicate keys in project_shares
+          const sharesToMove = await db.select().from(projectShares).where(eq(projectShares.userId, user.id));
+          for (const share of sharesToMove) {
+            const [alreadyShared] = await db.select().from(projectShares).where(and(
+              eq(projectShares.projectId, share.projectId),
+              eq(projectShares.userId, existing.id)
+            ));
+            if (!alreadyShared) {
+              await db.insert(projectShares).values({
+                projectId: share.projectId,
+                userId: existing.id
+              });
+            }
+          }
+          await db.delete(projectShares).where(eq(projectShares.userId, user.id));
+          
+          // 3. Move files owned by the uppercase user to the lowercase user
+          await db.update(files).set({ ownerId: existing.id }).where(eq(files.ownerId, user.id));
+          
+          // 4. Delete the uppercase user
+          await db.delete(users).where(eq(users.id, user.id));
+        } else {
+          // No collision, just update the name
+          await db.update(users).set({ username: lowercase }).where(eq(users.id, user.id));
+        }
+      }
+    }
   }
 
   async createUser(insertUser: { username: string; passwordHash: string; role?: string }): Promise<User> {

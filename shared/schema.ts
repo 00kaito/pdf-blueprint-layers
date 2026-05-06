@@ -71,7 +71,7 @@ export const projectStateSchema = z.object({
 export type ProjectState = z.infer<typeof projectStateSchema>;
 
 export const insertUserSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  username: z.string().min(1, "Username is required").transform(val => val.toLowerCase()),
   password: z.string().min(1, "Password is required"),
 });
 

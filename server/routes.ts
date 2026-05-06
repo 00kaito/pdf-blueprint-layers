@@ -128,8 +128,9 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     const { username } = req.body;
-    console.log(`[Project] Sharing project ${req.params.id} with user ${username}`);
-    const user = await storage.getUserByUsername(username);
+    const normalizedUsername = username?.toLowerCase();
+    console.log(`[Project] Sharing project ${req.params.id} with user ${normalizedUsername}`);
+    const user = await storage.getUserByUsername(normalizedUsername);
     if (!user) return res.status(404).json({ message: "User not found" });
     if (project.sharedWith.includes(user.id)) return res.sendStatus(200);
     

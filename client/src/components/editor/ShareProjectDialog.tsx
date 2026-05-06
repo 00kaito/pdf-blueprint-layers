@@ -44,6 +44,8 @@ export const ShareProjectDialog = ({ projectId, open, onOpenChange }: ShareProje
               placeholder="Enter username to share with" 
               value={shareUsername}
               onChange={e => setShareUsername(e.target.value)}
+              autoCapitalize="none"
+              autoComplete="username"
             />
           </div>
           <Button className="w-full" onClick={handleShare} disabled={!shareUsername || shareProject.isPending}>

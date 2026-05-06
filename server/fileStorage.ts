@@ -64,6 +64,46 @@ export class FileStorage {
     return Array.from(this.users.values()).find(u => u.username.toLowerCase() === username.toLowerCase());
   }
 
+  async normalizeUsernames(): Promise<void> {
+    let changed = false;
+    const userArray = Array.from(this.users.values());
+    for (const user of userArray) {
+      const lowercase = user.username.toLowerCase();
+      if (user.username !== lowercase) {
+        console.log(`[FileStorage] Normalizing username: ${user.username} -> ${lowercase}`);
+        const existing = Array.from(this.users.values()).find(u => u.username === lowercase && u.id !== user.id);
+        
+        if (existing) {
+          console.log(`[FileStorage] COLLISION during normalization: Merging ${user.username} (ID: ${user.id}) into ${existing.username} (ID: ${existing.id})`);
+          
+          // 1. Move projects
+          for (const project of Array.from(this.projects.values())) {
+            if (project.ownerId === user.id) {
+              project.ownerId = existing.id;
+            }
+            if (project.sharedWith.includes(user.id)) {
+              project.sharedWith = project.sharedWith.filter((id: string) => id !== user.id);
+              if (!project.sharedWith.includes(existing.id)) {
+                project.sharedWith.push(existing.id);
+              }
+            }
+          }
+          
+          // 2. Delete the old user
+          this.users.delete(user.id);
+          changed = true;
+        } else {
+          user.username = lowercase;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      this.flushUsers();
+      this.flushProjects();
+    }
+  }
+
   async createUser(insertUser: { username: string; passwordHash: string; role?: string }): Promise<User> {
     const id = uuidv4();
     const user: User = {

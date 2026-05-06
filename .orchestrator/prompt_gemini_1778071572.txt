@@ -1,0 +1,158 @@
+You are a senior software engineer. Implement the following plan precisely.
+
+## Task
+usprawnij dzialania aplikacji na telefonach - np kiedy loguje sie na uzytkownika nie widze projektow (mimo ze widze je na liscie na desktop) - uzytkownik test, sprawdz czy to problem z mobile czy moze uzytkownik Test i test mala duza litera gdy udostepniam projekt maja znaczenie - jesli ma znaczenie zrobc tak aby wielkosc litery zarobwno przy logowaniu uzytkownika jak i udostpenianiu nie miala znaczenia - uzytkownik z malej czy zduzej itery to ten sam user
+
+## Implementation plan
+{
+  "summary": "Normalized username handling across the app to be case-insensitive and fixed a potential stale cache issue on mobile that prevented projects from appearing after login.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Invalidate project cache on login",
+      "description": "Updated useLogin and useRegister hooks in client/src/hooks/useAuth.ts to invalidate the '/api/projects' query upon successful authentication. This ensures that when a user logs in on mobile, the project list is immediately fetched from the server instead of showing a stale empty list.",
+      "files_affected": [
+        "client/src/hooks/useAuth.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Normalize usernames in Zod schema",
+      "description": "Added a transformation to insertUserSchema in shared/schema.ts to automatically convert usernames to lowercase. This reinforces server-side normalization and ensures consistency regardless of how the username is entered.",
+      "files_affected": [
+        "shared/schema.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Clean up existing user data",
+      "description": "Normalized existing usernames in data/users.json to lowercase to prevent 'test' and 'Test' from being treated as different users in file-based storage environments.",
+      "files_affected": [
+        "data/users.json"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "useLogin hook in client/src/hooks/useAuth.ts calls queryClient.invalidateQueries({ queryKey: [\"/api/projects\"] })",
+      "how_to_verify": "Read client/src/hooks/useAuth.ts and verify the onSuccess callback in useLogin"
+    },
+    {
+      "id": "c2",
+      "description": "insertUserSchema in shared/schema.ts includes .transform(val => val.toLowerCase()) for the username field",
+      "how_to_verify": "Read shared/schema.ts and check the insertUserSchema definition"
+    },
+    {
+      "id": "c3",
+      "description": "Usernames in data/users.json are all lowercase",
+      "how_to_verify": "Read data/users.json and check for any uppercase characters in username fields"
+    },
+    {
+      "id": "c4",
+      "description": "DatabaseStorage.getUserByUsername uses LOWER() for both the column and the parameter",
+      "how_to_verify": "Read server/databaseStorage.ts and verify the SQL query in getUserByUsername"
+    },
+    {
+      "id": "c5",
+      "description": "The project passes TypeScript type checking",
+      "how_to_verify": "Run npm run check"
+    }
+  ],
+  "risks": [
+    "Existing sessions with mixed-case usernames might experience issues until they re-login",
+    "Database-level unique constraints might still be case-sensitive depending on the PostgreSQL collation settings, though the application logic now prevents duplicates"
+  ]
+}
+
+## ⚠️ Unfinished criteria from previous review
+These were NOT done yet — focus on them:
+  [c1] useLogin hook in client/src/hooks/useAuth.ts calls queryClient.invalidateQueries({ queryKey: ["/api/projects"] })
+  [c2] insertUserSchema in shared/schema.ts includes .transform(val => val.toLowerCase()) for the username field
+  [c3] Usernames in data/users.json are all lowercase
+  [c4] DatabaseStorage.getUserByUsername uses LOWER() for both the column and the parameter
+  [c5] The project passes TypeScript type checking
+
+## Changes from previous iteration (for context only)
+```diff
+diff --git a/.orchestrator/orchestrator.db b/.orchestrator/orchestrator.db
+index dd0fa3f..ef5ee85 100644
+Binary files a/.orchestrator/orchestrator.db and b/.orchestrator/orchestrator.db differ
+diff --git a/.orchestrator/runs/TASK-C5FBAD/conversation.md b/.orchestrator/runs/TASK-C5FBAD/conversation.md
+index e4dff6f..ea8cd2b 100644
+--- a/.orchestrator/runs/TASK-C5FBAD/conversation.md
++++ b/.orchestrator/runs/TASK-C5FBAD/conversation.md
+@@ -35,3 +35,84 @@
+ 
+ ---
+ 
++## IMPLEMENTING — iter 1 — 2026-05-06 08:41:10
++
++### Developer
++
++**Open criteria do adresowania:**
++- `[c1]` useLogin hook in client/src/hooks/useAuth.ts calls queryClient.invalidateQueries({ queryKey: ["/api/projects"] })
++- `[c2]` insertUserSchema in shared/schema.ts includes .transform(val => val.toLowerCase()) for the username field
++- `[c3]` Usernames in data/users.json are all lowercase
++- `[c4]` DatabaseStorage.getUserByUsername uses LOWER() for both the column and the parameter
++- `[c5]` The project passes TypeScript type checking
++
++**Git diff:** .orchestrator/orchestrator.db                      | Bin 622592 -> 634880 bytes
++ .orchestrator/runs/TASK-87398D/conversation.md     |  82 +++++++++++++++++++++
++ .orchestrator/runs/TASK-87398D/orchestrator.log    |  53 +++++++++++++
++ .orchestrator/runs/TASK-87398D/state.json          |  36 +++++----
++ client/src/components/editor/PDFUploader.tsx       |   2 +-
++ .../src/components/editor/ShareProjectDialog.tsx   |   2 +-
++ client/src/hooks/useAuth.ts                        |   2 +
++ client/src/pages/AuthPage.tsx                      |   4 +-
++ data/users.json                                    |   4 +-
++ implementation_report.md                           |  24 ++++--
++ package.json                                       |   3 +-
++ server/auth.ts                                     |   2 +-
++ server/databaseStorage.ts                          |  10 ++-
++ server/fileStorage.ts                              |  12 +--
++ server/routes.ts                                   |   6 +-
++ shared/schema.ts                                   |   2 +-
++ 16 files changed, 205 insertions(+), 39 deletions(-)
++
++**Implementation Report:**
++
++# Implementation Report — Iteration 1
++
++## Changes made
++- **Invalidate project cache on login/registration**: Updated `client/src/hooks/useAuth.ts` to call `queryClient.invalidateQueries({ queryKey: ["/api/projects"] })` in the `onSuccess` callback of both `useLogin` and `useRegister`. This ensures that project lists are correctly fetched after authentication, resolving issues where users might see a stale empty list on mobile devices.
++- **Normalize usernames in Zod schema**: Added `.transform(val => val.toLowerCase())` to the `username` field in `insertUserSchema` within `shared/schema.ts`. This ensures all usernames are stored and compared in lowercase.
++- **Normalize usernames in storage layer**: Updated `DatabaseStorage.getUserByUsername` to use `LOWER()` for both the database column and the input parameter, en
+```
+
+## Instructions
+- You MUST use your file editing tools to directly modify, create, or delete files in the project — do NOT just print code to the console
+- Implement ONLY what is described in the plan — do not refactor unrelated code
+- Iteration: 3
+- After finishing, write a report to the file `implementation_report.md` in the ROOT of the project (the directory you are working in, NOT in any runs/ subdirectory)
+- The report must contain:
+  1. What you did (bullet points per step)
+  2. Which files were created / modified / deleted
+  3. Any blockers or deviations from the plan (if none, write "None")
+
+## Report format (write this to implementation_report.md)
+```
+# Implementation Report — Iteration 3
+
+## Changes made
+- ...
+
+## Files affected
+- CREATED: path/to/file
+- MODIFIED: path/to/file
+- DELETED: path/to/file
+
+## Deviations from plan
+None / description
+
+## Potential issues
+None / description
+```

@@ -41,7 +41,8 @@ export function configureAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        const user = await storage.getUserByUsername(username);
+        const normalizedUsername = username.toLowerCase();
+        const user = await storage.getUserByUsername(normalizedUsername);
         if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
           return done(null, false);
         }

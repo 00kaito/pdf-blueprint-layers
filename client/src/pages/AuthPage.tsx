@@ -79,6 +79,8 @@ export default function AuthPage() {
                     value={loginUsername} 
                     onChange={(e) => setLoginUsername(e.target.value)} 
                     required 
+                    autoCapitalize="none"
+                    autoComplete="username"
                   />
                 </div>
                 <div className="space-y-2">
@@ -105,6 +107,8 @@ export default function AuthPage() {
                     value={regUsername} 
                     onChange={(e) => setRegUsername(e.target.value)} 
                     required 
+                    autoCapitalize="none"
+                    autoComplete="username"
                   />
                 </div>
                 <div className="space-y-2">

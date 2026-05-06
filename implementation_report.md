@@ -1,16 +1,24 @@
 # Implementation Report — Iteration 1
 
 ## Changes made
-- Refined the user identification badge in `client/src/components/editor/Toolbar.tsx` to include the user's role and improve visual consistency with other components.
-- Verified that `client/src/components/editor/PDFUploader.tsx` correctly displays a prominent user badge with username and role next to the logout button.
-- Verified that `client/src/pages/AdminPage.tsx` correctly displays the current user's identity in the header.
-- Verified that the project passes TypeScript compilation using `npm run check`.
+- Verified that `insertUserSchema` in `shared/schema.ts` correctly transforms usernames to lowercase.
+- Verified that the project sharing route in `server/routes.ts` normalizes usernames to lowercase before lookup.
+- Enhanced `normalizeUsernames` in `server/databaseStorage.ts` to also move file ownership when merging duplicate accounts.
+- Verified `normalizeUsernames` implementation in `server/fileStorage.ts`.
+- Verified that `server/index.ts` calls `storage.normalizeUsernames()` on startup.
+- Normalized username to lowercase in `LocalStrategy` within `server/auth.ts` for robust case-insensitive login.
+- Added `autoComplete="username"` to the sharing input in `client/src/components/editor/ShareProjectDialog.tsx`.
+- Verified that `autoCapitalize="none"` and `autoComplete="username"` are present in `client/src/pages/AuthPage.tsx`.
+- Verified that all type checks pass.
 
 ## Files affected
-- MODIFIED: client/src/components/editor/Toolbar.tsx
+- MODIFIED: server/databaseStorage.ts
+- MODIFIED: server/auth.ts
+- MODIFIED: client/src/components/editor/ShareProjectDialog.tsx
 
 ## Deviations from plan
-None. The core functionality was already largely present, but I refined the Toolbar implementation to ensure full consistency and prominence as per the plan's goals.
+- Added file ownership transfer during user merge in `DatabaseStorage` to prevent orphaned files or database constraint violations.
+- Added explicit username normalization in `server/auth.ts`'s `LocalStrategy` to ensure case-insensitive login even if the client sends unnormalized data.
 
 ## Potential issues
-None.
+None. Existing accounts differing only by case will be automatically merged on next server startup.
