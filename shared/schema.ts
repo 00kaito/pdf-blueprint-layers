@@ -71,6 +71,8 @@ export const insertUserSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
 export const updateUserRoleSchema = z.object({
   role: z.enum(["admin", "PM", "TECH"]),
 });

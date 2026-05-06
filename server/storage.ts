@@ -1,14 +1,10 @@
 import { config } from "./config";
 import { IStorage } from "./storage_interface";
+import { FileStorage } from "./fileStorage";
+import { DatabaseStorage } from "./databaseStorage";
 
-export let storage: IStorage;
+export const storage: IStorage = config.storageType === "file" 
+  ? new FileStorage() 
+  : new DatabaseStorage();
 
-console.log(`[Storage] Initializing storage: ${config.storageType}`);
-
-if (config.storageType === "file") {
-  const { FileStorage } = await import("./fileStorage");
-  storage = new FileStorage();
-} else {
-  const { DatabaseStorage } = await import("./databaseStorage");
-  storage = new DatabaseStorage();
-}
+console.log(`[Storage] Initialized storage: ${config.storageType}`);

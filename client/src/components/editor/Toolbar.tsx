@@ -7,6 +7,7 @@ import {useCurrentUser} from '@/hooks/useAuth';
 import {ObjectPropertyEditor} from './Toolbar/ObjectPropertyEditor';
 import {ZoomControls} from './Toolbar/ZoomControls';
 import {ProjectActions} from './Toolbar/ProjectActions';
+import {ToolSelector} from './Toolbar/ToolSelector';
 
 export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   const { data: user } = useCurrentUser();
@@ -31,7 +32,9 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
 
         <Separator orientation="vertical" className="h-6" />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <ToolSelector isTech={isTech} />
+          
           <ObjectPropertyEditor 
             selectedObjects={selectedObjects}
             selectedObjectIds={uiState.selectedObjectIds}

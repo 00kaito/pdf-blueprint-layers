@@ -1,0 +1,47 @@
+{
+  "task_id": "TASK-210A8D",
+  "description": "nie widze menu exportu calego projektu i innych przyciskow ktore byly dostepne w projekcie w gornej czesci (po wejsciu w projekt) save, export etc",
+  "title": "nie widze menu exportu calego projektu i innych przyciskow ktore byly dostepne w projekcie w gornej ",
+  "status": "IMPLEMENTING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Tools (Draw, Text, Icons) are visible in the top Toolbar component",
+      "how_to_verify": "Check client/src/components/editor/Toolbar.tsx for the inclusion of <ToolSelector />",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "Export actions are grouped under a DropdownMenu",
+      "how_to_verify": "Check client/src/components/editor/Toolbar/ProjectActions.tsx for DropdownMenu containing handleFlattenAndDownload and handleExportProject",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "ObjectToolbar is completely removed from the project",
+      "how_to_verify": "Verify client/src/components/editor/ObjectToolbar.tsx does not exist and is not imported in client/src/pages/home.tsx",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "Type checking passes without errors",
+      "how_to_verify": "Run npm run check and ensure 0 errors",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Restored missing editor tools to the top toolbar and consolidated project actions (Save, Export, Share) into organized dropdown menus to improve visibility and user experience.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Create ToolSelector Component\",\n      \"description\": \"Extract the drawing and object addition tools (Select, Draw, Text, Image, Icons, Auto-numbering) from the sidebar ObjectToolbar into a new ToolSelector component.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Toolbar/ToolSelector.tsx\"\n      ],\n      \"type\": \"CREATE\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Integrate Tools into Top Bar\",\n      \"description\": \"Add the newly created ToolSelector to the main Toolbar component to restore the tools to the upper part of the screen.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Toolbar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Consolidate Project Actions\",\n      \"description\": \"Refactor ProjectActions.tsx to group the 'Save' button, 'Export' options (PDF and Project Files), and 'More' options (Share, Open, Settings) into prominent dropdown menus using Shadcn UI.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Toolbar/ProjectActions.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 4,\n      \"title\": \"Cleanup Sidebar\",\n      \"description\": \"Remove the ObjectToolbar component from the Home page layout and delete its file, as its functionality has been moved to the top bar.\",\n      \"files_affected\": [\n        \"client/src/pages/home.tsx\",\n        \"client/src/components/editor/ObjectToolbar.tsx\"\n      ],\n      \"type\": \"DELETE\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"Tools (Draw, Text, Icons) are visible in the top Toolbar component\",\n      \"how_to_verify\": \"Check client/src/components/editor/Toolbar.tsx for the inclusion of <ToolSelector />\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"Export actions are grouped under a DropdownMenu\",\n      \"how_to_verify\": \"Check client/src/components/editor/Toolbar/ProjectActions.tsx for DropdownMenu containing handleFlattenAndDownload and handleExportProject\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"ObjectToolbar is completely removed from the project\",\n      \"how_to_verify\": \"Verify client/src/components/editor/ObjectToolbar.tsx does not exist and is not imported in client/src/pages/home.tsx\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"Type checking passes without errors\",\n      \"how_to_verify\": \"Run npm run check and ensure 0 errors\"\n    }\n  ],\n  \"risks\": [\n    \"Dropdown menus might overflow or clip if the window is too narrow, though flex wrapping should mitigate this.\",\n    \"Users accustomed to the sidebar tools might temporarily be confused by the move back to the top bar.\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "0fc0968a57f72c719a077af574dbe104a5d36810",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1778084476.3059611,
+  "updated_at": 1778087102.7660077
+}

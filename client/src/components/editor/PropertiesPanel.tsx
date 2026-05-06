@@ -33,7 +33,23 @@ export const PropertiesPanel = () => {
   }
 
   const handleUpdate = (updates: Partial<typeof firstObject>) => {
-    if (isTech) return;
+    // If user is TECH, we only allow updating status and issueDescription
+    if (isTech) {
+      const allowedKeys: (keyof typeof firstObject)[] = ['status', 'issueDescription'];
+      const filteredUpdates: Partial<typeof firstObject> = {};
+      let hasAllowed = false;
+      
+      allowedKeys.forEach(key => {
+        if (key in updates) {
+          (filteredUpdates as any)[key] = updates[key];
+          hasAllowed = true;
+        }
+      });
+      
+      if (!hasAllowed) return;
+      updates = filteredUpdates;
+    }
+
     const finalUpdates = { ...updates };
     
     if (updates.status) {
@@ -162,7 +178,6 @@ export const PropertiesPanel = () => {
                           key={s.id}
                           variant="outline"
                           size="sm"
-                          disabled={isTech}
                           className={cn(
                             "h-8 text-[10px] px-1 justify-start gap-1.5 font-semibold",
                             selectedObjects.every(o => o.status === s.id) ? "ring-2 ring-primary ring-offset-1" : ""
@@ -182,19 +197,13 @@ export const PropertiesPanel = () => {
                         <AlertCircle className="w-3 h-3" />
                         Issue Description
                       </Label>
-                      {isTech ? (
-                        <div className="text-xs bg-red-50 text-red-900 p-2 rounded border border-red-200 min-h-[60px] whitespace-pre-wrap">
-                          {selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || 'No description provided') : 'Mixed descriptions'}
-                        </div>
-                      ) : (
-                        <Textarea
-                          id="obj-issue"
-                          placeholder="Describe the issue..."
-                          value={selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || '') : ''}
-                          onChange={(e) => handleUpdate({ issueDescription: e.target.value })}
-                          className="text-xs min-h-[60px]"
-                        />
-                      )}
+                      <Textarea
+                        id="obj-issue"
+                        placeholder="Describe the issue..."
+                        value={selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || '') : ''}
+                        onChange={(e) => handleUpdate({ issueDescription: e.target.value })}
+                        className="text-xs min-h-[60px]"
+                      />
                     </div>
                   )}
 

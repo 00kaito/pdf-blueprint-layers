@@ -110,6 +110,7 @@ export class FileStorage implements IStorage {
     const user: User = {
       ...insertUser,
       id,
+      email: null,
       role: insertUser.role || 'PM',
       createdAt: new Date().toISOString()
     };
@@ -155,6 +156,7 @@ export class FileStorage implements IStorage {
       id,
       name: insertProject.name,
       ownerId: insertProject.ownerId,
+      state: {},
       sharedWith: [],
       createdAt: now,
       updatedAt: now
@@ -202,15 +204,17 @@ export class FileStorage implements IStorage {
 
   async saveFile(buffer: Buffer, originalName: string, mimeType: string, ownerId: string, projectId?: string): Promise<FileMetadata> {
     const id = uuidv4();
+    const filePath = path.join(this.filesDir, id);
     const meta: FileMetadata = {
       id,
       originalName,
       mimeType,
       ownerId,
-      projectId,
+      projectId: projectId || null,
+      size: buffer.length,
+      storagePath: filePath,
       createdAt: new Date().toISOString()
     };
-    const filePath = path.join(this.filesDir, id);
     const metaPath = path.join(this.filesDir, `${id}.meta.json`);
     console.log(`[FileStorage] Saving file ${originalName} (ID: ${id}) to ${filePath}`);
     fs.writeFileSync(filePath, buffer);
