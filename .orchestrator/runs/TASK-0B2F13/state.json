@@ -1,0 +1,18 @@
+{
+  "task_id": "TASK-0B2F13",
+  "description": "Przeanalizuj aplikacje pod katem architektury - w szczegolnosci pliki architecture.md, DEV_README.md oraz readme.md i wprowadz usprawnienia ktore poprawia kad pod wzgledem dobrych praktyk programowania oraz utrzymania kodu",
+  "title": "Przeanalizuj aplikacje pod katem architektury - w szczegolnosci pliki architecture.md, DEV_README.md",
+  "status": "FAILED",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [],
+  "history": [],
+  "architect_plan": "",
+  "last_diff": "",
+  "task_start_sha": "a0419bec21917d25f220440c186adacb64ea3604",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777993607.6567135,
+  "updated_at": 1777997358.6821635
+}

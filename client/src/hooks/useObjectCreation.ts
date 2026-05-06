@@ -1,7 +1,16 @@
 import {useCallback} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {v4 as uuidv4} from 'uuid';
-import {CANVAS_BASE_WIDTH} from '@/core/constants';
+import {
+  CANVAS_BASE_WIDTH, 
+  DEFAULT_TEXT_WIDTH, 
+  DEFAULT_TEXT_HEIGHT, 
+  DEFAULT_ICON_SIZE, 
+  DEFAULT_IMAGE_SIZE,
+  DEFAULT_ICON_COLOR,
+  DEFAULT_TEXT_FONT_SIZE,
+  DEFAULT_TEXT_COLOR
+} from '@/core/constants';
 
 export const useObjectCreation = () => {
   const { state: docState, dispatch } = useDocument();
@@ -21,8 +30,8 @@ export const useObjectCreation = () => {
 
   const handleAddText = useCallback(() => {
     if (!uiState.activeLayerId) return;
-    const width = 200 / uiState.scale;
-    const height = 50 / uiState.scale;
+    const width = DEFAULT_TEXT_WIDTH / uiState.scale;
+    const height = DEFAULT_TEXT_HEIGHT / uiState.scale;
     const { x, y } = getCenterPosition(width, height);
     
     dispatch({
@@ -30,7 +39,7 @@ export const useObjectCreation = () => {
       payload: {
         id: uuidv4(), type: 'text', name: '', x, y, width, height,
         layerId: uiState.activeLayerId, content: 'Double click to edit',
-        fontSize: 16 / uiState.scale, color: '#000000', rotation: 0,
+        fontSize: DEFAULT_TEXT_FONT_SIZE / uiState.scale, color: DEFAULT_TEXT_COLOR, rotation: 0,
         status: 'PLANNED'
       }
     });
@@ -39,12 +48,12 @@ export const useObjectCreation = () => {
 
   const handleAddIcon = useCallback((iconType: string) => {
     if (!uiState.activeLayerId) return;
-    const size = 50 / uiState.scale;
+    const size = DEFAULT_ICON_SIZE / uiState.scale;
 
     if (docState.autoNumbering.enabled) {
       dispatch({
         type: 'SET_AUTO_NUMBERING',
-        payload: { template: { type: 'icon', content: iconType, color: '#ef4444' } }
+        payload: { template: { type: 'icon', content: iconType, color: DEFAULT_ICON_COLOR } }
       });
       dispatch({ type: 'SET_TOOL', payload: 'stamp' });
       return;
@@ -55,7 +64,7 @@ export const useObjectCreation = () => {
       type: 'ADD_OBJECT',
       payload: {
         id: uuidv4(), type: 'icon', name: '', x, y, width: size, height: size,
-        layerId: uiState.activeLayerId, color: '#ef4444', content: iconType, rotation: 0,
+        layerId: uiState.activeLayerId, color: DEFAULT_ICON_COLOR, content: iconType, rotation: 0,
         status: 'PLANNED'
       }
     });
@@ -69,7 +78,7 @@ export const useObjectCreation = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const url = event.target?.result as string;
-      const size = 200 / uiState.scale;
+      const size = DEFAULT_IMAGE_SIZE / uiState.scale;
       const { x, y } = getCenterPosition(size, size);
       dispatch({
         type: 'ADD_OBJECT',

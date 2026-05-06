@@ -1,6 +1,7 @@
 import React from 'react';
 import {Document, Page} from 'react-pdf';
 import {useDocument, useUI} from '@/lib/editor-context';
+import {CANVAS_BASE_WIDTH} from '@/core/constants';
 
 export const OverlayDocument = () => {
   const { state: docState } = useDocument();
@@ -15,7 +16,7 @@ export const OverlayDocument = () => {
           pageNumber={uiState.currentPage} 
           renderTextLayer={false} 
           renderAnnotationLayer={false} 
-          width={600} 
+          width={CANVAS_BASE_WIDTH} 
           scale={uiState.scale} 
           className="bg-transparent" 
         />

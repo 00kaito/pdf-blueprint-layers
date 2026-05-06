@@ -1,0 +1,1355 @@
+You are a senior software architect. Your job is to create a precise implementation plan.
+
+## Task
+Przeanalizuj aplikacje pod katem architektury - w szczegolnosci pliki architecture.md, DEV_README.md oraz readme.md i wprowadz usprawnienia optymalizacyjne kodu, ktore poprawia dzialanie aplikacji jednak skup sie na askeptach krytycznych, nie szukaj optymalizacji ktore wymagaja duzo nakladow pracy a w efekcie nie zmienia wiele
+
+## Current codebase context
+## File tree
+```
+.claude/settings.local.json
+.env
+.gemini/settings.json
+.gitignore
+.idea/.gitignore
+.idea/dataSources/8077d291-79af-47a5-bb9f-f5f8660c2848/storage_v2/_src_/database/pdf_blueprint.hk87yg/schema/information_schema.FNRwLQ.meta
+.idea/dataSources/8077d291-79af-47a5-bb9f-f5f8660c2848/storage_v2/_src_/database/pdf_blueprint.hk87yg/schema/pg_catalog.0S1ZNQ.meta
+.idea/dataSources/8077d291-79af-47a5-bb9f-f5f8660c2848/storage_v2/_src_/database/pdf_blueprint.hk87yg/schema/public.abK9xQ.meta
+.idea/dataSources/8077d291-79af-47a5-bb9f-f5f8660c2848/storage_v2/_src_/database/pdf_blueprint.hk87yg.meta
+.idea/dataSources/8077d291-79af-47a5-bb9f-f5f8660c2848.xml
+.idea/dataSources/data_sources_history.xml
+.idea/dataSources.local.xml
+.idea/dataSources.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/pdf-blueprint-layers.iml
+.idea/shelf/Uncommitted_changes_before_rebase_[Changes]/orchestrator.db
+.idea/shelf/Uncommitted_changes_before_rebase_[Changes]/shelved.patch
+.idea/shelf/Uncommitted_changes_before_rebase__Changes_.xml
+.idea/vcs.xml
+.idea/workspace.xml
+.orchestrator/orchestrator.db
+.replit
+APPLICATION_TECHNICAL_INFO.md
+ARCHITECTURAL_EVOLUTION.md
+DEVELOPER.md
+DEV_README.md
+DOCUMENTATION.md
+Dockerfile
+EXPORT_OBJECTS_README.md
+README.md
+REF_2
+architecture.md
+client/index.html
+client/public/favicon.png
+client/public/opengraph.jpg
+client/src/App.tsx
+client/src/components/UserIdentificationModal.tsx
+client/src/components/editor/Canvas/DrawingLayer.tsx
+client/src/components/editor/Canvas/ObjectRenderer.tsx
+client/src/components/editor/Canvas/OverlayDocument.tsx
+client/src/components/editor/Canvas.tsx
+client/src/components/editor/LayerPanel.tsx
+client/src/components/editor/MobileAddObjectPanel.tsx
+client/src/components/editor/MobileBottomBar.tsx
+client/src/components/editor/ObjectComments.tsx
+client/src/components/editor/ObjectPhotoGallery.tsx
+client/src/components/editor/ObjectToolbar.tsx
+client/src/components/editor/PDFUploader.tsx
+client/src/components/editor/PropertiesPanel.tsx
+client/src/components/editor/ShareProjectDialog.tsx
+client/src/components/editor/Toolbar.tsx
+client/src/components/ui/accordion.tsx
+client/src/components/ui/alert-dialog.tsx
+client/src/components/ui/alert.tsx
+client/src/components/ui/aspect-ratio.tsx
+client/src/components/ui/avatar.tsx
+client/src/components/ui/badge.tsx
+client/src/components/ui/breadcrumb.tsx
+client/src/components/ui/button-group.tsx
+client/src/components/ui/button.tsx
+client/src/components/ui/calendar.tsx
+client/src/components/ui/card.tsx
+client/src/components/ui/carousel.tsx
+client/src/components/ui/chart.tsx
+client/src/components/ui/checkbox.tsx
+client/src/components/ui/collapsible.tsx
+client/src/components/ui/command.tsx
+client/src/components/ui/context-menu.tsx
+client/src/components/ui/dialog.tsx
+client/src/components/ui/drawer.tsx
+client/src/components/ui/dropdown-menu.tsx
+client/src/components/ui/empty.tsx
+client/src/components/ui/field.tsx
+client/src/components/ui/form.tsx
+client/src/components/ui/hover-card.tsx
+client/src/components/ui/input-group.tsx
+client/src/components/ui/input-otp.tsx
+client/src/components/ui/input.tsx
+client/src/components/ui/item.tsx
+client/src/components/ui/kbd.tsx
+client/src/components/ui/label.tsx
+client/src/components/ui/menubar.tsx
+client/src/components/ui/navigation-menu.tsx
+client/src/components/ui/pagination.tsx
+client/src/components/ui/popover.tsx
+client/src/components/ui/progress.tsx
+client/src/components/ui/radio-group.tsx
+client/src/components/ui/resizable.tsx
+client/src/components/ui/scroll-area.tsx
+client/src/components/ui/select.tsx
+client/src/components/ui/separator.tsx
+client/src/components/ui/sheet.tsx
+client/src/components/ui/sidebar.tsx
+client/src/components/ui/skeleton.tsx
+client/src/components/ui/slider.tsx
+client/src/components/ui/sonner.tsx
+client/src/components/ui/spinner.tsx
+client/src/components/ui/switch.tsx
+client/src/components/ui/table.tsx
+client/src/components/ui/tabs.tsx
+client/src/components/ui/textarea.tsx
+client/src/components/ui/toast.tsx
+client/src/components/ui/toaster.tsx
+client/src/components/ui/toggle-group.tsx
+client/src/components/ui/toggle.tsx
+client/src/components/ui/tooltip.tsx
+client/src/core/constants.ts
+client/src/core/icon-shapes.ts
+client/src/core/image-compress.ts
+client/src/core/pdf-math.ts
+client/src/core/svg-utils.ts
+client/src/hooks/use-mobile.tsx
+client/src/hooks/use-toast.ts
+client/src/hooks/useAuth.ts
+client/src/hooks/useAutoSave.ts
+client/src/hooks/useDrawing.ts
+client/src/hooks/useExport.ts
+client/src/hooks/useImport.ts
+client/src/hooks/useManualSave.ts
+client/src/hooks/useObjectCreation.ts
+client/src/hooks/useProjects.ts
+client/src/hooks/useTouchGestures.ts
+client/src/index.css
+client/src/lib/editor-context.tsx
+client/src/lib/queryClient.ts
+client/src/lib/types.ts
+client/src/lib/utils.ts
+client/src/main.tsx
+client/src/pages/AdminPage.tsx
+client/src/pages/AuthPage.tsx
+client/src/pages/home.tsx
+client/src/pages/not-found.tsx
+components.json
+data/files/0f313673-d048-42a7-99dd-c632d76d5480
+data/files/0f313673-d048-42a7-99dd-c632d76d5480.meta.json
+data/files/198f6cfa-aff8-4591-91a0-d156bd6d8cf9
+data/files/198f6cfa-aff8-4591-91a0-d156bd6d8cf9.meta.json
+data/files/1cce4f4d-b2e6-46c8-80ed-f37fe10cb2a0
+data/files/1cce4f4d-b2e6-46c8-80ed-f37fe10cb2a0.meta.json
+data/files/2feca732-72e1-419a-85b0-9e146470e2be
+data/files/2feca732-72e1-419a-85b0-9e146470e2be.meta.json
+data/files/304c2603-ab79-46ce-9f58-acfb81fcad26
+data/files/304c2603-ab79-46ce-9f58-acfb81fcad26.meta.json
+data/files/32759f2e-573b-45a4-a194-a99e4432269f
+data/files/32759f2e-573b-45a4-a194-a99e4432269f.meta.json
+data/files/44553354-42d4-4f39-b722-f85dad0eaa27
+data/files/44553354-42d4-4f39-b722-f85dad0eaa27.meta.json
+data/files/45ba8ac5-26d2-4cf0-9093-565fe0199fbf
+data/files/45ba8ac5-26d2-4cf0-9093-565fe0199fbf.meta.json
+data/files/5a610ef3-0be8-4504-9dfe-52834ea53319
+data/files/5a610ef3-0be8-4504-9dfe-52834ea53319.meta.json
+data/files/60401778-b500-4d7b-b92b-f121c499847e
+data/files/60401778-b500-4d7b-b92b-f121c499847e.meta.json
+data/files/62e4554a-3ada-48be-88ea-2b90e2e71a97
+data/files/62e4554a-3ada-48be-88ea-2b90e2e71a97.meta.json
+data/files/68430ddf-4c5d-430d-85d1-259fcbb37ed3
+data/files/68430ddf-4c5d-430d-85d1-259fcbb37ed3.meta.json
+data/files/7c640942-64f9-4f10-91ca-f89eefbf7a66
+data/files/7c640942-64f9-4f10-91ca-f89eefbf7a66.meta.json
+data/files/7f259e16-b13c-4680-af47-f5f20826ca26
+data/files/7f259e16-b13c-4680-af47-f5f20826ca26.meta.json
+data/files/8019acb7-e303-4284-a21c-55a72ebe17f4
+data/files/8019acb7-e303-4284-a21c-55a72ebe17f4.meta.json
+data/files/8ae0714c-e803-4fc0-b1e0-47191084f5b3
+data/files/8ae0714c-e803-4fc0-b1e0-47191084f5b3.meta.json
+data/files/8cccdc5d-0a62-435c-9c4d-a2cf09b03547
+data/files/8cccdc5d-0a62-435c-9c4d-a2cf09b03547.meta.json
+data/files/8d5253df-b327-4cd3-8e0f-43c5f41d42cf
+data/files/8d5253df-b327-4cd3-8e0f-43c5f41d42cf.meta.json
+data/files/94bc1be6-d76b-4a90-a223-d2baa0a88351
+data/files/94bc1be6-d76b-4a90-a223-d2baa0a88351.meta.json
+data/files/993f5478-5c24-49b4-8000-83e39369d766
+data/files/993f5478-5c24-49b4-8000-83e39369d766.meta.json
+data/files/99d6d4a0-9742-4a27-a5fd-0b412c0da152
+data/files/99d6d4a0-9742-4a27-a5fd-0b412c0da152.meta.json
+data/files/a56c852b-561c-476d-bf27-ac0b979810ad
+data/files/a56c852b-561c-476d-bf27-ac0b979810ad.meta.json
+data/files/a5af53ac-c71f-4f56-8864-a3285d968136
+data/files/a5af53ac-c71f-4f56-8864-a3285d968136.meta.json
+data/files/aabe1f7e-6226-45d1-a097-97dcdab6eaac
+data/files/aabe1f7e-6226-45d1-a097-97dcdab6eaac.meta.json
+data/files/bef7ae89-a95f-499e-9c4c-6a778d33b479
+data/files/bef7ae89-a95f-499e-9c4c-6a778d33b479.meta.json
+data/files/daa11165-94eb-4e5f-8c04-b0c5fef27dec
+data/files/daa11165-94eb-4e5f-8c04-b0c5fef27dec.meta.json
+data/files/dcfd722d-fffe-4747-9e16-3a8caee371a3
+data/files/dcfd722d-fffe-4747-9e16-3a8caee371a3.meta.json
+data/files/e2873cc8-fb23-44f9-ab23-f3e13814fede
+data/files/e2873cc8-fb23-44f9-ab23-f3e13814fede.meta.json
+data/files/f21d8383-f267-468a-9a1a-8836b2662e55
+data/files/f21d8383-f267-468a-9a1a-8836b2662e55.meta.json
+data/project-states/89da2e02-fd47-45fb-9341-41f06c5ff34c.json
+data/projects.json
+data/users.json
+database_implementation.md
+docker-compose.yml
+drizzle.config.ts
+implementation_report.md
+jira1.md
+jira2.md
+jira3.md
+jira4.md
+object_file_export_dev.md
+package-lock.json
+package.json
+postcss.config.js
+refactor_suggestion.md
+script/build.ts
+script/migrate_to_db.ts
+server/auth.ts
+server/databaseStorage.ts
+server/db.ts
+server/fileStorage.ts
+server/index.ts
+server/routes.ts
+server/static.ts
+server/storage.ts
+server/vite.ts
+shared/schema.ts
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/00984a8e-ebc6-4c3d-b9bd-39b4ab2a65ce
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/05cc723a-07c1-44b0-aeae-672122f90b8c
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/071a14ee-ca49-436d-bf51-3a6e24d6ea79
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/0e98d60c-1b3d-4719-bd64-f9106e504a9b
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/1eef3559-9164-4887-a491-38bb8aaf06b1
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/22395b1f-c888-4d72-a550-8d6614778f6d
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/27d89511-07c6-42e8-b305-4cd50e88b497
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/2e327e20-4832-49df-9b50-b35386bb7571
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/406b0fa6-83a5-45d9-a51e-a18d3776b7ad
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/47c9f817-46b8-4313-a446-62923619d886
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/4a021d22-ec00-46c7-879c-9e07a202cc50
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/4da403f5-26ae-4467-9f84-3bd9f4d680f0
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/557f4367-b332-4473-8b72-ec58c224c3bc
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/5965b667-e46c-4fda-9f39-e70a599672e5
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/59ace448-37d7-40cb-b124-2e0df3a267ab
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/5d74d69e-0a58-4bee-94a9-68d6b2f1637b
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/5d870979-aa42-4c1c-abce-1090fea452a1
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/61ebe49d-0a2b-45b5-8f75-2c17d9c9dcba
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/6f8f19ae-6923-4e85-9652-643465eb3d46
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/830d1c93-d065-43cf-9911-51131129474b
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/863596cc-3ebf-4c99-84a3-a853c0d7286b
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/8795897e-d499-427c-a57d-b33762f1360f
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/8a2efd31-7e05-4990-8dad-dc876b43ffa5
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/8ecfb9d7-5358-4063-a5fb-cffe0505e82f
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/a454673f-fb7f-4659-88f7-8e433c2c71ab
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/a71e289b-7340-408d-9ed9-7cc38dead814
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/a8345aee-d46f-43da-b720-174e4794aa36
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/a847b174-5e89-4e37-ba52-c9c597ca2c8e
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/aae43b02-2a30-4a0a-b350-760cda71f589
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/ac00ea64-f6c1-4e4f-81bf-067b2b157984
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/b0827ad6-1254-4c3a-a71d-75a3c46e79bd
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/b0ff50ae-df8c-4d2e-8d72-8c81ee877349
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/b2e37183-75d2-4116-ae64-0bda1c75446c
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/c2f66742-7930-4b1d-a8a0-47d2ad34b133
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/c691279a-72d4-45ec-aea5-1d7ebd7e1185
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/c6c5c5a6-4171-4d78-8d32-fee31da2a418
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/cae84d08-423c-4ea2-a3b9-ce479caa5bba
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/d82e302e-e480-497b-abb7-afb3deb875d4
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/e23eaadd-b019-4ab1-864c-87cf95e9be80
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/f5f3ddd0-d142-4a05-88c7-901b61c9f49e
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/f9b7c438-a882-4f1a-95c2-06109b645334
+storage/projects/47789564-1f27-49d8-8e78-0960a9e17620/fe2b7d25-d689-46c4-a168-24cfaeb2ebd2
+storage/projects/f1ab630a-45dd-4653-9dcb-6228ae7be1ad/366b8823-d12b-493f-80ad-9ddc4c600146
+tsconfig.json
+vite-plugin-meta-images.ts
+vite.config.ts
+```
+
+### APPLICATION_TECHNICAL_INFO.md
+```md
+# Dokumentacja Architektoniczna: PDF Blueprint Layers Editor
+
+## 1. Przegląd Systemu
+Aplikacja jest zaawansowanym edytorem webowym służącym do nakładania warstw interaktywnych (adnotacji, ikon, rysunków) na pliki PDF. System charakteryzuje się modularną architekturą, wysoką wydajnością oraz precyzyjnym silnikiem eksportu wektorowego.
+
+### Stos Technologiczny
+*   **Core**: React 18, TypeScript, Vite.
+*   **State**: Context API (Split Pattern) + useReducer.
+*   **PDF**: `react-pdf` (View), `pdf-lib` (Export/Manipulation).
+*   **Interakcja**: `react-rnd` (Drag & Resize), `lucide-react` (Icons).
+
+---
+
+## 2. Architektura Stanu (Context Split)
+
+Stan aplikacji jest rozdzielony na dwa niezależne konteksty w `client/src/lib/editor-context.tsx` (264 lines).
+
+### 2.1. DocumentContext (`DocumentState`)
+Zarządza danymi "ciężkimi" i wolnozmiennymi. Zmiana powoduje re-render całego edytora.
+*   `pdfFile`, `overlayPdfFile`: Surowe pliki dokumentów.
+*   `layers`, `objects`: Struktura warstw i elementów blueprintu.
+*   `customIcons`, `exportSettings`, `autoNumbering`: Dane konfiguracyjne użytkownika.
+*   `clipboardObjects`: Lista obiektów w schowku.
+
+### 2.2. UIContext (`UIState`)
+Zarządza danymi szybkozmiennymi. Scroll i zmiana narzędzia nie wymuszają re-renderu ciężkich komponentów.
+*   `scrollPos`: Pozycja przewijania (debounced, 16ms).
+*   `scale`: Aktualny Zoom.
+*   `tool`: Wybrane narzędzie (`select`, `draw`, `text`, `stamp`).
+*   `selectedObjectId`, `activeLayerId`, `currentPage`.
+
+### 2.3. Hooki dostępowe
+*   **`useDocument()`** — dostęp do `DocumentContext`. Używaj w komponentach pracujących na danych (LayerPanel, PropertiesPanel, Toolbar).
+*   **`useUI()`** — dostęp do `UIContext`. Używaj do renderowania interaktywnych elementów (Canvas, ObjectRenderer).
+*   **`useEditor()`** — hook zgodności wstecznej, łączy oba konteksty. **Nieużywany** — bezpieczny do usunięcia.
+
+---
+
+## 3. Warstwa Logiki Core (`client/src/core/`)
+
+Czyste funkcje TypeScript, niezależne od Reacta, w pełni testowalne jednostkowo.
+
+*   **`constants.ts`** (5 lines): Globalne źródło prawdy.
+    ```ts
+    CANVAS_BASE_WIDTH = 600   // przestrzeń modelu (px)
+    CANVAS_BASE_HEIGHT = 800
+    DEFAULT_LABEL_FONT_SIZE = 1
+    SVG_RENDER_QUALITY_MULTIPLIER = 4  // ~288 DPI
+    ```
+*   **`pdf-math.ts`** (47 lines): Silnik transformacji współrzędnych. `getPhysicalCoords(vx, vy, pW, pH, rotation)` przelicza z układu "Screen TL" na "PDF BL" dla rotacji 0°/90°/180°/270°.
+*   **`svg-utils.ts`** (44 lines): `scalePath(pathData, scale)` skaluje ścieżki SVG; `svgToPng(svgDataUrl, w, h)` konwertuje SVG→PNG z mnożnikiem 4x.
+*   **`icon-shapes.ts`** (32 lines): `buildIconPath(iconType, w, h, ...)` — słownik definicji wektorowych ikon. **Uwaga:** kształt `heart` jest placeholderem (identyczny z `diamond`).
+
+---
+
+## 4. Custom Hooks (`client/src/hooks/`)
+
+*   **`useExport.ts`** (201 lines): Buduje finalny PDF. Obsługuje word-wrap, `push/popGraphicsState`, optymalizację obrazów i sortowanie obiektów warstwami (O(n) via `layerOrderById` map). Eksportuje też pełny projekt JSON.
+*   **`useObjectCreation.ts`** (101 lines): Dodaje nowe obiekty. `getCenterPosition(w, h)` oblicza środek aktualnego widoku. Obsługuje upload własnych ikon.
+*   **`useDrawing.ts`** (63 lines): Silnik rysowania odręcznego z Shift-constraint dla prostych linii.
+
+---
+
+## 5. Dekompozycja Komponentów (`client/src/components/editor/`)
+
+### 5.1. Canvas (Orkiestrator) — 98 lines
+`Canvas.tsx` zarządza tylko routingiem zdarzeń myszy i kompozycją podkomponentów:
+*   **`Canvas/ObjectRenderer.tsx`** (117 lines): Opakowuje obiekty w `Rnd`. Obsługuje rotację (45° snap), resize, `contentEditable` dla tekstu, counter-rotation etykiet.
+*   **`Canvas/DrawingLayer.tsx`** (45 lines): Warstwa SVG dla rysunków odręcznych i podglądu live.
+*   **`Canvas/OverlayDocument.tsx`** (25 lines): Renderer nakładki PDF z kontrolą przezroczystości. **Znany problem:** `width={600}` hardcoded — powinien używać `CANVAS_BASE_WIDTH`.
+
+### 5.2. Toolbar — 331 lines
+Narzędzia, ustawienia eksportu, galeria ikon. Używa `useObjectCreation` i `useExport`.
+
+### 5.3. LayerPanel — 321 lines
+Lista warstw. `slice().reverse()` — wizualnie "od góry", renderowanie "od spodu".
+
+### 5.4. PropertiesPanel — 101 lines
+Właściwości zaznaczonego obiektu: nazwa, X/Y, opacity.
+
+---
+
+## 6. Kluczowe Algorytmy
+
+### 6.1. Mapowanie Współrzędnych PDF
+```
+getPhysicalCoords(vx, vy, pW, pH, rotation):
+  0°:   px = vx,      py = pH - vy
+  90°:  px = vy,      py = vx
+  180°: px = pW - vx, py = vy
+  270°: px = pW - vy, py = pH - vx
+```
+
+### 6.2. Optymalizacja Wydajności
+*   **Debounce Scroll**: `useCallback(debounce(..., 16), [dispatch])` — max 62 aktualizacje/s.
+*   **Sorting Map (O(n))**: `layerOrderById = {id: index}` — sortowanie obiektów bez iteracji przez warstwy dla każdego obiektu.
+*   **Split Context**: UIContext zmieniany często (scroll, hover) nie powoduje re-renderu DocumentContext subskrybentów.
+
+### 6.3. Rotacja Obiektów
+```ts
+const rawRotation = (startRotation + (mouseY - startY) * 2) % 360;
+const newRotation = Math.round(rawRotation / 45) * 45;  // snap do 45°
+```
+
+---
+
+## 7. Katalog Modułów i Funkcji (Przewodnik Dewelopera)
+
+### 7.1. Struktury Danych (`client/src/lib/types.ts`)
+*   **`EditorObject`**: Typ (`text|icon|image|path`), współrzędne modelu (niezeskalowane), `rotation`, `opacity`, metadane.
+*   **`Layer`**: `visible` (renderowanie), `locked` (interakcje), `opacity` (eksport) — wszystkie inicjowane wartościami domyślnymi w `editor-context.tsx`.
+*   **`DocumentState`** / **`UIState`**: Rozdzielone typy stanu. `EditorState = DocumentState & UIState` (typ pomocniczy).
+
+### 7.2. Zarządzanie Stanem
+```ts
+// Dostęp do danych dokumentu (warstwy, obiekty, pliki):
+const { state, dispatch } = useDocument();
+
+// Dostęp do stanu UI (scale, tool, selectedObjectId):
+const { state: uiState } = useUI();
+
+// NIE używaj useEditor() — deprecated, do usunięcia
+```
+
+### 7.3. Logika Core
+*   `getPhysicalCoords(vx, vy, pW, pH, pageRotation)` — **wymagane 5 argumentów**.
+*   `scalePath(pathData, scale)` — bezpieczne dla ścieżek M/L; inne komendy SVG pomija.
+*   `svgToPng(url, w, h)` — asynchroniczny, zwraca `Promise<string>` (data URL).
+*   `buildIconPath(type, w, h, minSide, offX, offY)` — zwraca `string | null` (null = brak kształtu).
+
+### 7.4. Wzorzec Tworzenia Obiektów
+```ts
+// Minimalny obiekt dodawany do stanu:
+{
+  id: uuidv4(),
+  type: 'icon',
+  name: '',
+  x, y, width, height,
+  layerId: uiState.activeLayerId,
+  content: iconType,
+  color: '#ef4444',   // domyślny kolor ikon (magic number — kandydat do constants.ts)
+  rotation: 0,
+  fontSize: 16,       // domyślny rozmiar tekstu (magic number)
+  opacity: 1,
+}
+```
+
+---
+
+## 8. Stan Architektury i Znane Problemy
+
+### 8.1. Architektura — STABILNA ✅
+Refactoring zakończony. Architektura warstwowa (`core/ → hooks/ → components/`) jest czysta i gotowa do dalszego rozwoju. Wszystkie krytyczne bugi (A–F z TASK6) zostały naprawione.
+
+### 8.2. Nieurgentne Problemy Techniczne
+| Problem | Plik | Priorytet |
+|---|---|---|
+| `width={600}` hardcoded | `Canvas/OverlayDocument.tsx:18` | Niski |
+| `useEditor()` nieużywany | `editor-context.tsx` | Niski (cleanup) |
+| `#ef4444` magic string | `useObjectCreation.ts`, `useExport.ts`, `Canvas.tsx` | Niski |
+| `fontSize: 16` magic number | `Canvas.tsx:62` | Niski |
+| Kształt `heart` = placeholder | `icon-shapes.ts` | Niski |
+| Brak error boundaries | Cała aplikacja | Średni |
+| Toolbar >300 linii | `Toolbar.tsx` | Średni (wydzielić sub-komponenty) |
+
+### 8.3. Poprawka OverlayDocument (gotowa do zastosowania)
+```tsx
+// Canvas/OverlayDocument.tsx:18 — zmień:
+width={600}
+// na:
+width={CANVAS_BASE_WIDTH}
+// i dodaj import: import { CANVAS_BASE_WIDTH } from '@/core/constants';
+```
+
+---
+
+## 9. Workflow Rozwoju
+
+1.  **Nowy typ obiektu**:
+    - Dodaj `type` do `EditorObject['type']` w `types.ts`.
+    - Dodaj renderowanie w `Canvas/ObjectRenderer.tsx`.
+    - Dodaj eksport w `useExport.ts` (sekcja `for (const obj of sortedObjects)`).
+    - Dodaj 
+```
+
+### ARCHITECTURAL_EVOLUTION.md
+```md
+# Analiza Architektoniczna: Ewolucja z MVP do Systemu Enterprise
+
+Niniejszy dokument analizuje obecną architekturę aplikacji (wersja MVP) i wskazuje ścieżkę rozwoju w stronę profesjonalnego rozwiązania typu SaaS dla branży niskoprądowej.
+
+## 1. Zarządzanie Użytkownikami i Uprawnieniami (Auth & IAM)
+
+### Stan Obecny (MVP)
+*   Prosta tabela `users` (ID, username, hash hasła).
+*   Brak ról — każdy zalogowany użytkownik ma te same uprawnienia w obrębie projektu (współdzielenie przez ID).
+*   Uproszczona identyfikacja technika w `localStorage` dla "trust-based tracking".
+
+### Ewolucja (Enterprise)
+*   **Multi-tenancy (Organizacje):** Wprowadzenie pojęcia "Firma/Organizacja". Użytkownicy należą do organizacji, a projekty są własnością firmy, nie tylko jednostki.
+*   **RBAC (Role-Based Access Control):** 
+    *   `Admin`: Pełne zarządzanie firmą i projektami.
+    *   `Manager (PM)`: Tworzenie projektów, przydzielanie zadań, akceptacja statusów.
+    *   `Technician`: Tylko odczyt planów, zmiana statusów, dodawanie zdjęć.
+    *   `Client/Viewer`: Tylko podgląd postępu i eksport raportów.
+*   **SSO & External Auth:** Integracja z Azure AD / Microsoft 365 (standard w dużych firmach instalacyjnych) lub Google Workspace.
+
+## 2. Model Danych i Skalowalność (Data Strategy)
+
+### Stan Obecny (MVP)
+*   Cały stan projektu (`EditorObject[]`, `Layer[]`) przechowywany jako jeden duży obiekt JSON w bazie danych.
+*   Podejście "wszystko albo nic" przy zapisie i odczycie.
+
+### Ewolucja (Enterprise)
+*   **Relacyjność Obiektów:** Wyciągnięcie `objects` (punktów na planie) do osobnej tabeli relacyjnej.
+    *   *Dlaczego?* Pozwala to na zaawansowane filtrowanie (np. "pokaż wszystkie gniazda DATA na piętrze 2"), raportowanie cross-projektowe i wydajną aktualizację pojedynczych rekordów bez przesyłania całego planu (5MB+).
+*   **Baza Przestrzenna (PostGIS):** Jeśli projekty staną się bardzo duże (mapy kampusów), warto przejść na bazę wspierającą zapytania geograficzne/przestrzenne.
+*   **Wersjonowanie (Event Sourcing):** Zamiast nadpisywać stan, zapisujemy historię zmian. Pozwala to na "Timeline" projektu — PM może zobaczyć, co działo się na budowie tydzień po tygodniu.
+
+## 3. Zarządzanie Plikami i Mediami
+
+### Stan Obecny (MVP)
+*   Pliki (PDF, zdjęcia) przechowywane na dysku serwera (FileStorage).
+*   Referencje w bazie danych po ID.
+
+### Ewolucja (Enterprise)
+*   **Object Storage (S3/Azure Blob):** Przeniesienie plików do chmury dla nieskończonej skalowalności i bezpieczeństwa (backupy, redundancja).
+*   **Image Optimization Service:** Automatyczne generowanie miniatur zdjęć z budowy. Technik na wolnym łączu LTE nie musi pobierać 10MB zdjęcia w wysokiej rozdzielczości, by zobaczyć podgląd.
+*   **CDN:** Szybsze serwowanie ciężkich podkładów PDF dla użytkowników w różnych lokalizacjach.
+
+## 4. Współpraca w Czasie Rzeczywistym (Real-time Collaboration)
+
+### Stan Obecny (MVP)
+*   Zapis przez "Debounce" (PUT /projects/:id co kilka sekund).
+*   Ryzyko nadpisania zmian (Race condition), gdy PM i Technik edytują ten sam projekt jednocześnie.
+
+### Ewolucja (Enterprise)
+*   **WebSockets:** Natychmiastowe propagowanie zmian między użytkownikami. Jeśli PM doda warstwę w biurze, Technik widzi ją na tablecie sekundę później.
+*   **CRDT (Conflict-free Replicated Data Types):** Zaawansowana synchronizacja danych pozwalająca na bezkonfiktową edycję tego samego obiektu przez wiele osób jednocześnie (standard w narzędziach typu Figma/Miro).
+
+## 5. Offline-First (Kluczowe dla budowy)
+
+### Stan Obecny (MVP)
+*   Aplikacja wymaga stałego połączenia do zapisu/odczytu zdjęć i stanów.
+
+### Ewolucja (Enterprise)
+*   **PWA (Progressive Web App):** Pełne keszowanie podkładów PDF i interfejsu.
+*   **Background Sync:** Technik robi zdjęcia w piwnicy (brak zasięgu), aplikacja zapisuje je lokalnie (IndexedDB) i automatycznie synchronizuje z serwerem, gdy tylko pojawi się zasięg.
+
+## Podsumowanie - Priorytety Rozwoju
+
+1.  **Short-term (Quick Wins):** Przejście na relacyjną strukturę `objects` (aby umożliwić raporty) + wprowadzenie ról (PM/Tech).
+2.  **Mid-term:** Migracja plików do S3 i optymalizacja zdjęć.
+3.  **Long-term:** Real-time collaboration i zaawansowany tryb Offline.
+
+```
+
+### DEVELOPER.md
+```md
+# PDF Editor Application - Developer Guide
+
+## Project Overview
+
+This is a client-side React application for editing PDF documents. It allows users to upload PDFs, add layers, and annotate them with text, images, icons, and drawings. The application focuses on frontend interactions and uses local state management.
+
+## Core Architecture
+
+The application is built using **React** with **Vite**.
+
+### State Management ("The Heart")
+The core logic resides in:
+- **`client/src/lib/editor-context.tsx`**: This file contains the global state management for the editor.
+  - It uses `React.useReducer` and `React.createContext` to manage the entire application state.
+  - **`EditorState`**: Defines the data structure (layers, objects, current tool, zoom level, etc.).
+  - **`editorReducer`**: Handles all actions like adding objects, moving layers, changing tools, etc.
+
+### Key Components
+
+The UI is divided into three main sections, all located in `client/src/components/editor/`:
+
+1.  **`Toolbar.tsx`** (Top Bar)
+    - Contains tools for adding text, images, icons, and drawing.
+    - Manages zoom controls and file operations (export PDF, save project).
+    - Handles property editing for selected objects (color, font size, etc.).
+
+2.  **`LayerPanel.tsx`** (Left Sidebar)
+    - Manages the layer hierarchy.
+    - Allows reordering, locking, hiding/showing, and renaming layers.
+    - Shows a list of objects within each layer for easy selection.
+
+3.  **`Canvas.tsx`** (Main Workspace)
+    - Renders the PDF using `react-pdf`.
+    - Renders all user-added objects (text, images, SVG paths) on top of the PDF.
+    - Uses `react-rnd` for drag-and-drop and resizing functionality.
+    - Handles mouse events for drawing and selection.
+
+4.  **`PDFUploader.tsx`** (Welcome Screen)
+    - The initial screen for uploading a PDF or loading a JSON project.
+
+### Data Types
+
+- **`client/src/lib/types.ts`**: Defines the TypeScript interfaces for `Layer`, `EditorObject`, `EditorState`, and `EditorAction`. This is the contract for data structures used throughout the app.
+
+## Key Features & Implementation Details
+
+- **PDF Rendering**: Uses `react-pdf` to render PDF pages into a canvas.
+- **Object Manipulation**: `react-rnd` provides the draggable/resizable wrappers for objects.
+- **Drawing**: Implemented using SVG paths. The `Canvas` component tracks mouse movement to generate path data string (`d` attribute).
+- **PDF Export**: Uses `pdf-lib` to generate a new PDF file. It takes the original PDF, embeds it, and draws the user's annotations (text, images, shapes) onto the PDF pages using vector graphics commands.
+
+## Directory Structure
+
+```
+client/src/
+├── components/
+│   ├── editor/       # Core editor components (Canvas, Toolbar, LayerPanel)
+│   └── ui/           # Reusable UI components (Buttons, Dialogs, etc.)
+├── lib/
+│   ├── editor-context.tsx  # Global State (Context + Reducer)
+│   ├── types.ts            # Type definitions
+│   └── utils.ts            # Helper functions
+└── pages/
+    └── home.tsx      # Main entry point for the editor route
+```
+
+```
+
+### DEV_README.md
+```md
+# Developer Guide: Project Structure & File Mapping
+
+This guide provides a detailed overview of the core files in the `pdf-blueprint-layers` repository, their responsibilities, and how they communicate.
+
+## Frontend (client/src)
+
+### Core Logic & State
+1.  **`lib/editor-context.tsx`**: Implementation of the **Split Context** pattern. Defines `DocumentContext` for data and `UIContext` for interface state. Contains the reducers for all project-wide actions.
+2.  **`core/pdf-math.ts`**: The math engine for coordinate transformations. Handles mapping between visual screen coordinates and physical PDF coordinates, accounting for page rotation.
+3.  **`hooks/useExport.ts`**: Orchestrates the export pipeline. Uses `pdf-lib` for flattening annotations into PDFs and `jszip` for project bundling.
+4.  **`hooks/useObjectCreation.ts`**: Centralizes logic for adding new layers, icons, text, and images to the document.
+5.  **`hooks/useAutoSave.ts`**: Monitors changes in `DocumentContext` and automatically syncs the state to the server with debouncing.
+6.  **`hooks/useAuth.ts`**: Manages user session state, login/logout logic, and role-based access helpers.
+
+### Components
+7.  **`components/editor/Canvas/Canvas.tsx`**: The main viewport for PDF rendering and object interaction. Coordinates with `UIContext` for zoom/scroll and `DocumentContext` for rendering objects.
+8.  **`components/editor/Toolbar.tsx`**: Provides the main application tools (select, draw, add text, etc.) and global actions (undo/redo, export, save).
+9.  **`components/editor/LayerPanel.tsx`**: Interface for managing layers (visibility, opacity, locking, and ordering).
+10. **`components/editor/PropertiesPanel.tsx`**: Contextual editor for the selected object's properties (color, size, text content, photos).
+11. **`App.tsx`**: Main entry point that sets up the React Query client, Auth provider, and routing (Login, Home/Editor, Admin).
+
+## Backend (server)
+
+### API & Storage
+12. **`routes.ts`**: Defines all REST API endpoints. Manages the flow between HTTP requests and the storage layer for authentication, project CRUD, and file management.
+13. **`databaseStorage.ts`**: The primary storage implementation using **Drizzle ORM** and **PostgreSQL**. Handles complex queries for shared projects and file metadata.
+14. **`db.ts`**: Initializes the Drizzle database connection using the `postgres` driver.
+15. **`auth.ts`**: Configures **Passport.js** with a local strategy for authentication and defines role-based middleware (`requireRole`).
+
+### Shared
+16. **`shared/schema.ts`**: Single source of truth for the database schema. Defines tables for `users`, `projects`, `project_shares`, and `files` using Drizzle, along with Zod schemas for validation.
+
+## Communication Overview
+*   **State Management**: Local component state is minimized; most logic flows through the `Document` and `UI` contexts via `dispatch`.
+*   **API Interaction**: The frontend uses **TanStack Query** (React Query) to communicate with the Node.js backend.
+*   **File Handling**: Large files (PDFs, images) are uploaded to the `/api/files` endpoint, stored on the filesystem, and tracked via PostgreSQL metadata.
+*   **Security**: Routes are protected by session-based authentication. Role-based checks (Admin, PM, TECH) are enforced both on the frontend (UI visibility) and backend (route middleware).
+
+```
+
+### DOCUMENTATION.md
+```md
+# Pełna Dokumentacja Techniczna: PDF Blueprint Layers Editor
+
+## 1. Struktura Projektu (Directory Structure)
+
+```text
+client/src/
+├── components/         # Komponenty interfejsu użytkownika
+│   ├── editor/         # Główny edytor
+│   │   ├── Canvas/     # Podkomponenty płótna (ObjectRenderer, DrawingLayer, itp.)
+│   │   ├── Canvas.tsx  # Orkiestrator widoku blueprintu
+│   │   ├── Toolbar.tsx # Narzędzia i akcje
+│   │   └── ...         # Panele boczne i uploader
+│   └── ui/             # Bazowe komponenty Shadcn UI
+├── core/               # Czysta logika biznesowa (niezależna od Reacta)
+│   ├── constants.ts    # Globalne stałe
+│   ├── pdf-math.ts     # Transformacje współrzędnych PDF
+│   ├── svg-utils.ts    # Manipulacja wektorami i konwersja obrazów
+│   └── icon-shapes.ts  # Definicje geometrii ikon
+├── hooks/              # Reużywalna logika (Custom Hooks)
+│   ├── useExport.ts    # Silnik generowania plików
+│   ├── useDrawing.ts   # Silnik rysowania odręcznego
+│   └── useObjectCreation.ts # Silnik dodawania elementów
+└── lib/                # Konfiguracja i typy
+    ├── editor-context.tsx # Zarządzanie stanem (Document & UI)
+    ├── types.ts           # Definicje interfejsów TypeScript
+    └── utils.ts           # Narzędzia pomocnicze (np. debounce)
+```
+
+---
+
+## 2. Moduły Core (`src/core/`)
+
+### 2.1. pdf-math.ts
+Służy do tłumaczenia świata "ekranowego" na świat "drukarski" (PDF).
+
+*   **`hexToRgb(hex: string): RGB`**
+    - Konwertuje kolor HEX na obiekt RGB akceptowany przez `pdf-lib`.
+*   **`getPhysicalCoords(vx, vy, pW, pH, rotation)`**
+    - Mapuje współrzędne wizualne edytora na fizyczne punkty PDF (72 DPI).
+    - Uwzględnia rotację strony (`/Rotate`).
+*   **`getVisualDimensions(pW, pH, rotation)`**
+    - Oblicza wymiary "widziane" przez użytkownika na podstawie fizycznego MediaBox i kąta obrotu.
+
+### 2.2. svg-utils.ts
+*   **`scalePath(pathData: string, scale: number): string`**
+    - Przeskalowuje ścieżkę SVG (np. rysunek odręczny) przy zmianie Zoomu bez utraty jakości.
+*   **`svgToPng(svgDataUrl, targetWidth, targetHeight): Promise<string>`**
+    - Renderuje wektor SVG na niewidocznym płótnie i eksportuje jako PNG 300DPI (skala 4x).
+    - Kluczowe dla wstawiania ostrych ikon do dokumentu PDF.
+
+### 2.3. icon-shapes.ts
+*   **`buildIconPath(iconType, w, h, minSide, offX, offY): string | null`**
+    - Zwraca ciąg komend SVG dla danego typu ikony (Square, Camera, Triangle, itp.).
+    - Używane wspólnie przez UI i silnik eksportu.
+
+---
+
+## 3. Zarządzanie Stanem (`src/lib/`)
+
+### 3.1. editor-context.tsx (Context Split Pattern)
+System używa dwóch osobnych kontekstów dla optymalizacji wydajności:
+
+*   **`DocumentContext`**: Przechowuje dane projektu (pliki, warstwy, obiekty).
+*   **`UIContext`**: Przechowuje stan interfejsu (Zoom, Scroll, aktywne narzędzie).
+
+**Kluczowe Akcje Reducera:**
+*   `SET_PDF`: Inicjalizuje projekt z nowym plikiem.
+*   `SET_SCROLL`: Aktualizuje pozycję widoku (używa debouncingu).
+*   `UPDATE_OBJECT`: Implementuje niemutowalną aktualizację parametrów elementu.
+*   `IMPORT_PROJECT`: Wykonuje głęboką synchronizację stanu z pliku JSON.
+
+---
+
+## 4. Custom Hooks (`src/hooks/`)
+
+### 4.1. useExport
+Izoluje ciężkie operacje zapisu.
+*   **`handleExportProject()`**: Generuje JSON zawierający wszystkie warstwy, obiekty, własne ikony i ustawienia.
+*   **`handleFlattenAndDownload()`**: Główny proces budowania PDF. Wykonuje iterację po warstwach, stosuje transformacje macierzy dla każdego obiektu i "wypala" je na stronie.
+
+### 4.2. useObjectCreation
+Zarządza dodawaniem elementów.
+*   **`getCenterPosition(w, h)`**: Zwraca współrzędne `(x, y)` w przestrzeni dokumentu, które znajdują się na środku aktualnie widzianego przez użytkownika obszaru.
+*   **`handleAddIcon(iconType)`**: Tworzy nowy obiekt ikony, automatycznie skalując go względem aktualnego Zoomu.
+
+### 4.3. useDrawing
+Silnik wektorowy.
+*   **`onMouseMove(e)`**: Dynamicznie buduje ciąg `pathData`. Obsługuje przyciąganie do osi (Constraint) przy wciśniętym klawiszu Shift.
+*   **`onMouseUp()`**: Przekształca tymczasową ścieżkę w trwały obiekt typu `path` na aktywnej warstwie.
+
+---
+
+## 5. Kluczowe Komponenty (`src/components/editor/`)
+
+### 5.1. ObjectRenderer.tsx
+Najbardziej interaktywny komponent.
+*   Opakowuje element w `react-rnd`.
+*   **Logika obrotu**: Obsługuje "szarpanie" za uchwyt nad obiektem. Implementuje snapping co 45 stopni.
+*   **Inline Editing**: Używa `contentEditable` dla tekstu, co pozwala na bezpośrednią edycję bez modali.
+*   **Counter-Rotation**: Obraca etykietę o `-angle` obiektu, dzięki czemu napisy pod ikonami są zawsze poziome dla użytkownika.
+
+### 5.2. Canvas.tsx
+Pełni rolę orkiestratora warstw.
+*   Zarządza nakładaniem dokumentu głównego, nakładki (Overlay) oraz warstwy rysunkowej (DrawingLayer).
+*   Implementuje `debounce` dla zdarzenia `onScroll`, co chroni stan przed zbyt częstymi aktualizacjami.
+
+---
+
+## 6. Algorytmy i Logika Biznesowa
+
+### 6.1. System Współrzędnych (Visual vs Physical)
+Aplikacja operuje na dwóch systemach:
+1.  **Visual Space**: 600px szerokości bazowej, Y-down (0,0 w lewym górnym rogu).
+2.  **PDF Space**: Punkty typograficzne (pt), Y-up (0,0 w lewym dolnym rogu).
+
+**Konwersja dla obróconych stron (np. 270°):**
+`px = width - visualY`
+`py = height - visualX`
+*(Szczegółowe wzory znajdują się w `pdf-math.ts`)*.
+
+### 6.2. Word-Wrap w PDF
+Ponieważ biblioteka `pdf-lib` nie obsługuje automatycznego zawijania tekstu, `useExport` implementuje własny algorytm:
+1.  Podział ciągu na słowa.
+2.  Mierzenie szerokości tekstu (`font.widthOfTextAtSize`).
+3.  Przenoszenie słowa do nowej linii po przekroczeniu `maxWidth` ramki obiektu.
+4.  Rysowanie każdej linii jako osobnej instrukcji tekstowej w PDF.
+
+```
+
+### EXPORT_OBJECTS_README.md
+```md
+# PDF Object Export Implementation Details
+
+This document explains the technical implementation of how objects from the React Canvas editor are rendered onto a PDF document during the export process. The core of this logic resides in `client/src/hooks/useExport.ts` and relies on mathematical helpers from `client/src/core/pdf-math.ts`.
+
+## Core Technologies
+- **`pdf-lib`**: The primary library used for manipulating and generating PDF documents. It allows drawing text, vector paths (SVG-like), images, and applying transformation matrices.
+- **React Canvas State**: Objects are defined by their visual state (X/Y coordinates, width, height, rotation, layer index, etc.) on a web canvas. The canvas has a base reference width (`CANVAS_BASE_WIDTH`), usually 1024.
+
+## Core Responsibilities by Module
+
+### 1. `useExport.ts` (The Orchestrator)
+This hook exposes the `handleFlattenAndDownload` function, which performs the actual PDF manipulation.
+- Loads the original PDF document.
+- Retrieves the correct page and its physical dimensions/rotation.
+- Sorts editor objects by their layer depth (z-index) to ensure proper rendering order.
+- Iterates over the objects and calculates scale factors to map canvas sizes to physical PDF page sizes.
+- Depending on the object type (`text`, `icon`/shape, `image`, `path`), uses `pdf-lib` primitives to draw the object.
+
+### 2. `pdf-math.ts` (The Coordinate Engine)
+Because a PDF page might be inherently rotated (e.g., scanned landscape vs portrait), direct X/Y mapping from the canvas to the PDF doesn't always match 1:1.
+- **`getVisualDimensions`**: Determines the logical "visual" width and height of a PDF page taking its native rotation into account.
+- **`getPhysicalCoords`**: Translates a visual X/Y coordinate from the editor into the physical coordinate system required by `pdf-lib`. `pdf-lib` uses a bottom-left origin coordinate system, while the web canvas uses a top-left origin. This function also adjusts the coordinates based on the page's intrinsic rotation (0, 90, 180, 270 degrees).
+
+## The Rendering Process
+
+### 1. Scaling
+The canvas in the browser has a constant base width (`CANVAS_BASE_WIDTH = 1024`). The PDF page has its own physical width (e.g., 595 points for A4). 
+A `scaleFactor` is calculated as `visualPageWidth / CANVAS_BASE_WIDTH`. All object dimensions (width, height, font size, stroke width) from the editor are multiplied by this `scaleFactor` before drawing on the PDF.
+
+### 2. The Current Transformation Matrix (CTM)
+For most objects (like shapes and images), `pdf-lib` handles rotation and positioning efficiently using a transformation matrix.
+Before drawing an object, `useExport.ts` calculates its center coordinate on the physical page (`pCx`, `pCy`). It then uses `page.pushOperators(...)` to apply the transformation:
+1. Translates the origin to the object's center `(pCx, pCy)`.
+2. Rotates the grid by the object's rotation (factoring in the page's native rotation).
+3. Translates back by `-width/2, -height/2` so the top-left corner becomes the drawing origin (0,0) in the local coordinate space.
+
+After the object is drawn at `(0, 0)` in this local space, `page.pushOperators(popGraphicsState())` restores the global coordinate system.
+
+### 3. Object-Specific Rendering Logic
+
+#### Paths (Freehand Drawing)
+Paths are rendered independently of the generic CTM wrapper. The path string (e.g., `M 10 10 L 20 20`) is parsed. Each `M` (move) and `L` (line) coordinate is multiplied by the `scaleFactor` and then mapped to absolute physical coordinates using `getPhysicalCoords`. Lines are then drawn using `page.drawLine()`.
+
+#### Icons and Shapes (`type: 'icon'`)
+Icons like circles, squares, or SVG paths are rendered inside the modified CTM block. 
+- A circle uses `page.drawEllipse()`.
+- Standard icons use a pre-calculated SVG path generated by `buildIconPath` in `core/icon-shapes.ts`, drawn via `page.drawSvgPath()`.
+
+#### Images (`type: 'image'`)
+Images can be base64 PNG/JPG or inline SVGs.
+- SVG images are first rasterized to PNGs using a helper `svgToPng` (`core/svg-utils.ts`) because `pdf-lib` does not natively embed SVG files as images.
+- PNG/JPG files are embedded into the PDF context (`pdfDoc.embedPng` or `embedJpg`).
+- Aspect ratio is calculated, and the image is drawn centrally within the bounding box using `page.drawImage()` inside the CTM block.
+
+#### Text (`type: 'text'`)
+*(Note: Text rendering requires special attention due to how `pdf-lib` processes font matrices vs global transformation matrices).*
+Text requires a font embedding (e.g., `StandardFonts.Helvetica`).
+- The text is split into words to implement basic word-wrapping.
+- Each line is evaluated using `font.widthOfTextAtSize` to see if it exceeds the scaled object width.
+- Lines are drawn line-by-line. To ensure visibility and correct positioning, text is often best rendered using absolute global coordinates (`getPhysicalCoords` on the start of the line, combined with native `rotate` properties of `drawText`) rather than being placed inside a complex CTM `pushOperators` block, which can cause coordinate offsets or clipping bugs in `pdf-lib`.
+
+#### Object Labels (Metadata)
+If an object has a `name` property, it is rendered below the object. This is done **after** the CTM block is popped (`popGraphicsState()`), using absolute physical coordinates to ensure the label is always readable and perfectly aligned to the bottom of the object's visual bounding box, accounting for the page's intrinsic rotation.
+
+```
+
+### README.md
+```md
+# PDF Editor for Network Infrastructure
+
+A specialized React-based application designed for infrastructure workers and IT administrators to mark up building plans, document cable layouts, and manage IDF connections.
+
+## Key Features
+
+### 🏗️ Network Passportization
+- **Properties Panel**: Detailed metadata for every object including:
+  - **Socket ID**: Unique identifier for network points.
+  - **Port Patch Panel**: Documentation of physical connections.
+  - **Purpose**: Categorize points (Data, Mic, CAM, TV).
+- **Object Labels**: Permanent visibility of object names on the canvas for easy identification.
+
+### 📊 Construction Progress Tracking
+- **Status Life Cycle**: Track the installation progress of every point:
+  - `Planned` -> `Cable Pulled` -> `Terminated` -> `Tested` -> `Approved`
+  - `Issue`: Mark and describe problems (e.g., blocked cable runs).
+- **Visual Progress Map**: Toggle **Color by status** to transform the blueprint into a live "heat map" of project completion.
+- **Progress Dashboard**: Real-time stats showing completion percentage and issue counts.
+- **Audit Trail**: Every status change automatically records the technician's name and a timestamp.
+- **Photo Documentation**: Attach multiple photos to any object for visual proof of installation or to document site issues.
+
+### 🔐 Enterprise-Ready Backend
+- **Multi-Tenant Authentication**: Role-based access control (RBAC) with three levels:
+  - **Admin**: Full system control and user management.
+  - **Project Manager (PM)**: Create, edit, and share projects.
+  - **Technician (TECH)**: Preview-only access with status updating capabilities.
+- **Database Persistence**: Robust storage using **PostgreSQL** and **Drizzle ORM**, replacing simple file-based storage.
+- **Project Sharing**: Collaboratively work on blueprints by sharing projects with specific users.
+- **Auto-Save**: Background synchronization ensures no data loss during long editing sessions.
+
+### ⚡ Productivity Tools
+- **Auto-Numbering System**: 
+  - Toggle `#` mode to automatically increment labels.
+  - Configurable prefix (e.g., "IDF1-P1-") and starting number.
+  - Supports efficient click-to-place workflow for rapid deployment.
+- **Deep Zoom**: Zoom up to 1000% for precise placement on detailed technical drawings.
+- **Shortcuts**: Standard Copy (`Ctrl+C`) and Paste (`Ctrl+V`) with smart offset positioning.
+- **Technician Identification**: Simple name-based login for tracking field updates without complex auth.
+
+### 🛠️ Editing Capabilities
+- **Layer Management**: Organize complex plans with multiple layers (create, lock, hide, reorder).
+- **Rich Object Types**: 
+  - Text annotations
+  - Images
+  - Icons (Square, Circle, Triangle, Star, Hexagon, Arrow, **Camera**)
+  - Freehand drawing lines
+- **Transformations**: Resize and rotate objects freely.
+
+### 📄 Export & Output
+- **Smart PDF Export**: 
+  - Generates flattened PDFs ready for printing or sharing.
+  - **Auto-scaled Labels**: Object names are rendered with white backgrounds for maximum readability.
+  - **Configurable Font Size**: User-controlled font size setting for export (1px - 30px) via the Settings menu.
+- **Project Persistence**: Save work-in-progress as JSON project files and resume later (even without the original PDF).
+
+## Getting Started (Local Development)
+
+### Prerequisites
+- Node.js (version 20 or higher)
+- npm (Node Package Manager)
+
+### Installation
+
+1.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
+
+2.  **Start the Development Server**
+    ```bash
+    npm run dev
+    ```
+    The application will be available at `http://localhost:5000`.
+
+3.  **Build for Production**
+    ```bash
+    npm run build
+    ```
+
+## Docker Deployment
+
+You can containerize this application using Docker.
+
+### 1. Build the Docker Image
+```bash
+docker build -t pdf-editor .
+```
+
+### 2. Run the Container
+```bash
+docker run -p 5000:5000 pdf-editor
+```
+Access the application at `http://localhost:5000`.
+
+## Tech Stack
+- **Frontend**: React, Vite, TypeScript, Tailwind CSS, TanStack Query
+- **PDF Handling**: pdf-lib, react-pdf
+- **UI Components**: Shadcn/UI, Lucide React
+- **Backend**: Node.js, Express, Passport.js
+- **Database**: PostgreSQL, Drizzle ORM
+
+```
+
+### architecture.md
+```md
+# Project Architecture: PDF Blueprint Layers
+
+## Overview
+PDF Blueprint Layers is a specialized web application designed for "Network Passportization". It enables users to annotate PDF blueprints with multiple layers of interactive objects (icons, text, images, paths). The system is built for high-precision coordinate tracking, enabling technical teams to map infrastructure with physical accuracy on digital documents.
+
+## State Management: Split Context Pattern
+To ensure high performance and prevent unnecessary re-renders in a complex interactive environment, the application employs a **Split Context** pattern.
+
+### 1. DocumentContext (`DocumentState`)
+*   **Purpose**: Manages persistent, slow-changing project data.
+*   **Data**: Layers, objects (annotations), custom icons, project settings, and auto-numbering configurations.
+*   **Persistence**: Synced with the PostgreSQL backend via Drizzle ORM.
+*   **Usage**: Components like `LayerPanel`, `PropertiesPanel`, and `Toolbar` consume this context to modify the underlying project data.
+
+### 2. UIContext (`UIState`)
+*   **Purpose**: Manages transient, fast-changing interface state.
+*   **Data**: Zoom level, scroll position, active tool, currently selected object ID, and hover states.
+*   **Performance**: High-frequency updates (e.g., during scrolling or dragging) only trigger re-renders in UI-dependent components (like `Canvas` or `ObjectRenderer`), leaving the heavy document tree untouched.
+*   **Usage**: Consumed primarily by the `Canvas` and interactive overlays.
+
+## Coordinate Transformation Logic
+The application bridges the gap between screen-space interaction and physical PDF coordinates using a multi-step transformation pipeline.
+
+### Virtual Coordinate System
+*   **Base Width**: All coordinates are internally stored relative to a `CANVAS_BASE_WIDTH` of 2000px.
+*   **Scaling**: This ensures that annotations remain proportionally correct regardless of the user's screen resolution or the PDF's native page size.
+
+### Mapping Pipeline: Screen to PDF
+1.  **Screen to Virtual**: UI interaction coordinates (Top-Left 0,0) are scaled to the 2000px virtual grid.
+2.  **Rotation Handling**: The `pdf-math.ts` engine accounts for PDF page rotation (0°, 90°, 180°, 270°).
+3.  **Virtual to Physical**: Visual coordinates (Top-Left 0,0) are mapped to PDF Physical coordinates (Bottom-Left 0,0). For a 0° rotation, physical `y = PageHeight - VisualY`.
+
+## Logic Flows
+
+### Object Creation
+1.  **Trigger**: User selects a tool (e.g., "Add Icon") and clicks on the Canvas.
+2.  **Calculation**: `useObjectCreation` hook calculates the virtual coordinates based on the click position and current scroll/zoom.
+3.  **Dispatch**: A `ADD_OBJECT` action is sent to `DocumentContext`.
+4.  **Auto-Save**: The `useAutoSave` hook detects the change and debounces a PUT request to the `/api/projects/:id` endpoint.
+
+### Project Export (PDF & ZIP)
+1.  **Retrieval**: `useExport` hook fetches the latest `DocumentState`.
+2.  **PDF Flattening**:
+    *   Loads the original PDF via `pdf-lib`.
+    *   Iterates through objects, sorting them by layer order.
+    *   Converts virtual coordinates to physical coordinates using `pdf-math.ts`.
+    *   Draws vector shapes (paths, icons) and text directly onto the PDF graphics stream.
+    *   Downloads the resulting "flattened" PDF.
+3.  **Project Bundle**:
+    *   Creates a `JSZip` instance.
+    *   Includes the `project.json` (full state) and all associated assets (original PDF, images).
+    *   Ensures all blob/relative URLs are converted to embedded data for portability.
+
+```
+
+### client/src/core/constants.ts
+```ts
+export const CANVAS_BASE_WIDTH = 600;
+export const CANVAS_BASE_HEIGHT = 800; // Approximated default
+export const DEFAULT_LABEL_FONT_SIZE = 1;
+export const SVG_RENDER_QUALITY_MULTIPLIER = 4;
+
+```
+
+### client/src/core/icon-shapes.ts
+```ts
+/**
+ * Builds SVG path data for various icon types.
+ * Coordinates are relative to the bounding box (w, h) and optional side offsets.
+ */
+export const buildIconPath = (
+  iconType: string, 
+  w: number, 
+  h: number, 
+  minSide: number, 
+  offX: number, 
+  offY: number
+): string | null => {
+  const midX = w / 2;
+  const midY = h / 2;
+  const top = offY + minSide;
+  const bottom = offY;
+  const left = offX;
+  const right = offX + minSide;
+
+  const shapes: Record<string, string> = {
+    square:   `M ${left} ${bottom} L ${right} ${bottom} L ${right} ${top} L ${left} ${top} Z`,
+    triangle: `M ${midX} ${top} L ${right} ${bottom} L ${left} ${bottom} Z`,
+    star:     `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`,
+    heart:    `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`, // Placeholder
+    diamond:  `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`,
+    hexagon:  `M ${left + minSide * 0.25} ${bottom} L ${right - minSide * 0.25} ${bottom} L ${right} ${midY} L ${right - minSide * 0.25} ${top} L ${left + minSide * 0.25} ${top} L ${left} ${midY} Z`,
+    'arrow-right': `M ${left} ${midY - minSide * 0.25} L ${midX} ${midY - minSide * 0.25} L ${midX} ${bottom} L ${right} ${midY} L ${midX} ${top} L ${midX} ${midY + minSide * 0.25} L ${left} ${midY + minSide * 0.25} Z`,
+    camera: `M ${left} ${bottom} L ${right} ${bottom} L ${right} ${bottom + minSide * 0.8} L ${left + minSide * 0.7} ${bottom + minSide * 0.8} L ${left + minSide * 0.6} ${top} L ${left + minSide * 0.4} ${top} L ${left + minSide * 0.3} ${bottom + minSide * 0.8} L ${left} ${bottom + minSide * 0.8} Z`
+  };
+
+  return shapes[iconType] ?? null;
+};
+
+```
+
+### client/src/core/image-compress.ts
+```ts
+/**
+ * Compresses an image file and returns a data URL.
+ * Resizes the image to a maximum width of 1200px and uses JPEG compression at 0.75 quality.
+ */
+export async function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        resolve(dataUrl);
+      };
+      img.onerror = (e) => reject(e);
+    };
+    reader.onerror = (e) => reject(e);
+  });
+}
+
+```
+
+### client/src/core/pdf-math.ts
+```ts
+import {rgb, RGB} from 'pdf-lib';
+
+/**
+ * Converts hex color string to PDF-lib RGB object.
+ */
+export const hexToRgb = (hex: string): RGB => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? rgb(
+    parseInt(result[1], 16) / 255,
+    parseInt(result[2], 16) / 255,
+    parseInt(result[3], 16) / 255
+  ) : rgb(0, 0, 0);
+};
+
+/**
+ * Maps visual coordinates from the editor to physical PDF coordinates
+ * based on the page rotation attribute.
+ */
+export const getPhysicalCoords = (
+  vx: number, 
+  vy: number, 
+  pW: number, 
+  pH: number, 
+  rotation: number
+): { x: number; y: number } => {
+  switch (rotation) {
+    case 90: 
+      return { x: vy, y: vx };
+    case 180: 
+      return { x: pW - vx, y: vy };
+    case 270: 
+      return { x: pW - vy, y: pH - vx };
+    case 0:
+    default: 
+      return { x: vx, y: pH - vy };
+  }
+};
+
+/**
+ * Calculates visual dimensions based on physical size and rotation.
+ */
+export const getVisualDimensions = (pW: number, pH: number, rotation: number) => {
+  return (rotation === 90 || rotation === 270) 
+    ? { vW: pH, vH: pW } 
+    : { vW: pW, vH: pH };
+};
+
+```
+
+### client/src/core/svg-utils.ts
+```ts
+import {SVG_RENDER_QUALITY_MULTIPLIER} from './constants';
+
+/**
+ * Scales an SVG path string by a given factor.
+ */
+export const scalePath = (pathData: string, scale: number): string => {
+  if (!pathData) return '';
+  return pathData
+    .split(' ')
+    .map((val) => {
+      if (['M', 'L', 'Z'].includes(val)) return val;
+      const num = parseFloat(val);
+      return isNaN(num) ? val : (num * scale).toString();
+    })
+    .join(' ');
+};
+
+/**
+ * Converts SVG Data URL to PNG Data URL for PDF embedding.
+ * Uses target dimensions and quality multiplier for optimized results.
+ * Supports optional color tinting (simulates CSS mask-image behavior).
+ */
+export const svgToPng = (
+  svgDataUrl: string, 
+  targetWidth: number, 
+  targetHeight: number, 
+  color?: string
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const renderW = targetWidth * SVG_RENDER_QUALITY_MULTIPLIER;
+      const renderH = targetHeight * SVG_RENDER_QUALITY_MULTIPLIER;
+      canvas.width = renderW;
+      canvas.height = renderH;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      
+      ctx.clearRect(0, 0, renderW, renderH);
+      
+      if (color) {
+        // Use a temporary canvas to render the original SVG first
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = renderW;
+        tempCanvas.height = renderH;
+        const tCtx = tempCanvas.getContext('2d');
+        if (tCtx) {
+          tCtx.drawImage(img, 0, 0, renderW, renderH);
+          
+          // Apply color tinting using globalCompositeOperation (same as mask-image)
+          ctx.fillStyle = color;
+          ctx.fillRect(0, 0, renderW, renderH);
+          ctx.globalCompositeOperation = 'destination-in';
+          ctx.drawImage(tempCanvas, 0, 0);
+        } else {
+          ctx.drawImage(img, 0, 0, renderW, renderH);
+        }
+      } else {
+        ctx.drawImage(img, 0, 0, renderW, renderH);
+      }
+      
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Failed to load SVG for conversion'));
+    img.src = svgDataUrl;
+  });
+};
+
+```
+
+### client/src/hooks/useAuth.ts
+```ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, getQueryFn } from "../lib/queryClient";
+import { User, InsertUser } from "@shared/schema";
+
+export function useCurrentUser() {
+  return useQuery<User | null>({
+    queryKey: ["/api/auth/me"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: false,
+  });
+}
+
+export function useLogin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (credentials: InsertUser) => {
+      const res = await apiRequest("POST", "/api/auth/login", credentials);
+      return await res.json();
+    },
+    onSuccess: (user: User) => {
+      queryClient.setQueryData(["/api/auth/me"], user);
+    },
+  });
+}
+
+export function useLogout() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/auth/me"], null);
+      queryClient.removeQueries({ queryKey: ["/api/projects"] });
+    },
+  });
+}
+
+export function useRegister() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (credentials: InsertUser) => {
+      const res = await apiRequest("POST", "/api/auth/register", credentials);
+      return await res.json();
+    },
+    onSuccess: (user: User) => {
+      queryClient.setQueryData(["/api/auth/me"], user);
+    },
+  });
+}
+
+export function useAdminUsers() {
+  return useQuery<Array<{ id: string; username: string; role: string; createdAt: string }>>({
+    queryKey: ["/api/admin/users"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
+}
+
+export function useUpdateUserRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      await apiRequest("PUT", `/api/admin/users/${userId}/role`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+  });
+}
+
+export function useUpdateUserPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      await apiRequest("PUT", `/api/admin/users/${userId}/password`, { password });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+  });
+}
+
+```
+
+### postcss.config.js
+```js
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+```
+
+## Your output — respond with ONLY valid JSON, no markdown fences, no explanation
+
+{
+  "summary": "1-2 sentence description of the approach",
+  "plan": [
+    {
+      "step": 1,
+      "title": "short title",
+      "description": "what exactly needs to be done",
+      "files_affected": ["path/to/file.py"],
+      "type": "CREATE | MODIFY | DELETE"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "Verifiable criterion — specific, no vague language",
+      "how_to_verify": "exact method: function signature, test name, file existence, etc."
+    }
+  ],
+  "risks": ["potential issue 1", "potential issue 2"]
+}
+
+Rules for acceptance_criteria:
+- Each criterion must be independently verifiable by reading code
+- NO criteria like "code is clean" or "works correctly" — too vague
+- GOOD: "Function `process_items` in `utils.py` accepts a `List[str]` and returns `List[dict]`"
+- GOOD: "File `legacy_handler.py` has been deleted"
+- GOOD: "All existing tests in `tests/` pass"
+- Maximum 8 criteria

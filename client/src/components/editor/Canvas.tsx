@@ -217,12 +217,29 @@ export const Canvas = () => {
           )}
 
           <OverlayDocument />
-          <DrawingLayer drawingPath={drawingPath} isDrawing={isDrawing} />
+          <DrawingLayer 
+            drawingPath={drawingPath} 
+            isDrawing={isDrawing} 
+            objects={state.objects}
+            layers={state.layers}
+            scale={state.scale}
+            selectedObjectIds={state.selectedObjectIds}
+          />
 
           {state.objects.map((obj) => {
             const layer = state.layers.find(l => l.id === obj.layerId);
             if (!layer?.visible || obj.type === 'path') return null;
-            return <ObjectRenderer key={obj.id} obj={obj} layer={layer} />;
+            return (
+              <ObjectRenderer 
+                key={obj.id} 
+                obj={obj} 
+                layer={layer} 
+                scale={state.scale}
+                tool={state.tool}
+                selectedObjectIds={state.selectedObjectIds}
+                showStatusColors={state.showStatusColors}
+              />
+            );
           })}
         </div>
       </div>

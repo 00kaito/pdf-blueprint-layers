@@ -1,7 +1,7 @@
-import React, {useState} from 'react';
+import React, {useState, memo} from 'react';
 import {Rnd} from 'react-rnd';
 import {ArrowRight, Camera, Circle, Heart, Hexagon, RotateCw, Square, Star, Triangle} from 'lucide-react';
-import {useDocument, useUI} from '@/lib/editor-context';
+import {useDocumentDispatch, useUIDispatch} from '@/lib/editor-context';
 import {useTouchGestures} from '@/hooks/useTouchGestures';
 import {cn} from '@/lib/utils';
 import {EditorObject, Layer} from '@/lib/types';
@@ -10,6 +10,10 @@ import {useCurrentUser} from '@/hooks/useAuth';
 interface ObjectRendererProps {
   obj: EditorObject;
   layer: Layer;
+  scale: number;
+  tool: string;
+  selectedObjectIds: string[];
+  showStatusColors: boolean;
 }
 
 const IconRenderer = ({ iconType, color }: { iconType: string, color?: string }) => {
@@ -50,28 +54,37 @@ const getStatusCategoryColor = (status?: string) => {
   }
 };
 
-export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
+export const ObjectRenderer = memo(({ 
+  obj, 
+  layer, 
+  scale, 
+  tool, 
+  selectedObjectIds, 
+  showStatusColors 
+}: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
-  const { dispatch } = useDocument();
-  const { state: uiState } = useUI();
+  const dispatch = useDocumentDispatch();
+  const uiDispatch = useUIDispatch();
   const [isRotating, setIsRotating] = useState(false);
+
+  const isSelected = selectedObjectIds.includes(obj.id);
 
   const touchGestures = useTouchGestures({
     onTap: () => {
-      dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+      uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
     },
     onDoubleTap: () => {
-      dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
-      dispatch({ type: 'OPEN_OBJECT_DETAILS' });
+      uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+      uiDispatch({ type: 'OPEN_OBJECT_DETAILS' });
     },
     onLongPress: () => {
-      dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
-      dispatch({ type: 'OPEN_OBJECT_DETAILS' });
+      uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+      uiDispatch({ type: 'OPEN_OBJECT_DETAILS' });
     },
   });
 
-  const displayColor = uiState.showStatusColors && obj.type !== 'text'
+  const displayColor = showStatusColors && obj.type !== 'text'
     ? (getStatusCategoryColor(obj.status) || obj.color || '#000000')
     : (obj.color || '#000000');
   
@@ -83,7 +96,6 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
     e.preventDefault();
     setIsRotating(true);
 
-    // Get center of the object in screen coordinates
     const rect = e.currentTarget.parentElement?.getBoundingClientRect();
     if (!rect) return;
     
@@ -148,11 +160,11 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
   return (
     <Rnd
       key={obj.id}
-      position={{ x: obj.x * uiState.scale, y: obj.y * uiState.scale }}
-      size={{ width: obj.width * uiState.scale, height: obj.height * uiState.scale }}
+      position={{ x: obj.x * scale, y: obj.y * scale }}
+      size={{ width: obj.width * scale, height: obj.height * scale }}
       onDragStop={(e: any, d) => {
         if (isTech) return;
-        dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: d.x / uiState.scale, y: d.y / uiState.scale } } });
+        dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: d.x / scale, y: d.y / scale } } });
       }}
       onResizeStop={(e: any, dir, ref, delta, pos) => {
         if (isTech) return;
@@ -161,10 +173,10 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
           payload: { 
             id: obj.id, 
             updates: { 
-              width: parseFloat(ref.style.width) / uiState.scale, 
-              height: parseFloat(ref.style.height) / uiState.scale, 
-              x: pos.x / uiState.scale, 
-              y: pos.y / uiState.scale 
+              width: parseFloat(ref.style.width) / scale, 
+              height: parseFloat(ref.style.height) / scale, 
+              x: pos.x / scale, 
+              y: pos.y / scale 
             } 
           } 
         });
@@ -172,15 +184,15 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       onClick={(e: any) => {
         e.stopPropagation();
         if (e.ctrlKey || e.metaKey) {
-          dispatch({ type: 'TOGGLE_OBJECT_SELECTION', payload: obj.id });
+          uiDispatch({ type: 'TOGGLE_OBJECT_SELECTION', payload: obj.id });
         } else {
-          dispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+          uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
         }
       }}
       scale={1}
       bounds="parent"
-      disableDragging={isTech || layer.locked || uiState.tool !== 'select' || isRotating}
-      enableResizing={isTech ? {} : (!layer.locked && uiState.selectedObjectIds.includes(obj.id))}
+      disableDragging={isTech || layer.locked || tool !== 'select' || isRotating}
+      enableResizing={isTech ? {} : (!layer.locked && isSelected)}
       resizeHandleClasses={{
         bottomRight: "bg-primary w-2 h-2 rounded-full",
         bottomLeft:  "bg-primary w-2 h-2 rounded-full",
@@ -189,12 +201,12 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       }}
       className={cn(
         "group z-20",
-        uiState.selectedObjectIds.includes(obj.id) ? "ring-1 ring-primary ring-offset-1" : "",
+        isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         layer.locked ? "pointer-events-none" : "cursor-move"
       )}
-      style={{ opacity: obj.opacity ?? 1, zIndex: uiState.selectedObjectIds.includes(obj.id) ? 30 : 20 }}
+      style={{ opacity: obj.opacity ?? 1, zIndex: isSelected ? 30 : 20 }}
     >
-      {uiState.selectedObjectIds.includes(obj.id) && !layer.locked && (
+      {isSelected && !layer.locked && (
         <div 
           className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 hover:scale-110 transition-transform"
           onMouseDown={handleRotationMouseDown}
@@ -212,8 +224,8 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
           {obj.type === 'text' && (
             <div 
               className={cn("w-full h-full p-1 break-words overflow-hidden outline-none", obj.fontWeight === 'bold' ? 'font-bold' : '')} 
-              style={{ fontSize: (obj.fontSize || 16) * uiState.scale, color: displayColor }}
-              contentEditable={isTech ? false : (uiState.tool === 'text')}
+              style={{ fontSize: (obj.fontSize || 16) * scale, color: displayColor }}
+              contentEditable={isTech ? false : (tool === 'text')}
               suppressContentEditableWarning
               onDoubleClick={(e) => {
                 if (isTech) e.stopPropagation();
@@ -267,4 +279,6 @@ export const ObjectRenderer = ({ obj, layer }: ObjectRendererProps) => {
       </div>
     </Rnd>
   );
-};
+});
+
+ObjectRenderer.displayName = 'ObjectRenderer';

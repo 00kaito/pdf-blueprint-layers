@@ -1,0 +1,95 @@
+{
+  "summary": "Optimizing application performance and architecture by splitting React contexts to prevent unnecessary re-renders and decomposing the massive Toolbar component into manageable sub-components.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Context Splitting Implementation",
+      "description": "Split DocumentContext and UIContext into separate State and Dispatch contexts in editor-context.tsx. This ensures that components only needing dispatch (like ObjectRenderer) don't re-render on every state change.",
+      "files_affected": [
+        "client/src/lib/editor-context.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Component Performance Optimization",
+      "description": "Memoize ObjectRenderer and DrawingLayer using React.memo. Update them to consume granular dispatch hooks and pass only necessary state props to minimize re-render cycles during high-frequency UI updates.",
+      "files_affected": [
+        "client/src/components/editor/Canvas/ObjectRenderer.tsx",
+        "client/src/components/editor/Canvas/DrawingLayer.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Toolbar Decomposition",
+      "description": "Refactor Toolbar.tsx by extracting ObjectPropertyEditor, ZoomControls, and ProjectActions into separate sub-components to reduce file size and improve re-render boundaries.",
+      "files_affected": [
+        "client/src/components/editor/Toolbar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Codebase Cleanup and Constants Alignment",
+      "description": "Replace hardcoded width in OverlayDocument.tsx with CANVAS_BASE_WIDTH, remove deprecated useEditor hook, and move magic strings/numbers from hooks and components to core/constants.ts.",
+      "files_affected": [
+        "client/src/components/editor/Canvas/OverlayDocument.tsx",
+        "client/src/lib/editor-context.tsx",
+        "client/src/core/constants.ts",
+        "client/src/hooks/useObjectCreation.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 5,
+      "title": "Asset and Logic Polish",
+      "description": "Implement proper SVG path for the heart icon in icon-shapes.ts and ensure all core logic uses centralized constants.",
+      "files_affected": [
+        "client/src/core/icon-shapes.ts"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "DocumentDispatchContext and UIDispatchContext are defined and exported in editor-context.tsx",
+      "how_to_verify": "Check client/src/lib/editor-context.tsx for these context definitions."
+    },
+    {
+      "id": "c2",
+      "description": "ObjectRenderer is wrapped in React.memo and uses useDocumentDispatch/useUIDispatch hooks",
+      "how_to_verify": "Examine client/src/components/editor/Canvas/ObjectRenderer.tsx for React.memo usage."
+    },
+    {
+      "id": "c3",
+      "description": "OverlayDocument uses CANVAS_BASE_WIDTH instead of hardcoded 600",
+      "how_to_verify": "Check line 18 of client/src/components/editor/Canvas/OverlayDocument.tsx."
+    },
+    {
+      "id": "c4",
+      "description": "useEditor hook is removed from the codebase",
+      "how_to_verify": "Grep for useEditor in client/src/lib/editor-context.tsx."
+    },
+    {
+      "id": "c5",
+      "description": "Toolbar.tsx file size is reduced by at least 30% by moving logic to sub-components",
+      "how_to_verify": "Compare line count of Toolbar.tsx before and after refactoring."
+    },
+    {
+      "id": "c6",
+      "description": "Heart icon in icon-shapes.ts has a unique SVG path, distinct from diamond",
+      "how_to_verify": "Check the 'heart' entry in the shapes record in client/src/core/icon-shapes.ts."
+    },
+    {
+      "id": "c7",
+      "description": "All existing tests or type checks (npm run check) pass",
+      "how_to_verify": "Execute 'npm run check' in the terminal."
+    }
+  ],
+  "risks": [
+    "Context splitting might break components that rely on the combined state/dispatch object if not handled with proper backward-compatible hooks.",
+    "Memoization might cause stale closures if dependencies are not correctly tracked in hooks or memo comparison functions."
+  ]
+}

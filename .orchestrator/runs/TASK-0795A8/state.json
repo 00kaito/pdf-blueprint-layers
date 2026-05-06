@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-0795A8",
+  "description": "Przeanalizuj aplikacje pod katem architektury - w szczegolnosci pliki architecture.md, DEV_README.md oraz readme.md i wprowadz usprawnienia optymalizacyjne kodu, ktore poprawia dzialanie aplikacji jednak skup sie na askeptach krytycznych, nie szukaj optymalizacji ktore wymagaja duzo nakladow pracy a w efekcie nie zmienia wiele",
+  "title": "Przeanalizuj aplikacje pod katem architektury - w szczegolnosci pliki architecture.md, DEV_README.md",
+  "status": "ANALYZING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "DocumentDispatchContext and UIDispatchContext are defined and exported in editor-context.tsx",
+      "how_to_verify": "Check client/src/lib/editor-context.tsx for these context definitions.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "ObjectRenderer is wrapped in React.memo and uses useDocumentDispatch/useUIDispatch hooks",
+      "how_to_verify": "Examine client/src/components/editor/Canvas/ObjectRenderer.tsx for React.memo usage.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "OverlayDocument uses CANVAS_BASE_WIDTH instead of hardcoded 600",
+      "how_to_verify": "Check line 18 of client/src/components/editor/Canvas/OverlayDocument.tsx.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "useEditor hook is removed from the codebase",
+      "how_to_verify": "Grep for useEditor in client/src/lib/editor-context.tsx.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "Toolbar.tsx file size is reduced by at least 30% by moving logic to sub-components",
+      "how_to_verify": "Compare line count of Toolbar.tsx before and after refactoring.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c6",
+      "description": "Heart icon in icon-shapes.ts has a unique SVG path, distinct from diamond",
+      "how_to_verify": "Check the 'heart' entry in the shapes record in client/src/core/icon-shapes.ts.",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c7",
+      "description": "All existing tests or type checks (npm run check) pass",
+      "how_to_verify": "Execute 'npm run check' in the terminal.",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Optimizing application performance and architecture by splitting React contexts to prevent unnecessary re-renders and decomposing the massive Toolbar component into manageable sub-components.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Context Splitting Implementation\",\n      \"description\": \"Split DocumentContext and UIContext into separate State and Dispatch contexts in editor-context.tsx. This ensures that components only needing dispatch (like ObjectRenderer) don't re-render on every state change.\",\n      \"files_affected\": [\n        \"client/src/lib/editor-context.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Component Performance Optimization\",\n      \"description\": \"Memoize ObjectRenderer and DrawingLayer using React.memo. Update them to consume granular dispatch hooks and pass only necessary state props to minimize re-render cycles during high-frequency UI updates.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Canvas/ObjectRenderer.tsx\",\n        \"client/src/components/editor/Canvas/DrawingLayer.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Toolbar Decomposition\",\n      \"description\": \"Refactor Toolbar.tsx by extracting ObjectPropertyEditor, ZoomControls, and ProjectActions into separate sub-components to reduce file size and improve re-render boundaries.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Toolbar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 4,\n      \"title\": \"Codebase Cleanup and Constants Alignment\",\n      \"description\": \"Replace hardcoded width in OverlayDocument.tsx with CANVAS_BASE_WIDTH, remove deprecated useEditor hook, and move magic strings/numbers from hooks and components to core/constants.ts.\",\n      \"files_affected\": [\n        \"client/src/components/editor/Canvas/OverlayDocument.tsx\",\n        \"client/src/lib/editor-context.tsx\",\n        \"client/src/core/constants.ts\",\n        \"client/src/hooks/useObjectCreation.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 5,\n      \"title\": \"Asset and Logic Polish\",\n      \"description\": \"Implement proper SVG path for the heart icon in icon-shapes.ts and ensure all core logic uses centralized constants.\",\n      \"files_affected\": [\n        \"client/src/core/icon-shapes.ts\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"DocumentDispatchContext and UIDispatchContext are defined and exported in editor-context.tsx\",\n      \"how_to_verify\": \"Check client/src/lib/editor-context.tsx for these context definitions.\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"ObjectRenderer is wrapped in React.memo and uses useDocumentDispatch/useUIDispatch hooks\",\n      \"how_to_verify\": \"Examine client/src/components/editor/Canvas/ObjectRenderer.tsx for React.memo usage.\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"OverlayDocument uses CANVAS_BASE_WIDTH instead of hardcoded 600\",\n      \"how_to_verify\": \"Check line 18 of client/src/components/editor/Canvas/OverlayDocument.tsx.\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"useEditor hook is removed from the codebase\",\n      \"how_to_verify\": \"Grep for useEditor in client/src/lib/editor-context.tsx.\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"Toolbar.tsx file size is reduced by at least 30% by moving logic to sub-components\",\n      \"how_to_verify\": \"Compare line count of Toolbar.tsx before and after refactoring.\"\n    },\n    {\n      \"id\": \"c6\",\n      \"description\": \"Heart icon in icon-shapes.ts has a unique SVG path, distinct from diamond\",\n      \"how_to_verify\": \"Check the 'heart' entry in the shapes record in client/src/core/icon-shapes.ts.\"\n    },\n    {\n      \"id\": \"c7\",\n      \"description\": \"All existing tests or type checks (npm run check) pass\",\n      \"how_to_verify\": \"Execute 'npm run check' in the terminal.\"\n    }\n  ],\n  \"risks\": [\n    \"Context splitting might break components that rely on the combined state/dispatch object if not handled with proper backward-compatible hooks.\",\n    \"Memoization might cause stale closures if dependencies are not correctly tracked in hooks or memo comparison functions.\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "a0419bec21917d25f220440c186adacb64ea3604",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777993668.4096606,
+  "updated_at": 1778064290.2974014
+}

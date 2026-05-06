@@ -1,0 +1,18 @@
+{
+  "task_id": "TASK-A30E37",
+  "description": "obecnie gest przyblizenia i oddalenia przesuwa skala (suwakiem ktory znajduje sie w gornej czesci strony) - wyeleminuj to dzialanie, gest nie powinien poruszac tym suwakiem",
+  "title": "obecnie gest przyblizenia i oddalenia przesuwa skala (suwakiem ktory znajduje sie w gornej czesci st",
+  "status": "FAILED",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [],
+  "history": [],
+  "architect_plan": "",
+  "last_diff": "",
+  "task_start_sha": "00a4ec72e14c6962902203d7e387ddac2a4ce834",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1777980649.1078236,
+  "updated_at": 1777984271.7258618
+}

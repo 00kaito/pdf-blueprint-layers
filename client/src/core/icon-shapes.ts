@@ -21,7 +21,7 @@ export const buildIconPath = (
     square:   `M ${left} ${bottom} L ${right} ${bottom} L ${right} ${top} L ${left} ${top} Z`,
     triangle: `M ${midX} ${top} L ${right} ${bottom} L ${left} ${bottom} Z`,
     star:     `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`,
-    heart:    `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`, // Placeholder
+    heart:    `M ${midX} ${bottom} C ${left} ${midY} ${left} ${top} ${midX} ${top} C ${right} ${top} ${right} ${midY} ${midX} ${bottom} Z`,
     diamond:  `M ${midX} ${top} L ${right} ${midY} L ${midX} ${bottom} L ${left} ${midY} Z`,
     hexagon:  `M ${left + minSide * 0.25} ${bottom} L ${right - minSide * 0.25} ${bottom} L ${right} ${midY} L ${right - minSide * 0.25} ${top} L ${left + minSide * 0.25} ${top} L ${left} ${midY} Z`,
     'arrow-right': `M ${left} ${midY - minSide * 0.25} L ${midX} ${midY - minSide * 0.25} L ${midX} ${bottom} L ${right} ${midY} L ${midX} ${top} L ${midX} ${midY + minSide * 0.25} L ${left} ${midY + minSide * 0.25} Z`,

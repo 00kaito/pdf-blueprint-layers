@@ -360,80 +360,77 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
   }
 };
 
-const DocumentContext = createContext<{
-  state: DocumentState;
-  dispatch: React.Dispatch<EditorAction>;
-} | null>(null);
-
-const UIContext = createContext<{
-  state: UIState;
-  dispatch: React.Dispatch<EditorAction>;
-} | null>(null);
+export const DocumentStateContext = createContext<DocumentState | null>(null);
+export const DocumentDispatchContext = createContext<React.Dispatch<EditorAction> | null>(null);
+export const UIStateContext = createContext<UIState | null>(null);
+export const UIDispatchContext = createContext<React.Dispatch<EditorAction> | null>(null);
 
 export const EditorProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(editorReducer, initialState);
 
-  const documentValue = useMemo(() => ({
-    state: {
-      projectId: state.projectId,
-      pdfFileId: state.pdfFileId,
-      overlayPdfFileId: state.overlayPdfFileId,
-      pdfFile: state.pdfFile,
-      overlayPdfFile: state.overlayPdfFile,
-      overlayOpacity: state.overlayOpacity,
-      layers: state.layers,
-      objects: state.objects,
-      clipboardObjects: state.clipboardObjects,
-      autoNumbering: state.autoNumbering,
-      exportSettings: state.exportSettings,
-      customIcons: state.customIcons,
-      pdfCanvasHeight: state.pdfCanvasHeight,
-    },
-    dispatch
-  }), [state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight, dispatch]);
+  const documentState = useMemo(() => ({
+    projectId: state.projectId,
+    pdfFileId: state.pdfFileId,
+    overlayPdfFileId: state.overlayPdfFileId,
+    pdfFile: state.pdfFile,
+    overlayPdfFile: state.overlayPdfFile,
+    overlayOpacity: state.overlayOpacity,
+    layers: state.layers,
+    objects: state.objects,
+    clipboardObjects: state.clipboardObjects,
+    autoNumbering: state.autoNumbering,
+    exportSettings: state.exportSettings,
+    customIcons: state.customIcons,
+    pdfCanvasHeight: state.pdfCanvasHeight,
+  }), [state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight]);
 
-  const uiValue = useMemo(() => ({
-    state: {
-      selectedObjectIds: state.selectedObjectIds,
-      activeLayerId: state.activeLayerId,
-      currentPage: state.currentPage,
-      scale: state.scale,
-      scrollPos: state.scrollPos,
-      tool: state.tool,
-      showStatusColors: state.showStatusColors,
-      objectDetailsOpen: state.objectDetailsOpen,
-    },
-    dispatch
-  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, dispatch]);
+  const uiState = useMemo(() => ({
+    selectedObjectIds: state.selectedObjectIds,
+    activeLayerId: state.activeLayerId,
+    currentPage: state.currentPage,
+    scale: state.scale,
+    scrollPos: state.scrollPos,
+    tool: state.tool,
+    showStatusColors: state.showStatusColors,
+    objectDetailsOpen: state.objectDetailsOpen,
+  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen]);
 
   return (
-    <DocumentContext.Provider value={documentValue}>
-      <UIContext.Provider value={uiValue}>
-        {children}
-      </UIContext.Provider>
-    </DocumentContext.Provider>
+    <DocumentStateContext.Provider value={documentState}>
+      <DocumentDispatchContext.Provider value={dispatch}>
+        <UIStateContext.Provider value={uiState}>
+          <UIDispatchContext.Provider value={dispatch}>
+            {children}
+          </UIDispatchContext.Provider>
+        </UIStateContext.Provider>
+      </DocumentDispatchContext.Provider>
+    </DocumentStateContext.Provider>
   );
 };
 
 export const useDocument = () => {
-  const context = useContext(DocumentContext);
-  if (!context) throw new Error('useDocument must be used within EditorProvider');
+  const state = useContext(DocumentStateContext);
+  const dispatch = useContext(DocumentDispatchContext);
+  if (!state || !dispatch) throw new Error('useDocument must be used within EditorProvider');
+  return { state, dispatch };
+};
+
+export const useDocumentDispatch = () => {
+  const context = useContext(DocumentDispatchContext);
+  if (!context) throw new Error('useDocumentDispatch must be used within EditorProvider');
   return context;
 };
 
 export const useUI = () => {
-  const context = useContext(UIContext);
-  if (!context) throw new Error('useUI must be used within EditorProvider');
-  return context;
+  const state = useContext(UIStateContext);
+  const dispatch = useContext(UIDispatchContext);
+  if (!state || !dispatch) throw new Error('useUI must be used within EditorProvider');
+  return { state, dispatch };
 };
 
-// Kept for backward compatibility during migration
-export const useEditor = () => {
-  const doc = useDocument();
-  const ui = useUI();
-  return {
-    state: { ...doc.state, ...ui.state } as EditorState,
-    dispatch: doc.dispatch
-  };
+export const useUIDispatch = () => {
+  const context = useContext(UIDispatchContext);
+  if (!context) throw new Error('useUIDispatch must be used within EditorProvider');
+  return context;
 };
 
