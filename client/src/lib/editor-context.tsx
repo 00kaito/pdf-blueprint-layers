@@ -34,7 +34,8 @@ const initialUIState: UIState = {
   scrollPos: { x: 0, y: 0 },
   tool: 'select',
   showStatusColors: false,
-  objectDetailsOpen: false
+  objectDetailsOpen: false,
+  isImporting: false
 };
 
 const initialState: EditorState = {
@@ -353,6 +354,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       };
     case 'TOGGLE_STATUS_COLORS':
       return { ...state, showStatusColors: !state.showStatusColors };
+    case 'SET_IMPORTING':
+      return { ...state, isImporting: action.payload };
     case 'RESET_EDITOR':
       return { ...state, ...initialDocumentState };
     default:
@@ -393,7 +396,8 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     tool: state.tool,
     showStatusColors: state.showStatusColors,
     objectDetailsOpen: state.objectDetailsOpen,
-  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen]);
+    isImporting: state.isImporting,
+  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

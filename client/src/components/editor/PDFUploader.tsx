@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings, User } from 'lucide-react';
 import { useImport } from '@/hooks/useImport';
 import { useProjectList, useCreateProject, useDeleteProject, useShareProject, useUploadFile } from '@/hooks/useProjects';
-import { useDocument } from '@/lib/editor-context';
+import { useDocument, useUI } from '@/lib/editor-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import { Link } from 'wouter';
 export const PDFUploader = () => {
   const { handleFileImport } = useImport();
   const { dispatch } = useDocument();
+  const { state: uiState } = useUI();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
   const { data: projects, isLoading } = useProjectList();
@@ -93,6 +94,7 @@ export const PDFUploader = () => {
   };
 
   const handleOpenProject = async (projectId: string) => {
+    dispatch({ type: 'SET_IMPORTING', payload: true });
     try {
       const res = await apiRequest("GET", `/api/projects/${projectId}`);
       const state = await res.json();
@@ -121,6 +123,8 @@ export const PDFUploader = () => {
       
     } catch (e: any) {
       toast({ variant: "destructive", title: "Failed to open project", description: e.message });
+    } finally {
+      dispatch({ type: 'SET_IMPORTING', payload: false });
     }
   };
 
@@ -140,6 +144,13 @@ export const PDFUploader = () => {
 
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col p-4 md:p-8">
+      {uiState.isImporting && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-xl font-semibold">Loading Project...</p>
+          <p className="text-muted-foreground text-sm">Processing large files may take a moment</p>
+        </div>
+      )}
       <div className="max-w-6xl mx-auto w-full space-y-8">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">

@@ -16,6 +16,7 @@ export const useImport = () => {
   };
 
   const handleZipImport = async (zipFile: File) => {
+    dispatch({ type: 'SET_IMPORTING', payload: true });
     try {
       const zip = await JSZip.loadAsync(zipFile);
       const jsonFile = zip.file('project.json');
@@ -87,10 +88,13 @@ export const useImport = () => {
     } catch (error) {
       console.error("Error importing ZIP:", error);
       alert("Failed to import project ZIP");
+    } finally {
+      dispatch({ type: 'SET_IMPORTING', payload: false });
     }
   };
 
   const handleDirectoryImport = async (files: FileList | File[]) => {
+    dispatch({ type: 'SET_IMPORTING', payload: true });
     try {
       const fileArray = Array.from(files);
       const assetCache = new Map<string, string>();
@@ -159,6 +163,8 @@ export const useImport = () => {
     } catch (error) {
       console.error("Error importing directory:", error);
       alert("Failed to import project directory");
+    } finally {
+      dispatch({ type: 'SET_IMPORTING', payload: false });
     }
   };
 
@@ -175,14 +181,22 @@ export const useImport = () => {
 
     // Handle single file uploads
     if (firstFile.name.endsWith('.pdf')) {
-      dispatch({ type: 'SET_PDF', payload: firstFile });
+      dispatch({ type: 'SET_IMPORTING', payload: true });
+      try {
+        dispatch({ type: 'SET_PDF', payload: firstFile });
+      } finally {
+        dispatch({ type: 'SET_IMPORTING', payload: false });
+      }
     } else if (firstFile.name.endsWith('.json')) {
+      dispatch({ type: 'SET_IMPORTING', payload: true });
       try {
         const text = await firstFile.text();
         const projectData = JSON.parse(text);
         dispatch({ type: 'IMPORT_PROJECT', payload: projectData });
       } catch (e) {
         alert("Invalid project JSON");
+      } finally {
+        dispatch({ type: 'SET_IMPORTING', payload: false });
       }
     } else if (firstFile.name.endsWith('.zip')) {
       await handleZipImport(firstFile);

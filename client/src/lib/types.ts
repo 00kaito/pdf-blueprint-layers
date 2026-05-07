@@ -75,6 +75,7 @@ export type UIState = {
   tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp';
   showStatusColors: boolean;
   objectDetailsOpen: boolean;
+  isImporting: boolean;
 };
 
 export type EditorState = DocumentState & UIState;
@@ -118,4 +119,5 @@ export type EditorAction =
   | { type: 'ADD_OBJECT_PHOTO'; payload: { id: string; photoDataUrl: string } }
   | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } }
   | { type: 'TOGGLE_STATUS_COLORS' }
+  | { type: 'SET_IMPORTING'; payload: boolean }
   | { type: 'RESET_EDITOR' };
