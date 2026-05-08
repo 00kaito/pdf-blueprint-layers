@@ -145,6 +145,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
       type: 'REMOVE_OBJECT_PHOTO',
       payload: { id: objectId, index: photoToDelete },
     });
+    handleSave(true);
     
     if (lightboxIndex === photoToDelete) {
       setLightboxIndex(null);

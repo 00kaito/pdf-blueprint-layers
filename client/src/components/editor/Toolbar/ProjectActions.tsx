@@ -48,16 +48,16 @@ export const ProjectActions = ({
 
   if (isMobile) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {pdfFile && (
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => handleSave()} 
             disabled={isManualSaving}
-            className="h-8 w-8 p-0"
+            className="h-10 w-10 p-0"
           >
-            {isManualSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isManualSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           </Button>
         )}
         
@@ -65,18 +65,18 @@ export const ProjectActions = ({
           variant="ghost" 
           size="sm" 
           onClick={handleFlattenAndDownload}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0"
         >
-          <Download className="w-4 h-4 text-primary" />
+          <Download className="w-5 h-5 text-primary" />
         </Button>
 
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={handleExportProject}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0"
         >
-          <Archive className="w-4 h-4 text-amber-600" />
+          <Archive className="w-5 h-5 text-amber-600" />
         </Button>
       </div>
     );

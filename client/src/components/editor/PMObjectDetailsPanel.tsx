@@ -81,10 +81,10 @@ export const PMObjectDetailsPanel: React.FC = () => {
               <Button
                 key={s.id}
                 variant="outline"
-                size="sm"
+                size="default"
                 className={cn(
-                  "h-9 text-[11px] px-2 justify-start gap-2 font-bold uppercase tracking-tight",
-                  selectedObject.status === s.id ? "ring-2 ring-primary ring-offset-1 bg-primary/5" : ""
+                  "h-11 text-[12px] px-3 justify-start gap-2.5 font-black uppercase tracking-tight shadow-sm",
+                  selectedObject.status === s.id ? "ring-2 ring-primary ring-offset-1 bg-primary text-primary-foreground shadow-md" : "bg-background"
                 )}
                 onClick={() => {
                   dispatch({

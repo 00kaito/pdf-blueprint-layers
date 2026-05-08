@@ -22,17 +22,21 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   return (
     <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-between shrink-0">
       <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => dispatch({ type: 'RESET_EDITOR' })}
-          className="flex items-center gap-1 -ml-2"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          {!isMobile && <span>Projects</span>}
-        </Button>
+        {!isMobile && (
+          <>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => dispatch({ type: 'RESET_EDITOR' })}
+              className="flex items-center gap-1 -ml-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Projects</span>
+            </Button>
 
-        <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="h-6" />
+          </>
+        )}
 
         {!isMobile && (
           <div className="flex items-center gap-4">
@@ -47,17 +51,17 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           </div>
         )}
 
-        {isSaving !== undefined && docState.projectId && !isTech && (
+        {isSaving !== undefined && docState.projectId && !isTech && !isMobile && (
           <div className="flex items-center gap-2 px-2 md:px-3 py-1 rounded-full bg-muted/50 text-[10px] font-medium text-muted-foreground transition-all">
             {isSaving ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
-                {!isMobile && <span>Saving...</span>}
+                <span>Saving...</span>
               </>
             ) : (
               <>
                 <Check className="h-3 w-3 text-green-500" />
-                {!isMobile && <span>Saved</span>}
+                <span>Saved</span>
               </>
             )}
           </div>
