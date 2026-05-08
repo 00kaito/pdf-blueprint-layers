@@ -14,6 +14,7 @@ interface ObjectRendererProps {
   tool: string;
   selectedObjectIds: string[];
   showStatusColors: boolean;
+  disableMovement?: boolean;
 }
 
 const IconRenderer = ({ iconType, color }: { iconType: string, color?: string }) => {
@@ -60,7 +61,8 @@ export const ObjectRenderer = memo(({
   scale, 
   tool, 
   selectedObjectIds, 
-  showStatusColors 
+  showStatusColors,
+  disableMovement 
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -91,7 +93,7 @@ export const ObjectRenderer = memo(({
   const indicatorColor = obj.type !== 'text' ? getStatusColor(obj.status) : null;
 
   const handleRotationMouseDown = (e: React.MouseEvent) => {
-    if (isTech) return;
+    if (isTech || disableMovement) return;
     e.stopPropagation();
     e.preventDefault();
     setIsRotating(true);
@@ -123,7 +125,7 @@ export const ObjectRenderer = memo(({
   };
 
   const handleRotationTouchStart = (e: React.TouchEvent) => {
-    if (isTech) return;
+    if (isTech || disableMovement) return;
     e.stopPropagation();
     setIsRotating(true);
 
@@ -163,11 +165,11 @@ export const ObjectRenderer = memo(({
       position={{ x: obj.x * scale, y: obj.y * scale }}
       size={{ width: obj.width * scale, height: obj.height * scale }}
       onDragStop={(e: any, d) => {
-        if (isTech) return;
+        if (isTech || disableMovement) return;
         dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: d.x / scale, y: d.y / scale } } });
       }}
       onResizeStop={(e: any, dir, ref, delta, pos) => {
-        if (isTech) return;
+        if (isTech || disableMovement) return;
         dispatch({ 
           type: 'UPDATE_OBJECT', 
           payload: { 
@@ -177,7 +179,7 @@ export const ObjectRenderer = memo(({
               height: parseFloat(ref.style.height) / scale, 
               x: pos.x / scale, 
               y: pos.y / scale 
-            } 
+            }
           } 
         });
       }}
@@ -191,8 +193,8 @@ export const ObjectRenderer = memo(({
       }}
       scale={1}
       bounds="parent"
-      disableDragging={isTech || layer.locked || tool !== 'select' || isRotating}
-      enableResizing={isTech ? {} : (!layer.locked && isSelected)}
+      disableDragging={disableMovement || isTech || layer.locked || tool !== 'select' || isRotating}
+      enableResizing={isTech || disableMovement ? {} : (!layer.locked && isSelected)}
       resizeHandleClasses={{
         bottomRight: "bg-primary w-2 h-2 rounded-full",
         bottomLeft:  "bg-primary w-2 h-2 rounded-full",
@@ -206,7 +208,7 @@ export const ObjectRenderer = memo(({
       )}
       style={{ opacity: obj.opacity ?? 1, zIndex: isSelected ? 30 : 20 }}
     >
-      {isSelected && !layer.locked && (
+      {isSelected && !layer.locked && !disableMovement && (
         <div 
           className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 hover:scale-110 transition-transform"
           onMouseDown={handleRotationMouseDown}
@@ -225,13 +227,13 @@ export const ObjectRenderer = memo(({
             <div 
               className={cn("w-full h-full p-1 break-words overflow-hidden outline-none", obj.fontWeight === 'bold' ? 'font-bold' : '')} 
               style={{ fontSize: (obj.fontSize || 16) * scale, color: displayColor }}
-              contentEditable={isTech ? false : (tool === 'text')}
+              contentEditable={isTech || disableMovement ? false : (tool === 'text')}
               suppressContentEditableWarning
               onDoubleClick={(e) => {
-                if (isTech) e.stopPropagation();
+                if (isTech || disableMovement) e.stopPropagation();
               }}
               onBlur={(e) => {
-                if (isTech) return;
+                if (isTech || disableMovement) return;
                 dispatch({ 
                   type: 'UPDATE_OBJECT', 
                   payload: { id: obj.id, updates: { content: e.currentTarget.textContent || '' } } 

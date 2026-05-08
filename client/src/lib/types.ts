@@ -37,6 +37,7 @@ export type EditorObject = {
   statusUpdatedBy?: string;
   issueDescription?: string;
   comments?: string[];
+  notes?: string;
 };
 
 export type DocumentState = {

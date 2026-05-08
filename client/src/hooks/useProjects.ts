@@ -42,9 +42,25 @@ export function useDeleteProject() {
 }
 
 export function useShareProject() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, username }: { id: string; username: string }) => {
       await apiRequest("POST", `/api/projects/${id}/share`, { username });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    },
+  });
+}
+
+export function useRenameProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      await apiRequest("PATCH", `/api/projects/${id}`, { name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
     },
   });
 }

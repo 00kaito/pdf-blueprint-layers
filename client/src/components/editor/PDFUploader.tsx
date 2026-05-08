@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings, User } from 'lucide-react';
+import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings, User, Edit2 } from 'lucide-react';
 import { useImport } from '@/hooks/useImport';
-import { useProjectList, useCreateProject, useDeleteProject, useShareProject, useUploadFile } from '@/hooks/useProjects';
+import { useProjectList, useCreateProject, useDeleteProject, useShareProject, useUploadFile, useRenameProject } from '@/hooks/useProjects';
 import { useDocument, useUI } from '@/lib/editor-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ export const PDFUploader = () => {
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const shareProject = useShareProject();
+  const renameProject = useRenameProject();
   const uploadFile = useUploadFile();
   const logout = useLogout();
   const { toast } = useToast();
@@ -36,6 +37,9 @@ export const PDFUploader = () => {
   
   const [shareUsername, setShareUsername] = useState("");
   const [sharingProjectId, setSharingProjectId] = useState<string | null>(null);
+  
+  const [renameName, setRenameName] = useState("");
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
 
   const dirInputRef = useRef<HTMLInputElement>(null);
 
@@ -140,6 +144,18 @@ export const PDFUploader = () => {
     }
   };
 
+  const handleRename = async () => {
+    if (!renamingProjectId) return;
+    try {
+      await renameProject.mutateAsync({ id: renamingProjectId, name: renameName });
+      toast({ title: "Project renamed", description: "Project name updated successfully" });
+      setRenameName("");
+      setRenamingProjectId(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Rename failed", description: e.message });
+    }
+  };
+
   console.log('[PDFUploader] Rendering. User:', user ? { username: user.username, role: user.role } : 'null');
 
   return (
@@ -154,7 +170,7 @@ export const PDFUploader = () => {
       <div className="max-w-6xl mx-auto w-full space-y-8">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">PDF Blueprint Editor</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Blueprint Manager</h1>
             <p className="text-muted-foreground">Welcome back, {user?.username}. Manage your blueprint projects.</p>
           </div>
           <div className="flex items-center gap-2">
@@ -247,6 +263,16 @@ export const PDFUploader = () => {
                     <div className="flex items-center gap-2">
                       {!isTech && (
                         <>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => {
+                              setRenamingProjectId(project.id);
+                              setRenameName(project.name);
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => setSharingProjectId(project.id)}>
                             <Share2 className="h-4 w-4" />
                           </Button>
@@ -326,6 +352,27 @@ export const PDFUploader = () => {
             </div>
             <Button className="w-full" onClick={handleShare} disabled={!shareUsername || shareProject.isPending}>
               {shareProject.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Share"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!renamingProjectId} onOpenChange={(open) => !open && setRenamingProjectId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Project</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rename-name">New Project Name</Label>
+              <Input 
+                id="rename-name" 
+                value={renameName}
+                onChange={e => setRenameName(e.target.value)}
+              />
+            </div>
+            <Button className="w-full" onClick={handleRename} disabled={!renameName || renameProject.isPending}>
+              {renameProject.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Rename"}
             </Button>
           </div>
         </DialogContent>

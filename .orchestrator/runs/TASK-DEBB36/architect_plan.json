@@ -1,0 +1,91 @@
+{
+  "summary": "Create a read-only mobile view for Project Managers (PMs) that disables object movement but allows editing details like labels, photos, and a new notes field via a mobile-friendly bottom panel.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Update Object Data Structure",
+      "description": "Add an optional 'notes' field to the 'EditorObject' type definition to store notes for an object.",
+      "files_affected": [
+        "client/src/lib/types.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Create Mobile PM Details Panel",
+      "description": "Create a new component `PMObjectDetailsPanel.tsx`. This component will be a drawer/sheet that displays when a PM on a mobile device selects an object. It will contain UI for editing the object's label (name), managing photos (reusing `ObjectPhotoGallery.tsx`), and editing the new 'notes' field.",
+      "files_affected": [
+        "client/src/components/editor/PMObjectDetailsPanel.tsx"
+      ],
+      "type": "CREATE"
+    },
+    {
+      "step": 3,
+      "title": "Disable Object Movement for Mobile PMs",
+      "description": "Modify `ObjectRenderer.tsx` to accept a prop that disables dragging. This will be used to make objects non-movable for PMs on mobile. The component will conditionally pass the `disableDragging` prop to the underlying `react-rnd` component.",
+      "files_affected": [
+        "client/src/components/editor/Canvas/ObjectRenderer.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Integrate Role-Based View Logic",
+      "description": "In `Canvas.tsx`, use the existing `useAuth` and `use-mobile` hooks to determine if the current user is a PM on a mobile device. If so, pass the movement-disabling prop to `ObjectRenderer`.",
+      "files_affected": [
+        "client/src/components/editor/Canvas.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 5,
+      "title": "Display the Mobile Panel",
+      "description": "Modify `MobileBottomBar.tsx` to conditionally render the new `PMObjectDetailsPanel.tsx`. The panel should become visible when an object is selected by a PM on a mobile device, providing the interface for edits.",
+      "files_affected": [
+        "client/src/components/editor/MobileBottomBar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 6,
+      "title": "Update State Reducer",
+      "description": "Update the `editorReducer` in `editor-context.tsx` to handle an action for updating the new `notes` field on an object, ensuring changes are saved to the application state.",
+      "files_affected": [
+        "client/src/lib/editor-context.tsx"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "The `EditorObject` interface in `client/src/lib/types.ts` includes a new optional property `notes: string`.",
+      "how_to_verify": "Read the `EditorObject` type in `client/src/lib/types.ts`."
+    },
+    {
+      "id": "c2",
+      "description": "A new file `client/src/components/editor/PMObjectDetailsPanel.tsx` exists and exports a React component.",
+      "how_to_verify": "Check for the existence and content of `client/src/components/editor/PMObjectDetailsPanel.tsx`."
+    },
+    {
+      "id": "c3",
+      "description": "The `Rnd` component within `ObjectRenderer.tsx` has its `disableDragging` prop set based on a new prop passed into the `ObjectRenderer` component.",
+      "how_to_verify": "Inspect the `Rnd` element in `client/src/components/editor/Canvas/ObjectRenderer.tsx`."
+    },
+    {
+      "id": "c4",
+      "description": "`MobileBottomBar.tsx` imports and renders `PMObjectDetailsPanel.tsx` when an object is selected and the user is a mobile PM.",
+      "how_to_verify": "Read the code in `client/src/components/editor/MobileBottomBar.tsx` to verify conditional rendering logic."
+    },
+    {
+      "id": "c5",
+      "description": "The main reducer in `editor-context.tsx` contains a case to handle an action that updates the `notes` field of an object.",
+      "how_to_verify": "Examine the `editorReducer` function in `client/src/lib/editor-context.tsx`."
+    }
+  ],
+  "risks": [
+    "The existing mobile UI (`MobileBottomBar.tsx`) might have a layout that conflicts with a new details panel, requiring refactoring.",
+    "The `ObjectPhotoGallery.tsx` component may not be easily reusable without modification, potentially increasing implementation time.",
+    "Ensuring that only movement is disabled, while selection and other interactions remain functional, might be complex within the `react-rnd` component."
+  ]
+}

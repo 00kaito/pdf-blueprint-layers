@@ -13,6 +13,7 @@ import {ObjectRenderer} from './Canvas/ObjectRenderer';
 import {DrawingLayer} from './Canvas/DrawingLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import {useCurrentUser} from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -24,6 +25,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 export const Canvas = () => {
   const { data: user } = useCurrentUser();
+  const isMobile = useIsMobile();
   const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
@@ -229,6 +231,7 @@ export const Canvas = () => {
           {state.objects.map((obj) => {
             const layer = state.layers.find(l => l.id === obj.layerId);
             if (!layer?.visible || obj.type === 'path') return null;
+            const disableMovement = isMobile && user?.role === 'PM';
             return (
               <ObjectRenderer 
                 key={obj.id} 
@@ -238,6 +241,7 @@ export const Canvas = () => {
                 tool={state.tool}
                 selectedObjectIds={state.selectedObjectIds}
                 showStatusColors={state.showStatusColors}
+                disableMovement={disableMovement}
               />
             );
           })}

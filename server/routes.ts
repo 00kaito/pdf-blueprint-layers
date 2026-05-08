@@ -140,6 +140,21 @@ export async function registerRoutes(
     res.sendStatus(200);
   });
 
+  app.patch("/api/projects/:id", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (project.ownerId !== req.user!.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ message: "Name is required" });
+    
+    console.log(`[Project] Renaming project ${req.params.id} to "${name}" by user ${req.user!.username}`);
+    await storage.updateProject(req.params.id, { name });
+    res.sendStatus(200);
+  });
+
   // File Routes
   app.post("/api/files", requireAuth, requireRole('PM', 'admin'), upload.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
