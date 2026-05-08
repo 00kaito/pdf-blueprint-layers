@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-D4DE4F",
+  "description": "Kiedy rozwijasz szczegoly obiekty w widoku na telefon zwin pasek szybkiego dostepu (ten pasek gdzie znajduje sie checkbox by status), w pasku szybkiego dostepu tam gdzi jest przycisk PHOTO napisz w nawiasie ile zdjec juz  jest dodanych dla danego obiektu, abym nie musial rozwijac szczegolow. Kiedy wejde w galerie zdjec na telefonie nie moge jej zamknac, moge tylko usunac zdjecie. Daj mozliwosc zamkniecia galerii",
+  "title": "Kiedy rozwijasz szczegoly obiekty w widoku na telefon zwin pasek szybkiego dostepu (ten pasek gdzie ",
+  "status": "IMPLEMENTING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "MobileBottomBar has a boolean state `isDrawerOpen` initialized to false, updated via Drawer's `onOpenChange` prop",
+      "how_to_verify": "Read MobileBottomBar.tsx and verify useState for isDrawerOpen and onOpenChange callback on Drawer component",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c2",
+      "description": "The status buttons row (lines 168-210 area) is conditionally rendered only when `!isDrawerOpen`",
+      "how_to_verify": "Read MobileBottomBar.tsx and verify the status row section has `{!isDrawerOpen && isPM && selectedObject && ...}` conditional",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c3",
+      "description": "A Dialog wraps ObjectPhotoGallery and renders when `isGalleryOpen` is true, with `onOpenChange` bound to `setIsGalleryOpen`",
+      "how_to_verify": "Read MobileBottomBar.tsx and find Dialog component with open={isGalleryOpen} containing ObjectPhotoGallery",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c4",
+      "description": "ObjectPhotoGallery lightbox Dialog (line 286 area) contains an explicit Button with X icon for closing, positioned at top-right with min size h-10 w-10",
+      "how_to_verify": "Read ObjectPhotoGallery.tsx and verify close button inside DialogContent with X icon and appropriate sizing",
+      "status": "PENDING",
+      "evidence": null
+    },
+    {
+      "id": "c5",
+      "description": "TypeScript type checking passes with `npm run check`",
+      "how_to_verify": "Run `npm run check` and verify no type errors",
+      "status": "PENDING",
+      "evidence": null
+    }
+  ],
+  "history": [],
+  "architect_plan": "{\n  \"summary\": \"Implement three mobile UX improvements: (1) collapse quick access bar when object details drawer is open, (2) fix the gallery button to actually open a gallery dialog with close functionality, and (3) add a visible close button to the photo lightbox on mobile.\",\n  \"plan\": [\n    {\n      \"step\": 1,\n      \"title\": \"Track drawer open state in MobileBottomBar\",\n      \"description\": \"Add state to track when the Drawer is open. Use the Drawer's onOpenChange callback to track open/close state. When the drawer is open, hide the status buttons row at the bottom of MobileBottomBar.\",\n      \"files_affected\": [\n        \"client/src/components/editor/MobileBottomBar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 2,\n      \"title\": \"Implement gallery dialog in MobileBottomBar\",\n      \"description\": \"The isGalleryOpen state exists but is never used. Add a Dialog component that renders ObjectPhotoGallery when isGalleryOpen is true. Include a close button and proper dialog header. Pass onClose callback to close the dialog.\",\n      \"files_affected\": [\n        \"client/src/components/editor/MobileBottomBar.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    },\n    {\n      \"step\": 3,\n      \"title\": \"Add visible close button to photo lightbox\",\n      \"description\": \"In ObjectPhotoGallery, add an explicit X close button to the lightbox Dialog that's clearly visible on mobile. Position it in the top-right corner with sufficient tap target size (at least 44x44px for mobile accessibility).\",\n      \"files_affected\": [\n        \"client/src/components/editor/ObjectPhotoGallery.tsx\"\n      ],\n      \"type\": \"MODIFY\"\n    }\n  ],\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"c1\",\n      \"description\": \"MobileBottomBar has a boolean state `isDrawerOpen` initialized to false, updated via Drawer's `onOpenChange` prop\",\n      \"how_to_verify\": \"Read MobileBottomBar.tsx and verify useState for isDrawerOpen and onOpenChange callback on Drawer component\"\n    },\n    {\n      \"id\": \"c2\",\n      \"description\": \"The status buttons row (lines 168-210 area) is conditionally rendered only when `!isDrawerOpen`\",\n      \"how_to_verify\": \"Read MobileBottomBar.tsx and verify the status row section has `{!isDrawerOpen && isPM && selectedObject && ...}` conditional\"\n    },\n    {\n      \"id\": \"c3\",\n      \"description\": \"A Dialog wraps ObjectPhotoGallery and renders when `isGalleryOpen` is true, with `onOpenChange` bound to `setIsGalleryOpen`\",\n      \"how_to_verify\": \"Read MobileBottomBar.tsx and find Dialog component with open={isGalleryOpen} containing ObjectPhotoGallery\"\n    },\n    {\n      \"id\": \"c4\",\n      \"description\": \"ObjectPhotoGallery lightbox Dialog (line 286 area) contains an explicit Button with X icon for closing, positioned at top-right with min size h-10 w-10\",\n      \"how_to_verify\": \"Read ObjectPhotoGallery.tsx and verify close button inside DialogContent with X icon and appropriate sizing\"\n    },\n    {\n      \"id\": \"c5\",\n      \"description\": \"TypeScript type checking passes with `npm run check`\",\n      \"how_to_verify\": \"Run `npm run check` and verify no type errors\"\n    }\n  ],\n  \"risks\": [\n    \"Drawer component from shadcn/ui may not expose onOpenChange or may have different API - need to verify component signature\",\n    \"The gallery dialog might conflict with existing Drawer z-index layering\",\n    \"Photo count is already displayed on the PHOTO button (line 151) so that part of the request is already implemented\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "b1baff8d640413d651ab6ac9488ddef1f4139500",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1778249942.422042,
+  "updated_at": 1778251911.6706483
+}

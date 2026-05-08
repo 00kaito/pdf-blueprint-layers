@@ -50,6 +50,7 @@ export const MobileBottomBar: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
@@ -99,7 +100,7 @@ export const MobileBottomBar: React.FC = () => {
 
   // PM version
   return (
-    <Drawer>
+    <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-auto flex flex-col py-1">
         <div className="flex items-center px-4 justify-between h-24">
           <div className="flex items-center gap-4 min-w-0 mr-2">
@@ -165,7 +166,7 @@ export const MobileBottomBar: React.FC = () => {
           </div>
         </div>
 
-        {isPM && selectedObject && selectedObject.type !== 'path' && (
+        {!isDrawerOpen && isPM && selectedObject && selectedObject.type !== 'path' && (
           <div className="px-4 pb-4 pt-3 border-t border-border shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden bg-muted/20">
             <div className="flex items-center gap-3 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
               {[
@@ -218,6 +219,22 @@ export const MobileBottomBar: React.FC = () => {
             <PMObjectDetailsPanel />
         </DrawerContent>
       )}
+
+      <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle>Object Photos</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 max-h-[70vh] overflow-y-auto">
+            {selectedObject && (
+              <ObjectPhotoGallery 
+                objectId={selectedObject.id} 
+                photos={selectedObject.photos || []} 
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Drawer>
   );
 };

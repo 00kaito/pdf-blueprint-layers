@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Camera, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, AlertCircle, X } from 'lucide-react';
 import { compressImage } from '@/core/image-compress';
 import { useUploadFile } from '@/hooks/useProjects';
 import { useManualSave } from '@/hooks/useManualSave';
@@ -321,8 +321,17 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
                   </>
                 )}
                 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-4 right-4 h-11 w-11 text-white hover:bg-white/20 z-50 rounded-full"
+                  onClick={closeLightbox}
+                >
+                  <X className="h-8 w-8" />
+                </Button>
+
                 <button
-                  className="absolute top-4 right-12 p-2 bg-black/50 text-white rounded-full hover:bg-red-500/80 transition-colors"
+                  className="absolute top-4 right-16 p-2 bg-black/50 text-white rounded-full hover:bg-red-500/80 transition-colors"
                   onClick={() => confirmDelete(lightboxIndex)}
                 >
                   <Trash2 className="h-5 w-5" />

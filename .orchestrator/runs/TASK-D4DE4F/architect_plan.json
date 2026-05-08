@@ -1,0 +1,64 @@
+{
+  "summary": "Implement three mobile UX improvements: (1) collapse quick access bar when object details drawer is open, (2) fix the gallery button to actually open a gallery dialog with close functionality, and (3) add a visible close button to the photo lightbox on mobile.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Track drawer open state in MobileBottomBar",
+      "description": "Add state to track when the Drawer is open. Use the Drawer's onOpenChange callback to track open/close state. When the drawer is open, hide the status buttons row at the bottom of MobileBottomBar.",
+      "files_affected": [
+        "client/src/components/editor/MobileBottomBar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Implement gallery dialog in MobileBottomBar",
+      "description": "The isGalleryOpen state exists but is never used. Add a Dialog component that renders ObjectPhotoGallery when isGalleryOpen is true. Include a close button and proper dialog header. Pass onClose callback to close the dialog.",
+      "files_affected": [
+        "client/src/components/editor/MobileBottomBar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Add visible close button to photo lightbox",
+      "description": "In ObjectPhotoGallery, add an explicit X close button to the lightbox Dialog that's clearly visible on mobile. Position it in the top-right corner with sufficient tap target size (at least 44x44px for mobile accessibility).",
+      "files_affected": [
+        "client/src/components/editor/ObjectPhotoGallery.tsx"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "MobileBottomBar has a boolean state `isDrawerOpen` initialized to false, updated via Drawer's `onOpenChange` prop",
+      "how_to_verify": "Read MobileBottomBar.tsx and verify useState for isDrawerOpen and onOpenChange callback on Drawer component"
+    },
+    {
+      "id": "c2",
+      "description": "The status buttons row (lines 168-210 area) is conditionally rendered only when `!isDrawerOpen`",
+      "how_to_verify": "Read MobileBottomBar.tsx and verify the status row section has `{!isDrawerOpen && isPM && selectedObject && ...}` conditional"
+    },
+    {
+      "id": "c3",
+      "description": "A Dialog wraps ObjectPhotoGallery and renders when `isGalleryOpen` is true, with `onOpenChange` bound to `setIsGalleryOpen`",
+      "how_to_verify": "Read MobileBottomBar.tsx and find Dialog component with open={isGalleryOpen} containing ObjectPhotoGallery"
+    },
+    {
+      "id": "c4",
+      "description": "ObjectPhotoGallery lightbox Dialog (line 286 area) contains an explicit Button with X icon for closing, positioned at top-right with min size h-10 w-10",
+      "how_to_verify": "Read ObjectPhotoGallery.tsx and verify close button inside DialogContent with X icon and appropriate sizing"
+    },
+    {
+      "id": "c5",
+      "description": "TypeScript type checking passes with `npm run check`",
+      "how_to_verify": "Run `npm run check` and verify no type errors"
+    }
+  ],
+  "risks": [
+    "Drawer component from shadcn/ui may not expose onOpenChange or may have different API - need to verify component signature",
+    "The gallery dialog might conflict with existing Drawer z-index layering",
+    "Photo count is already displayed on the PHOTO button (line 151) so that part of the request is already implemented"
+  ]
+}
