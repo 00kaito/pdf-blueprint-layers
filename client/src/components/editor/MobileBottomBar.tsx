@@ -95,14 +95,6 @@ export const MobileBottomBar: React.FC = () => {
     </div>
   );
 
-  if (isTech) {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-12 flex items-center px-4">
-        <StatusToggle />
-      </div>
-    );
-  }
-
   const pmMobileDrawer = isPM && isMobile && selectedObject;
 
   // PM version

@@ -230,3 +230,107 @@ npm run check
 
 ---
 
+## IMPLEMENTING — iter 3 — 2026-05-08 10:28:25
+
+### Developer
+
+**Fix context passed to Developer:**
+```
+Root cause: The 'Photo' button label in `MobileBottomBar.tsx` is hardcoded as 'Photo' and does not include the dynamic count of existing photos for the selected object, which was explicitly requested by the tester for the mobile view.
+
+Fix steps:
+  1. Update the 'Photo' button label in `client/src/components/editor/MobileBottomBar.tsx` by changing the static 'Photo' text to `Photo ({selectedObject?.photos?.length || 0})` to show the current gallery size. (files: client/src/components/editor/MobileBottomBar.tsx)
+  2. Enhance the 'Photos' header in `client/src/components/editor/ObjectPhotoGallery.tsx` to also include the count `({photos.length})` for consistency across the detailed PM view and the properties panel. (files: client/src/components/editor/ObjectPhotoGallery.tsx)
+
+Key fix: Add the dynamic photo count in parentheses to the 'Photo' button label in `MobileBottomBar.tsx` using the `selectedObject.photos.length` property.
+```
+
+**Git diff:** .orchestrator/orchestrator.db                      | Bin 724992 -> 724992 bytes
+ .orchestrator/runs/TASK-886B2E/conversation.md     | 132 +++++++++++
+ .orchestrator/runs/TASK-886B2E/orchestrator.log    | 248 +++++++++++++++++++++
+ .orchestrator/runs/TASK-886B2E/state.json          |  19 +-
+ client/src/components/editor/MobileBottomBar.tsx   |   2 +-
+ .../src/components/editor/ObjectPhotoGallery.tsx   |   2 +-
+ implementation_report.md                           |  34 +--
+ 7 files changed, 408 insertions(+), 29 deletions(-)
+
+**Implementation Report:**
+
+# Implementation Report — Iteration 3
+
+## Changes made
+- **Added dynamic photo count to mobile photo button**: Updated the 'Photo' button label in `client/src/components/editor/MobileBottomBar.tsx` to include the count of photos for the selected object: `Photo ({selectedObject?.photos?.length || 0})`.
+- **Enhanced gallery header with photo count**: Updated the 'Photos' header in `client/src/components/editor/ObjectPhotoGallery.tsx` to display the photo count: `Photos ({photos.length})`. This ensures consistency across the detailed PM view and the properties panel.
+- **Minimized mobile toolbar**: Verified that only 'Save Project', 'Export ZIP', and 'Export PDF' actions are visible on mobile.
+- **Enabled auto-save for photo uploads**: Verified that `handleSave(true)` is triggered automatically after each successful photo upload in both `MobileBottomBar.tsx` and `ObjectPhotoGallery.tsx`.
+- **Enabled auto-save for status changes**: Verified that `handleSave(true)` is triggered after status updates in the mobile quick-access bar and the `PMObjectDetailsPanel.tsx`.
+- **Improved PM quick-access bar**: Verified that the bar is enlarged (`h-20` for main part, `h-12` for status buttons) and includes direct status change buttons for the PM role.
+- **Verified type safety**: Ran `npm run check` (tsc) to ensure no regressions or type errors were introduced.
+
+## Files affected
+- MODIFIED: `client/src/components/editor/MobileBottomBar.tsx`
+- MODIFIED: `client/src/components/editor/ObjectPhotoGallery.tsx`
+
+## Deviations from plan
+None
+
+## Potential issues
+None
+
+<details>
+<summary>Developer stdout (raw)</summary>
+
+```
+I have completed the requested changes for Iteration 3.
+
+### Summary of Changes:
+- **Dynamic Photo Counts**:
+    - Updated the 'Photo' button in `MobileBottomBar.tsx` to display the current number of photos: `Photo ({count})`.
+    - Enhanced the 'Photos' header in `ObjectPhotoGallery.tsx` to include the count: `Photos ({count})`. This ensures consistency across the PM detail view and the properties panel.
+- **Mobile Toolbar & Actions**:
+    - Confirmed the mobile toolbar is minimized, showing only essential actions: **Save Project**, **Export ZIP**, and **Export PDF**.
+- **Auto-save Implementation**:
+    - Verified that auto-save (`handleSave(true)`) is automatically triggered after every photo upload and status change, preventing data loss.
+- **PM Quick-Access Enhancements**:
+    - Verified the enlarged mobile quick-access bar for PMs, including direct status change buttons for better accessibility.
+- **Validation**:
+    - Successfully verified type safety by running `npm run check` (`tsc`).
+
+I have documented these changes in the `implementation_report.md` file in the project root.
+
+```
+</details>
+
+---
+
+## REVIEWING — iter 3 — 2026-05-08 10:31:27
+
+### Reviewer
+
+**Overall:** 🔄 CHANGES_REQUESTED
+
+**Criteria:**
+- ✅ `[c1]` **DONE** — In client/src/components/editor/Toolbar.tsx, ToolSelector and ObjectPropertyEditor are hidden when isMobile is true (lines 29-40).  
+  *confidence:* HIGH
+- ✅ `[c2]` **DONE** — In client/src/components/editor/Toolbar/ProjectActions.tsx (lines 48-82), the mobile view returns a div with exactly three buttons: Save Project (handleSave), Export PDF (handleFlattenAndDownload), and Export ZIP (handleExportProject).  
+  *confidence:* HIGH
+- ✅ `[c3]` **DONE** — handleSave(true) is called after ADD_OBJECT_PHOTO dispatch in client/src/components/editor/MobileBottomBar.tsx (line 75) and client/src/components/editor/ObjectPhotoGallery.tsx (line 103).  
+  *confidence:* HIGH
+- ✅ `[c4]` **DONE** — client/src/components/editor/MobileBottomBar.tsx (lines 173-214) renders a scrollable list of status buttons for PMs, which trigger UPDATE_OBJECTS and handleSave(true).  
+  *confidence:* HIGH
+- ✅ `[c5]` **DONE** — In MobileBottomBar.tsx, the bar height is h-20 (line 113) and the status buttons are h-12 (line 184), significantly larger than standard controls for better touch targets.  
+  *confidence:* HIGH
+- ✅ `[c6]` **DONE** — MobileBottomBar.tsx displays 'Photo ({selectedObject?.photos?.length || 0})' (line 159). ObjectPhotoGallery.tsx displays 'Photos ({photos.length})' (line 166).  
+  *confidence:* HIGH
+
+**Blocking issues:**
+- 🚫 The early return 'if (isTech) return ...' in client/src/components/editor/MobileBottomBar.tsx (line 99) completely blocks technicians from taking photos or seeing object info on mobile. This is a regression for the 'documentation' goal, as TECHs are typically the ones performing documentation in the field (as noted in ARCHITECTURAL_EVOLUTION.md). The Photo button and Object info should be accessible to TECHs as well.
+
+**Suggestions:**
+- 💡 Consider adding auto-save (handleSave(true)) to note and label changes in PMObjectDetailsPanel.tsx (with debouncing) to ensure all documentation is preserved.
+- 💡 The Export ZIP and Export PDF buttons on mobile (ProjectActions.tsx) use icons without labels; while consistent with 'minimization', adding brief aria-labels or tooltips would improve accessibility.
+
+**Next focus:** Remove the restrictive 'if (isTech)' early return in MobileBottomBar.tsx so that Technicians can still take photos and see object identification on mobile, while keeping the status buttons specifically for the PM role as requested.
+
+---
+
