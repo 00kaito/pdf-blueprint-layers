@@ -100,7 +100,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           type: 'ADD_OBJECT_PHOTO',
           payload: { id: objectId, photoDataUrl: result.url },
         });
-        handleSave(true);
+        await handleSave(true);
 
         setUploadQueue(prev => ({
           ...prev,
@@ -138,14 +138,14 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
     setPhotoToDelete(index);
   };
 
-  const removePhoto = () => {
+  const removePhoto = async () => {
     if (photoToDelete === null) return;
     
     dispatch({
       type: 'REMOVE_OBJECT_PHOTO',
       payload: { id: objectId, index: photoToDelete },
     });
-    handleSave(true);
+    await handleSave(true);
     
     if (lightboxIndex === photoToDelete) {
       setLightboxIndex(null);

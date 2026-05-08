@@ -9,9 +9,11 @@ export function useAutoSave() {
   const [isSaving, setIsSaving] = useState(false);
   const timeoutRef = useRef<any>(null);
   const lastStateRef = useRef<string>("");
+  const activeSaveRef = useRef<boolean>(false);
 
-  const doSave = async () => {
+  const doSave = async (retryCount = 0) => {
     if (!docState.projectId) return;
+    if (activeSaveRef.current && retryCount === 0) return;
     
     const payload = {
       layers: docState.layers,
@@ -26,18 +28,29 @@ export function useAutoSave() {
     };
 
     const stateString = JSON.stringify(payload);
-    if (stateString === lastStateRef.current) return;
+    if (stateString === lastStateRef.current && retryCount === 0) return;
 
     setIsSaving(true);
-    console.log(`[AutoSave] Saving project ${docState.projectId}...`);
+    activeSaveRef.current = true;
+    console.log(`[AutoSave] Saving project ${docState.projectId}... (attempt ${retryCount + 1})`);
+    
     try {
       await saveProject.mutateAsync({ id: docState.projectId!, state: payload as any });
       lastStateRef.current = stateString;
       console.log(`[AutoSave] Save successful for ${docState.projectId}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error("[AutoSave] Save failed", e);
+      const isAbortError = e.name === 'AbortError' || e.message?.includes('aborted') || e.message?.includes('signal is aborted');
+      
+      if (isAbortError && retryCount < 2) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.log(`[AutoSave] Save aborted, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return doSave(retryCount + 1);
+      }
     } finally {
       setIsSaving(false);
+      activeSaveRef.current = false;
     }
   };
 
@@ -48,7 +61,7 @@ export function useAutoSave() {
       clearTimeout(timeoutRef.current);
     }
 
-    timeoutRef.current = setTimeout(doSave, 1000);
+    timeoutRef.current = setTimeout(() => doSave(), 2000);
 
     return () => {
       if (timeoutRef.current) {
@@ -70,7 +83,7 @@ export function useAutoSave() {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
+      if (document.visibilityState === 'hidden' && docState.projectId) {
         console.log("[AutoSave] Page hidden, triggering immediate save...");
         doSave();
       }

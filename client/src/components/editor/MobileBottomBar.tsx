@@ -73,7 +73,7 @@ export const MobileBottomBar: React.FC = () => {
           type: 'ADD_OBJECT_PHOTO',
           payload: { id: selectedObjectId, photoDataUrl: result.url },
         });
-        handleSave(true);
+        await handleSave(true);
       }
     } catch (error) {
       console.error('Error uploading photos:', error);
@@ -187,7 +187,7 @@ export const MobileBottomBar: React.FC = () => {
                       ? "bg-primary text-primary-foreground border-primary shadow-md scale-105" 
                       : "bg-background shadow-sm border-border/50"
                   )}
-                  onClick={() => {
+                  onClick={async () => {
                     docDispatch({
                       type: 'UPDATE_OBJECTS',
                       payload: {
@@ -199,7 +199,7 @@ export const MobileBottomBar: React.FC = () => {
                         }
                       }
                     });
-                    handleSave(true);
+                    await handleSave(true);
                   }}
                 >
                   <div className={cn("w-1.5 h-1.5 rounded-full", s.color)} />

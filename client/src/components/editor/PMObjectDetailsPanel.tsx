@@ -86,7 +86,7 @@ export const PMObjectDetailsPanel: React.FC = () => {
                   "h-14 text-[13px] px-4 justify-start gap-3 font-black uppercase tracking-tight shadow-md transition-all",
                   selectedObject.status === s.id ? "ring-2 ring-primary ring-offset-2 bg-primary text-primary-foreground scale-[1.02]" : "bg-background border-border/60"
                 )}
-                onClick={() => {
+                onClick={async () => {
                   dispatch({
                     type: 'UPDATE_OBJECTS',
                     payload: {
@@ -98,7 +98,7 @@ export const PMObjectDetailsPanel: React.FC = () => {
                       }
                     }
                   });
-                  handleSave(true);
+                  await handleSave(true);
                 }}
               >
                 <div className={cn("w-3 h-3 rounded-full", s.color)} />

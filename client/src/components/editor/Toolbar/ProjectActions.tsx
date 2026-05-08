@@ -53,7 +53,7 @@ export const ProjectActions = ({
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => handleSave()} 
+            onClick={async () => await handleSave()} 
             disabled={isManualSaving}
             className="h-10 w-10 p-0"
           >
@@ -98,7 +98,7 @@ export const ProjectActions = ({
           
           {pdfFile && (
             <DropdownMenuItem 
-              onClick={() => handleSave()} 
+              onClick={async () => await handleSave()} 
               disabled={isManualSaving}
               className="gap-2 cursor-pointer"
             >

@@ -1,0 +1,86 @@
+{
+  "summary": "Investigate and fix the 'signal is aborted' error during project save on mobile by improving AbortController handling in save hooks and adding mobile-specific retry logic for aborted requests.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Investigate save hooks",
+      "description": "Read useManualSave.ts and useAutoSave.ts to understand how AbortController is used and identify where the 'signal is aborted' error originates. Check if there's cleanup logic that aborts requests on component unmount or timeout handling.",
+      "files_affected": [
+        "client/src/hooks/useManualSave.ts",
+        "client/src/hooks/useAutoSave.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Check API save endpoint",
+      "description": "Review the server routes for project save (/api/projects/:id) to ensure no server-side timeout or abort conditions. Check if the request payload size could cause issues on mobile networks.",
+      "files_affected": [
+        "server/routes.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Add retry logic for aborted saves",
+      "description": "Implement a retry mechanism in the save hook specifically for AbortError cases. On mobile, network conditions can cause temporary request failures that succeed on retry. Add exponential backoff with 2-3 retries.",
+      "files_affected": [
+        "client/src/hooks/useManualSave.ts"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Improve error handling and user feedback",
+      "description": "Replace the generic 'signal is aborted' error with a user-friendly message on mobile. Add a toast notification that offers a manual retry option when save fails due to network issues.",
+      "files_affected": [
+        "client/src/hooks/useManualSave.ts",
+        "client/src/components/editor/MobileBottomBar.tsx"
+      ],
+      "type": "MODIFY"
+    },
+    {
+      "step": 5,
+      "title": "Prevent abort on visibility change",
+      "description": "Add Page Visibility API handling to prevent aborting save requests when the user switches apps on mobile. Queue the save to complete when the app regains focus instead of aborting.",
+      "files_affected": [
+        "client/src/hooks/useManualSave.ts",
+        "client/src/hooks/useAutoSave.ts"
+      ],
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "useManualSave.ts contains retry logic that catches AbortError and retries the save request up to 3 times with exponential backoff",
+      "how_to_verify": "Read useManualSave.ts and verify a try-catch block exists that checks for error.name === 'AbortError' and implements retry with setTimeout delays"
+    },
+    {
+      "id": "c2",
+      "description": "Save hook does not abort pending requests when Page Visibility changes to hidden on mobile",
+      "how_to_verify": "Check useManualSave.ts for document.visibilitychange event listener that preserves in-flight requests instead of aborting them"
+    },
+    {
+      "id": "c3",
+      "description": "User-friendly error toast is shown instead of technical 'signal is aborted' message",
+      "how_to_verify": "Search for toast/notification calls in useManualSave.ts that display a message like 'Save failed, retrying...' or 'Please try again' instead of the raw error"
+    },
+    {
+      "id": "c4",
+      "description": "MobileBottomBar save action properly awaits the save completion before showing success state",
+      "how_to_verify": "Read MobileBottomBar.tsx and verify the save button handler awaits the save promise and handles both success and error states"
+    },
+    {
+      "id": "c5",
+      "description": "No AbortController.abort() is called during active save operations when component unmounts on mobile",
+      "how_to_verify": "Check useManualSave.ts useEffect cleanup function to verify it either completes pending saves or queues them rather than aborting"
+    }
+  ],
+  "risks": [
+    "Retry logic could cause duplicate saves if the first request actually succeeded but the response was lost",
+    "Preventing abort on visibility change could lead to memory leaks if many saves queue up",
+    "Mobile network latency varies greatly - fixed retry delays may not be optimal for all conditions",
+    "Changes to auto-save behavior could affect desktop users unintentionally"
+  ]
+}

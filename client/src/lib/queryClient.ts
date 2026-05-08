@@ -11,9 +11,21 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  customSignal?: AbortSignal,
 ): Promise<Response> {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 10000);
+  const signal = customSignal || controller.signal;
+  
+  // Increased timeout to 60 seconds for mobile/large payloads, unless custom signal is provided
+  const timeoutDuration = customSignal ? 0 : 60000;
+  let timeoutId: any = null;
+
+  if (timeoutDuration > 0) {
+    timeoutId = setTimeout(() => {
+      console.warn(`[API] Request to ${url} timed out after ${timeoutDuration}ms`);
+      controller.abort();
+    }, timeoutDuration);
+  }
 
   try {
     const res = await fetch(url, {
@@ -21,13 +33,18 @@ export async function apiRequest(
       headers: data ? { "Content-Type": "application/json" } : {},
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
-      signal: controller.signal,
+      signal,
     });
 
     await throwIfResNotOk(res);
     return res;
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error(`[API] Request to ${url} was aborted (timeout or manual)`);
+    }
+    throw error;
   } finally {
-    clearTimeout(id);
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
@@ -41,7 +58,8 @@ export const getQueryFn: <T>(options: {
     console.log(`[Query] Fetching: ${url}`);
     
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 10000);
+    // Default GET timeout of 15 seconds
+    const id = setTimeout(() => controller.abort(), 15000);
 
     try {
       const res = await fetch(url as string, {
