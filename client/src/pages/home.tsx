@@ -5,6 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const Canvas = lazy(() => import('@/components/editor/Canvas').then(module => ({ default: module.Canvas })));
 const Toolbar = lazy(() => import('@/components/editor/Toolbar').then(module => ({ default: module.Toolbar })));
@@ -37,7 +38,8 @@ const Home = () => {
             <p className="text-muted-foreground text-sm">Processing large files may take a moment</p>
           </div>
         )}
-        <div className="flex flex-col h-screen overflow-hidden bg-background relative pb-12">
+        <div className={cn("flex flex-col h-screen overflow-hidden bg-background relative", hasSelectedObject ? "pb-24" : "pb-12")}>
+          <Toolbar isSaving={isSaving} />
           <Canvas />
           {/* Sidebars are hidden for TECH on mobile by not rendering them and restricting MobileBottomBar */}
           <MobileBottomBar />

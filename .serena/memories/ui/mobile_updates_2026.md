@@ -1,0 +1,11 @@
+# Mobile UI Minimization and Auto-Save (May 2026)
+- Minimized the top toolbar for mobile devices by hiding the tool selector and object property editor.
+- Simplified `ProjectActions.tsx` on mobile to show only Save Project, Export ZIP, and Export PDF.
+- Enhanced `MobileBottomBar.tsx` for PMs:
+    - Increased height and changed to `h-auto` with a two-row layout when an object is selected.
+    - Added a scrollable row of quick-access status buttons.
+    - Added a "By status" color toggle.
+- Implemented automatic, silent saving (using `useManualSave(true)`) after:
+    - Photo upload in `MobileBottomBar.tsx` and `ObjectPhotoGallery.tsx`.
+    - Status change in `MobileBottomBar.tsx` and `PMObjectDetailsPanel.tsx`.
+- Adjusted bottom padding in `home.tsx` to accommodate the larger mobile bottom bar.

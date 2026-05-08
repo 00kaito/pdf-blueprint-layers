@@ -20,6 +20,7 @@ import {
 import { Camera, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { compressImage } from '@/core/image-compress';
 import { useUploadFile } from '@/hooks/useProjects';
+import { useManualSave } from '@/hooks/useManualSave';
 import { Progress } from '@/components/ui/progress';
 import { useCurrentUser } from '@/hooks/useAuth';
 
@@ -52,6 +53,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
   const uploadFile = useUploadFile();
+  const { handleSave } = useManualSave();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [uploadQueue, setUploadQueue] = useState<Record<string, UploadStatus>>({});
@@ -98,6 +100,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           type: 'ADD_OBJECT_PHOTO',
           payload: { id: objectId, photoDataUrl: result.url },
         });
+        handleSave(true);
 
         setUploadQueue(prev => ({
           ...prev,

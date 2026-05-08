@@ -8,10 +8,12 @@ import {ObjectPropertyEditor} from './Toolbar/ObjectPropertyEditor';
 import {ZoomControls} from './Toolbar/ZoomControls';
 import {ProjectActions} from './Toolbar/ProjectActions';
 import {ToolSelector} from './Toolbar/ToolSelector';
+import {useIsMobile} from '@/hooks/use-mobile';
 
 export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
+  const isMobile = useIsMobile();
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
 
@@ -27,33 +29,35 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           className="flex items-center gap-1 -ml-2"
         >
           <ChevronLeft className="h-4 w-4" />
-          <span>Projects</span>
+          {!isMobile && <span>Projects</span>}
         </Button>
 
         <Separator orientation="vertical" className="h-6" />
 
-        <div className="flex items-center gap-4">
-          <ToolSelector isTech={isTech} />
-          
-          <ObjectPropertyEditor 
-            selectedObjects={selectedObjects}
-            selectedObjectIds={uiState.selectedObjectIds}
-            layers={docState.layers}
-            isTech={isTech}
-          />
-        </div>
+        {!isMobile && (
+          <div className="flex items-center gap-4">
+            <ToolSelector isTech={isTech} />
+            
+            <ObjectPropertyEditor 
+              selectedObjects={selectedObjects}
+              selectedObjectIds={uiState.selectedObjectIds}
+              layers={docState.layers}
+              isTech={isTech}
+            />
+          </div>
+        )}
 
         {isSaving !== undefined && docState.projectId && !isTech && (
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 text-[10px] font-medium text-muted-foreground transition-all">
+          <div className="flex items-center gap-2 px-2 md:px-3 py-1 rounded-full bg-muted/50 text-[10px] font-medium text-muted-foreground transition-all">
             {isSaving ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Saving...</span>
+                {!isMobile && <span>Saving...</span>}
               </>
             ) : (
               <>
                 <Check className="h-3 w-3 text-green-500" />
-                <span>Saved</span>
+                {!isMobile && <span>Saved</span>}
               </>
             )}
           </div>
@@ -77,11 +81,13 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           </div>
         )}
 
-        <Separator orientation="vertical" className="h-6 hidden md:block" />
-
-        <ZoomControls scale={uiState.scale} />
-        
-        <Separator orientation="vertical" className="h-6" />
+        {!isMobile && (
+          <>
+            <Separator orientation="vertical" className="h-6 hidden md:block" />
+            <ZoomControls scale={uiState.scale} />
+            <Separator orientation="vertical" className="h-6" />
+          </>
+        )}
 
         <ProjectActions 
           projectId={docState.projectId}

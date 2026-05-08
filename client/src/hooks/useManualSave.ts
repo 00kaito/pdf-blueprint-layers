@@ -14,7 +14,7 @@ export function useManualSave() {
   
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = async () => {
+  const handleSave = async (silent: boolean = false) => {
     if (!docState.pdfFile && !docState.projectId) {
       toast({ variant: "destructive", title: "No project to save", description: "Please upload a PDF first." });
       return;
@@ -63,7 +63,7 @@ export function useManualSave() {
       };
 
       await saveProject.mutateAsync({ id: projectId!, state: stateToSave as any });
-      toast({ title: "Project saved", description: "Your changes have been saved to the server." });
+      if (!silent) toast({ title: "Project saved", description: "Your changes have been saved to the server." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Failed to save project", description: e.message });
     } finally {

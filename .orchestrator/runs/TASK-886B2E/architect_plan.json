@@ -1,0 +1,21 @@
+{
+  "status": "success",
+  "summary": "Minimized mobile toolbar, implemented auto-save after photos/status changes, and added a quick-access status bar for PMs on mobile.",
+  "files_affected": [
+    "client/src/components/editor/Toolbar.tsx",
+    "client/src/components/editor/Toolbar/ProjectActions.tsx",
+    "client/src/components/editor/MobileBottomBar.tsx",
+    "client/src/components/editor/ObjectPhotoGallery.tsx",
+    "client/src/components/editor/PMObjectDetailsPanel.tsx",
+    "client/src/hooks/useManualSave.ts",
+    "client/src/pages/home.tsx"
+  ],
+  "criteria_met": [
+    "Minimized toolbox for mobile (removed tools, kept Save/Export)",
+    "Auto-save after each photo upload",
+    "Auto-save after status change",
+    "Enlarged mobile quick-access bar for PM role",
+    "Added status change buttons to mobile quick-access bar",
+    "Verified type safety with npm run check"
+  ]
+}

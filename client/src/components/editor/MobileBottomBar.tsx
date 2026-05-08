@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/drawer';
 import { PMObjectDetailsPanel } from './PMObjectDetailsPanel';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useManualSave } from '@/hooks/useManualSave';
+import { cn } from '@/lib/utils';
 
 const dataUrlToFile = (dataUrl: string, filename: string): File => {
   const arr = dataUrl.split(',');
@@ -40,6 +42,7 @@ export const MobileBottomBar: React.FC = () => {
   const { state: uiState, dispatch: uiDispatch } = useUI();
   const { data: user } = useCurrentUser();
   const isMobile = useIsMobile();
+  const { handleSave } = useManualSave();
   const isTech = user?.role === 'TECH';
   const isPM = user?.role === 'PM';
   
@@ -69,6 +72,7 @@ export const MobileBottomBar: React.FC = () => {
           type: 'ADD_OBJECT_PHOTO',
           payload: { id: selectedObjectId, photoDataUrl: result.url },
         });
+        handleSave(true);
       }
     } catch (error) {
       console.error('Error uploading photos:', error);
@@ -104,78 +108,111 @@ export const MobileBottomBar: React.FC = () => {
   // PM version
   return (
     <Drawer>
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-12 flex items-center px-4 justify-between">
-        <div className="flex items-center gap-4 min-w-0 mr-2">
-            <StatusToggle />
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-auto flex flex-col py-1">
+        <div className="flex items-center px-4 justify-between h-16">
+          <div className="flex items-center gap-4 min-w-0 mr-2">
+              <StatusToggle />
 
-            {pmMobileDrawer ? (
-              <DrawerTrigger asChild>
-                <div className="flex items-center gap-1.5 min-w-0 cursor-pointer">
+              {pmMobileDrawer ? (
+                <DrawerTrigger asChild>
+                  <div className="flex items-center gap-1.5 min-w-0 cursor-pointer">
+                    <span className="text-[9px] uppercase font-black text-muted-foreground tracking-tighter shrink-0">OBJ:</span>
+                    <span className="text-xs font-semibold truncate">
+                      {selectedObject ? (selectedObject.name || 'Untitled') : "Select..."}
+                    </span>
+                  </div>
+                </DrawerTrigger>
+              ) : (
+                <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[9px] uppercase font-black text-muted-foreground tracking-tighter shrink-0">OBJ:</span>
                   <span className="text-xs font-semibold truncate">
                     {selectedObject ? (selectedObject.name || 'Untitled') : "Select..."}
                   </span>
                 </div>
-              </DrawerTrigger>
-            ) : (
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-tighter shrink-0">OBJ:</span>
-                <span className="text-xs font-semibold truncate">
-                  {selectedObject ? (selectedObject.name || 'Untitled') : "Select..."}
-                </span>
-              </div>
-            )}
-        </div>
-        
-        <div className="flex items-center gap-1.5 shrink-0">
-          {selectedObject && (
-            <>
-              <Button 
-                size="icon" 
-                variant="outline" 
-                className="h-8 w-8 rounded-full"
-                onClick={() => setIsGalleryOpen(true)}
-              >
-                <ImageIcon className="h-4 w-4" />
-              </Button>
-              
-              <Button 
-                size="sm" 
-                variant="default" 
-                className="h-8 gap-1 px-3 rounded-full"
-                disabled={isUploading}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {isUploading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Camera className="h-3 w-3" />
-                )}
-                <span className="text-[10px] font-bold uppercase">Photo</span>
-              </Button>
-            </>
-          )}
+              )}
+          </div>
           
-          <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
-              {...({ capture: 'environment' } as any)}
-            />
+          <div className="flex items-center gap-1.5 shrink-0">
+            {selectedObject && (
+              <>
+                <Button 
+                  size="icon" 
+                  variant="outline" 
+                  className="h-10 w-10 rounded-full"
+                  onClick={() => setIsGalleryOpen(true)}
+                >
+                  <ImageIcon className="h-5 w-5" />
+                </Button>
+                
+                <Button 
+                  size="sm" 
+                  variant="default" 
+                  className="h-10 gap-2 px-4 rounded-full"
+                  disabled={isUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                  <span className="text-[12px] font-bold uppercase">Photo</span>
+                </Button>
+              </>
+            )}
+            
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                multiple
+                onChange={handleFileChange}
+                {...({ capture: 'environment' } as any)}
+              />
+          </div>
         </div>
 
-        {selectedObject && (
-          <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
-              <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-y-auto p-4">
-                <DialogHeader className="pb-2">
-                  <DialogTitle className="text-sm">Photos: {selectedObject.name || 'Untitled'}</DialogTitle>
-                </DialogHeader>
-                <ObjectPhotoGallery objectId={selectedObject.id} photos={selectedObject.photos || []} />
-              </DialogContent>
-          </Dialog>
+        {isPM && selectedObject && selectedObject.type !== 'path' && (
+          <div className="px-4 pb-2 pt-1 border-t border-border/50 overflow-hidden">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
+              {[
+                { id: 'PLANNED', label: 'Plan', color: 'bg-red-400' },
+                { id: 'CABLE_PULLED', label: 'Cable', color: 'bg-blue-500' },
+                { id: 'TERMINATED', label: 'Term', color: 'bg-purple-500' },
+                { id: 'TESTED', label: 'Test', color: 'bg-green-400' },
+                { id: 'APPROVED', label: 'Appr', color: 'bg-green-600' },
+                { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
+              ].map((s) => (
+                <Button
+                  key={s.id}
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-10 text-[11px] px-3 min-w-fit flex items-center gap-2 font-bold uppercase tracking-tight rounded-full",
+                    selectedObject.status === s.id ? "bg-primary/10 border-primary ring-2 ring-primary" : "bg-muted/30 shadow-sm"
+                  )}
+                  onClick={() => {
+                    docDispatch({
+                      type: 'UPDATE_OBJECTS',
+                      payload: {
+                        ids: [selectedObject.id],
+                        updates: { 
+                          status: s.id as any,
+                          statusUpdatedAt: new Date().toISOString(),
+                          statusUpdatedBy: user?.username || 'Unknown'
+                        }
+                      }
+                    });
+                    handleSave(true);
+                  }}
+                >
+                  <div className={cn("w-1.5 h-1.5 rounded-full", s.color)} />
+                  {s.label}
+                </Button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
       
@@ -190,4 +227,3 @@ export const MobileBottomBar: React.FC = () => {
     </Drawer>
   );
 };
-

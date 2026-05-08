@@ -17,6 +17,7 @@ import {useExport} from '@/hooks/useExport';
 import {useImport} from '@/hooks/useImport';
 import {useManualSave} from '@/hooks/useManualSave';
 import {ShareProjectDialog} from '../ShareProjectDialog';
+import {useIsMobile} from '@/hooks/use-mobile';
 import {DocumentState} from '@/lib/types';
 
 interface ProjectActionsProps {
@@ -32,6 +33,7 @@ export const ProjectActions = ({
   isTech,
   exportSettings,
 }: ProjectActionsProps) => {
+  const isMobile = useIsMobile();
   const dispatch = useDocumentDispatch();
   const { handleFlattenAndDownload, handleExportProject } = useExport();
   const { handleFileImport } = useImport();
@@ -43,6 +45,42 @@ export const ProjectActions = ({
     await handleFileImport(e.target.files);
     e.target.value = '';
   };
+
+  if (isMobile) {
+    return (
+      <div className="flex items-center gap-1">
+        {pdfFile && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handleSave()} 
+            disabled={isManualSaving}
+            className="h-8 w-8 p-0"
+          >
+            {isManualSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          </Button>
+        )}
+        
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleFlattenAndDownload}
+          className="h-8 w-8 p-0"
+        >
+          <Download className="w-4 h-4 text-primary" />
+        </Button>
+
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleExportProject}
+          className="h-8 w-8 p-0"
+        >
+          <Archive className="w-4 h-4 text-amber-600" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -60,7 +98,7 @@ export const ProjectActions = ({
           
           {pdfFile && (
             <DropdownMenuItem 
-              onClick={handleSave} 
+              onClick={() => handleSave()} 
               disabled={isManualSaving}
               className="gap-2 cursor-pointer"
             >
@@ -69,7 +107,7 @@ export const ProjectActions = ({
             </DropdownMenuItem>
           )}
 
-          {!isTech && (
+          {!isTech && !isMobile && (
             <>
               <DropdownMenuItem 
                 onClick={() => setShareDialogOpen(true)} 
@@ -126,20 +164,24 @@ export const ProjectActions = ({
             </div>
           </DropdownMenuItem>
           
-          <DropdownMenuSeparator />
-          <div className="p-3 space-y-3">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">PDF Label Font Size</Label>
-                <span className="text-xs font-bold text-primary">{exportSettings.labelFontSize}px</span>
+          {!isMobile && (
+            <>
+              <DropdownMenuSeparator />
+              <div className="p-3 space-y-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">PDF Label Font Size</Label>
+                    <span className="text-xs font-bold text-primary">{exportSettings.labelFontSize}px</span>
+                  </div>
+                  <Slider
+                    min={1} max={30} step={1}
+                    value={[exportSettings.labelFontSize]}
+                    onValueChange={([value]) => dispatch({ type: 'SET_EXPORT_SETTINGS', payload: { labelFontSize: value } })}
+                  />
+                </div>
               </div>
-              <Slider
-                min={1} max={30} step={1}
-                value={[exportSettings.labelFontSize]}
-                onValueChange={([value]) => dispatch({ type: 'SET_EXPORT_SETTINGS', payload: { labelFontSize: value } })}
-              />
-            </div>
-          </div>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

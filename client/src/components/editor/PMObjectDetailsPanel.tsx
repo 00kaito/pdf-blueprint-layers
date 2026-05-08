@@ -5,11 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
+import { cn } from '@/lib/utils';
+import { useCurrentUser } from '@/hooks/useAuth';
+import { useManualSave } from '@/hooks/useManualSave';
 
 export const PMObjectDetailsPanel: React.FC = () => {
   const { state: uiState } = useUI();
   const { state: documentState } = useDocument();
   const dispatch = useDocumentDispatch();
+  const { data: user } = useCurrentUser();
+  const { handleSave } = useManualSave();
 
   const selectedObject = documentState.objects.find(
     obj => obj.id === uiState.selectedObjectIds[0]
@@ -61,6 +66,48 @@ export const PMObjectDetailsPanel: React.FC = () => {
             rows={4}
           />
         </div>
+        
+        <div>
+          <h4 className="text-sm font-semibold mb-2 uppercase tracking-wider text-muted-foreground">Status</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { id: 'PLANNED', label: 'Planned', color: 'bg-red-400' },
+              { id: 'CABLE_PULLED', label: 'Cable Pulled', color: 'bg-blue-500' },
+              { id: 'TERMINATED', label: 'Terminated', color: 'bg-purple-500' },
+              { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
+              { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
+              { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
+            ].map((s) => (
+              <Button
+                key={s.id}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-9 text-[11px] px-2 justify-start gap-2 font-bold uppercase tracking-tight",
+                  selectedObject.status === s.id ? "ring-2 ring-primary ring-offset-1 bg-primary/5" : ""
+                )}
+                onClick={() => {
+                  dispatch({
+                    type: 'UPDATE_OBJECTS',
+                    payload: {
+                      ids: [selectedObject.id],
+                      updates: { 
+                        status: s.id as any,
+                        statusUpdatedAt: new Date().toISOString(),
+                        statusUpdatedBy: user?.username || 'Unknown'
+                      }
+                    }
+                  });
+                  handleSave(true);
+                }}
+              >
+                <div className={cn("w-2.5 h-2.5 rounded-full", s.color)} />
+                {s.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <h4 className="text-md font-semibold mb-2">Photos</h4>
           <ObjectPhotoGallery objectId={selectedObject.id} photos={selectedObject.photos || []} />

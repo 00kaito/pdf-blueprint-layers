@@ -1,0 +1,18 @@
+{
+  "task_id": "TASK-886B2E",
+  "description": "zminimalizuj przybornik narzedzie dla mobile, usuna narzedzia, zostaw tylko zapis projektu, export do zip, i export do pdf, dodatkowo rob automatyczny zapis projektu po kazdym zaladowanym zdjeciu, aby nie stracic dokumentacji, dodatkowo dla roli PM z poziomu telefonu umozliw zmiane statusu obiektu (powieksz troche bar z szybkim dostepem do obiektu (tam gdzie mozna robic zdjecia czy klikac by status, aby byla tez opcja nacisniecie na inny status dla obiektu",
+  "title": "zminimalizuj przybornik narzedzie dla mobile, usuna narzedzia, zostaw tylko zapis projektu, export d",
+  "status": "IMPLEMENTING",
+  "iteration": 0,
+  "max_iterations": 6,
+  "stuck_counter": 0,
+  "criteria": [],
+  "history": [],
+  "architect_plan": "{\n  \"status\": \"success\",\n  \"summary\": \"Minimized mobile toolbar, implemented auto-save after photos/status changes, and added a quick-access status bar for PMs on mobile.\",\n  \"files_affected\": [\n    \"client/src/components/editor/Toolbar.tsx\",\n    \"client/src/components/editor/Toolbar/ProjectActions.tsx\",\n    \"client/src/components/editor/MobileBottomBar.tsx\",\n    \"client/src/components/editor/ObjectPhotoGallery.tsx\",\n    \"client/src/components/editor/PMObjectDetailsPanel.tsx\",\n    \"client/src/hooks/useManualSave.ts\",\n    \"client/src/pages/home.tsx\"\n  ],\n  \"criteria_met\": [\n    \"Minimized toolbox for mobile (removed tools, kept Save/Export)\",\n    \"Auto-save after each photo upload\",\n    \"Auto-save after status change\",\n    \"Enlarged mobile quick-access bar for PM role\",\n    \"Added status change buttons to mobile quick-access bar\",\n    \"Verified type safety with npm run check\"\n  ]\n}",
+  "last_diff": "",
+  "task_start_sha": "a7378bf621a88bced38723257562a2bc058443a1",
+  "human_feedback": "",
+  "fix_plan": "",
+  "created_at": 1778249190.9504251,
+  "updated_at": 1778249501.6029336
+}
