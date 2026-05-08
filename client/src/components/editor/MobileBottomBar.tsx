@@ -101,7 +101,7 @@ export const MobileBottomBar: React.FC = () => {
   return (
     <Drawer>
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-auto flex flex-col py-1">
-        <div className="flex items-center px-4 justify-between h-20">
+        <div className="flex items-center px-4 justify-between h-24">
           <div className="flex items-center gap-4 min-w-0 mr-2">
               <StatusToggle />
 
@@ -130,25 +130,25 @@ export const MobileBottomBar: React.FC = () => {
                 <Button 
                   size="icon" 
                   variant="outline" 
-                  className="h-12 w-12 rounded-full border-2"
+                  className="h-14 w-14 rounded-full border-2"
                   onClick={() => setIsGalleryOpen(true)}
                 >
-                  <ImageIcon className="h-6 w-6" />
+                  <ImageIcon className="h-7 w-7" />
                 </Button>
                 
                 <Button 
                   size="lg" 
                   variant="default" 
-                  className="h-12 gap-2 px-5 rounded-full shadow-lg"
+                  className="h-14 gap-2 px-6 rounded-full shadow-lg"
                   disabled={isUploading}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {isUploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-6 w-6 animate-spin" />
                   ) : (
-                    <Camera className="h-5 w-5" />
+                    <Camera className="h-6 w-6" />
                   )}
-                  <span className="text-[13px] font-black uppercase tracking-wider">Photo ({selectedObject?.photos?.length || 0})</span>
+                  <span className="text-[14px] font-black uppercase tracking-wider">Photo ({selectedObject?.photos?.length || 0})</span>
                 </Button>
               </>
             )}
@@ -166,8 +166,8 @@ export const MobileBottomBar: React.FC = () => {
         </div>
 
         {isPM && selectedObject && selectedObject.type !== 'path' && (
-          <div className="px-4 pb-3 pt-2 border-t border-border shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden bg-muted/20">
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
+          <div className="px-4 pb-4 pt-3 border-t border-border shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden bg-muted/20">
+            <div className="flex items-center gap-3 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
               {[
                 { id: 'PLANNED', label: 'Plan', color: 'bg-red-400' },
                 { id: 'CABLE_PULLED', label: 'Cable', color: 'bg-blue-500' },
@@ -181,7 +181,7 @@ export const MobileBottomBar: React.FC = () => {
                   variant="outline"
                   size="default"
                   className={cn(
-                    "h-12 text-[12px] px-4 min-w-fit flex items-center gap-2.5 font-black uppercase tracking-tight rounded-full transition-all",
+                    "h-14 text-[13px] px-5 min-w-fit flex items-center gap-3 font-black uppercase tracking-tight rounded-full transition-all",
                     selectedObject.status === s.id 
                       ? "bg-primary text-primary-foreground border-primary shadow-md scale-105" 
                       : "bg-background shadow-sm border-border/50"

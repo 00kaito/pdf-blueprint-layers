@@ -83,8 +83,8 @@ export const PMObjectDetailsPanel: React.FC = () => {
                 variant="outline"
                 size="default"
                 className={cn(
-                  "h-11 text-[12px] px-3 justify-start gap-2.5 font-black uppercase tracking-tight shadow-sm",
-                  selectedObject.status === s.id ? "ring-2 ring-primary ring-offset-1 bg-primary text-primary-foreground shadow-md" : "bg-background"
+                  "h-14 text-[13px] px-4 justify-start gap-3 font-black uppercase tracking-tight shadow-md transition-all",
+                  selectedObject.status === s.id ? "ring-2 ring-primary ring-offset-2 bg-primary text-primary-foreground scale-[1.02]" : "bg-background border-border/60"
                 )}
                 onClick={() => {
                   dispatch({
@@ -101,7 +101,7 @@ export const PMObjectDetailsPanel: React.FC = () => {
                   handleSave(true);
                 }}
               >
-                <div className={cn("w-2.5 h-2.5 rounded-full", s.color)} />
+                <div className={cn("w-3 h-3 rounded-full", s.color)} />
                 {s.label}
               </Button>
             ))}

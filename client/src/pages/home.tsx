@@ -38,7 +38,7 @@ const Home = () => {
             <p className="text-muted-foreground text-sm">Processing large files may take a moment</p>
           </div>
         )}
-        <div className={cn("flex flex-col h-screen overflow-hidden bg-background relative", hasSelectedObject ? "pb-40" : "pb-16")}>
+        <div className={cn("flex flex-col h-screen overflow-hidden bg-background relative", hasSelectedObject ? "pb-48" : "pb-16")}>
           <Toolbar isSaving={isSaving} />
           <Canvas />
           {/* Sidebars are hidden for TECH on mobile by not rendering them and restricting MobileBottomBar */}
