@@ -1,30 +1,20 @@
-# Implementation Report — Iteration 2
+# Implementation Report — Iteration 3
 
 ## Changes made
-- **Minimized Mobile Toolbar**:
-  - Hidden the "Projects" navigation button and the "Saving/Saved" status indicator on mobile devices in `Toolbar.tsx` to declutter the interface.
-  - Enlarged the Save, Export PDF, and Export ZIP buttons in `ProjectActions.tsx` for better mobile accessibility and touch targets.
-- **Implemented Auto-save for Documentation Integrity**:
-  - Integrated `handleSave(true)` into the photo deletion process in `ObjectPhotoGallery.tsx`.
-  - Verified that auto-save is triggered after every photo upload and status change in both `MobileBottomBar.tsx` and `PMObjectDetailsPanel.tsx`.
-- **Enlarged Mobile Quick-Access Bar (PM Role)**:
-  - Increased the height of the main mobile bottom bar row from `h-16` to `h-20`.
-  - Enlarged the status change buttons in `MobileBottomBar.tsx` from `h-10` to `h-12` and increased font sizes for better visibility and usability.
-  - Improved the visual feedback for selected status (solid background and scale effect).
-  - Adjusted `Home.tsx` layout to increase bottom padding (`pb-40`) when an object is selected, preventing the enlarged bar from overlapping the canvas content.
-  - Enlarged status buttons in the detailed `PMObjectDetailsPanel.tsx` drawer to `h-11` for consistency.
+- **Added dynamic photo count to mobile photo button**: Updated the 'Photo' button label in `client/src/components/editor/MobileBottomBar.tsx` to include the count of photos for the selected object: `Photo ({selectedObject?.photos?.length || 0})`.
+- **Enhanced gallery header with photo count**: Updated the 'Photos' header in `client/src/components/editor/ObjectPhotoGallery.tsx` to display the photo count: `Photos ({photos.length})`. This ensures consistency across the detailed PM view and the properties panel.
+- **Minimized mobile toolbar**: Verified that only 'Save Project', 'Export ZIP', and 'Export PDF' actions are visible on mobile.
+- **Enabled auto-save for photo uploads**: Verified that `handleSave(true)` is triggered automatically after each successful photo upload in both `MobileBottomBar.tsx` and `ObjectPhotoGallery.tsx`.
+- **Enabled auto-save for status changes**: Verified that `handleSave(true)` is triggered after status updates in the mobile quick-access bar and the `PMObjectDetailsPanel.tsx`.
+- **Improved PM quick-access bar**: Verified that the bar is enlarged (`h-20` for main part, `h-12` for status buttons) and includes direct status change buttons for the PM role.
+- **Verified type safety**: Ran `npm run check` (tsc) to ensure no regressions or type errors were introduced.
 
 ## Files affected
-- MODIFIED: client/src/components/editor/Toolbar.tsx
-- MODIFIED: client/src/components/editor/Toolbar/ProjectActions.tsx
-- MODIFIED: client/src/components/editor/MobileBottomBar.tsx
-- MODIFIED: client/src/components/editor/ObjectPhotoGallery.tsx
-- MODIFIED: client/src/components/editor/PMObjectDetailsPanel.tsx
-- MODIFIED: client/src/pages/home.tsx
+- MODIFIED: `client/src/components/editor/MobileBottomBar.tsx`
+- MODIFIED: `client/src/components/editor/ObjectPhotoGallery.tsx`
 
 ## Deviations from plan
-None. The implementation strictly follows the request to minimize the mobile toolbar while enhancing the quick-access features for PMs and ensuring data safety through auto-saves.
+None
 
 ## Potential issues
-- **Navigation on Mobile**: By hiding the "Projects" button on the mobile toolbar, users may find it harder to navigate back to the project list unless there is another entry point. However, this was done to strictly adhere to the "zostaw TYLKO" (keep ONLY) instruction for the toolbar actions.
-- **Auto-save Frequency**: Auto-saving after every photo and status change is safe, but if extended to notes/labels in the future, debouncing should be implemented to avoid excessive server requests.
+None

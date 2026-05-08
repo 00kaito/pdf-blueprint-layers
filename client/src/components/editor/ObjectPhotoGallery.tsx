@@ -193,7 +193,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
           <Camera className="w-3 h-3" />
-          Photos
+          Photos ({photos.length})
         </div>
         <Button
           variant="outline"

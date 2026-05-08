@@ -156,7 +156,7 @@ export const MobileBottomBar: React.FC = () => {
                   ) : (
                     <Camera className="h-5 w-5" />
                   )}
-                  <span className="text-[13px] font-black uppercase tracking-wider">Photo</span>
+                  <span className="text-[13px] font-black uppercase tracking-wider">Photo ({selectedObject?.photos?.length || 0})</span>
                 </Button>
               </>
             )}
