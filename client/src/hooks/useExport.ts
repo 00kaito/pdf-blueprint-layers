@@ -15,10 +15,15 @@ import {getPhysicalCoords, getVisualDimensions, hexToRgb} from '@/core/pdf-math'
 import {svgToPng} from '@/core/svg-utils';
 import {buildIconPath} from '@/core/icon-shapes';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
+import {useProjectList} from '@/hooks/useProjects';
+
+const toSafeFileName = (name: string) =>
+  name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\.(pdf|zip)$/i, '').trim();
 
 export const useExport = () => {
   const { state: docState } = useDocument();
   const { state: uiState } = useUI();
+  const { data: projects } = useProjectList();
 
   const handleExportProject = useCallback(async () => {
     const zip = new JSZip();
@@ -106,8 +111,9 @@ export const useExport = () => {
     }
 
     const content = await zip.generateAsync({ type: 'blob' });
-    saveAs(content, 'project-bundle.zip');
-  }, [docState]);
+    const projectName = projects?.find(p => p.id === docState.projectId)?.name || docState.pdfFile?.name || '';
+    saveAs(content, `${toSafeFileName(projectName) || 'project-bundle'}.zip`);
+  }, [docState, projects]);
 
   const handleFlattenAndDownload = useCallback(async () => {
     if (!docState.pdfFile) return;
