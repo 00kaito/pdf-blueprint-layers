@@ -47,6 +47,8 @@ export type DocumentState = {
   pdfFile: File | null;
   overlayPdfFile: File | null;
   overlayOpacity: number;
+  /** Manual alignment offset of the overlay document, in unscaled canvas units. */
+  overlayOffset: { x: number; y: number };
   layers: Layer[];
   objects: EditorObject[];
   clipboardObjects: EditorObject[];
@@ -87,6 +89,7 @@ export type EditorAction =
   | { type: 'SET_PDF'; payload: File }
   | { type: 'SET_OVERLAY_PDF'; payload: File | null }
   | { type: 'SET_OVERLAY_OPACITY'; payload: number }
+  | { type: 'SET_OVERLAY_OFFSET'; payload: { x: number; y: number } }
   | { type: 'ADD_LAYER'; payload: string } // name
   | { type: 'UPDATE_LAYER'; payload: { id: string; updates: Partial<Layer> } }
   | { type: 'TOGGLE_LAYER_VISIBILITY'; payload: string } // id

@@ -9,8 +9,20 @@ export const OverlayDocument = () => {
 
   if (!docState.overlayPdfFile) return null;
 
+  // Offset is stored in unscaled canvas units, so it must follow the current zoom level.
+  const offset = docState.overlayOffset ?? { x: 0, y: 0 };
+  const translateX = offset.x * uiState.scale;
+  const translateY = offset.y * uiState.scale;
+
   return (
-    <div className="absolute inset-0 pointer-events-none" style={{ opacity: docState.overlayOpacity, zIndex: 5 }}>
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        opacity: docState.overlayOpacity,
+        zIndex: 5,
+        transform: `translate(${translateX}px, ${translateY}px)`,
+      }}
+    >
       <Document file={docState.overlayPdfFile} className="bg-transparent">
         <Page 
           pageNumber={uiState.currentPage} 

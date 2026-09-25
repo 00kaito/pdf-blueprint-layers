@@ -3,6 +3,14 @@ import {DocumentState, EditorAction, EditorObject, EditorState, UIState} from '.
 import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 
+/** Maximum manual overlay shift (unscaled canvas units) — keeps the overlay reachable on screen. */
+const MAX_OVERLAY_OFFSET = CANVAS_BASE_WIDTH;
+
+const clampOverlayOffset = (offset: { x: number; y: number }) => ({
+  x: Math.min(MAX_OVERLAY_OFFSET, Math.max(-MAX_OVERLAY_OFFSET, Math.round(offset.x) || 0)),
+  y: Math.min(MAX_OVERLAY_OFFSET, Math.max(-MAX_OVERLAY_OFFSET, Math.round(offset.y) || 0)),
+});
+
 const initialDocumentState: DocumentState = {
   projectId: null,
   pdfFileId: null,
@@ -10,6 +18,7 @@ const initialDocumentState: DocumentState = {
   pdfFile: null,
   overlayPdfFile: null,
   overlayOpacity: 0.5,
+  overlayOffset: { x: 0, y: 0 },
   layers: [],
   objects: [],
   clipboardObjects: [],
@@ -70,9 +79,16 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         pdfCanvasHeight: Math.round(CANVAS_BASE_WIDTH * action.payload.height / action.payload.width)
       };
     case 'SET_OVERLAY_PDF':
-      return { ...state, overlayPdfFile: action.payload };
+      return {
+        ...state,
+        overlayPdfFile: action.payload,
+        // Removing the overlay drops its manual alignment as well.
+        overlayOffset: action.payload === null ? { x: 0, y: 0 } : state.overlayOffset,
+      };
     case 'SET_OVERLAY_OPACITY':
       return { ...state, overlayOpacity: action.payload };
+    case 'SET_OVERLAY_OFFSET':
+      return { ...state, overlayOffset: clampOverlayOffset(action.payload) };
     case 'ADD_LAYER':
       const newLayerId = uuidv4();
       const maxOrder = Math.max(...state.layers.map((l) => l.order), -1);
@@ -378,6 +394,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     pdfFile: state.pdfFile,
     overlayPdfFile: state.overlayPdfFile,
     overlayOpacity: state.overlayOpacity,
+    overlayOffset: state.overlayOffset,
     layers: state.layers,
     objects: state.objects,
     clipboardObjects: state.clipboardObjects,
@@ -385,7 +402,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     exportSettings: state.exportSettings,
     customIcons: state.customIcons,
     pdfCanvasHeight: state.pdfCanvasHeight,
-  }), [state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight]);
+  }), [state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.overlayOffset, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight]);
 
   const uiState = useMemo(() => ({
     selectedObjectIds: state.selectedObjectIds,

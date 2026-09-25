@@ -1,0 +1,49 @@
+```json
+{
+  "summary": "Added a manual overlay alignment offset: overlayOffset state plus a SET_OVERLAY_OFFSET action (rounded and clamped to +/-600 unscaled canvas units), a scale-aware CSS translate in OverlayDocument, and X/Y numeric inputs with nudge and reset buttons in the LayerPanel Overlay Blueprint section. The offset is also persisted through project save/load/export so alignment survives reloads. Type check (tsc) passes with no errors.",
+  "files_changed": [
+    "client/src/lib/types.ts",
+    "client/src/lib/editor-context.tsx",
+    "client/src/components/editor/Canvas/OverlayDocument.tsx",
+    "client/src/components/editor/LayerPanel.tsx",
+    "client/src/hooks/useAutoSave.ts",
+    "client/src/hooks/useManualSave.ts",
+    "client/src/hooks/useExport.ts",
+    "client/src/components/editor/PDFUploader.tsx",
+    "shared/schema.ts"
+  ],
+  "commands_run": [
+    "npx tsc --noEmit -p tsconfig.json",
+    "git diff --stat -- client shared"
+  ],
+  "tests_run": [],
+  "test_results": [
+    {
+      "command": "npx tsc --noEmit -p tsconfig.json",
+      "exit_code": 0,
+      "passed": true,
+      "output": "no diagnostics"
+    }
+  ],
+  "criteria_addressed": [
+    "c1: DocumentState in client/src/lib/types.ts now has overlayOffset: { x: number; y: number }",
+    "c2: EditorAction includes { type: 'SET_OVERLAY_OFFSET'; payload: { x: number; y: number } }",
+    "c3: initialDocumentState in client/src/lib/editor-context.tsx defines overlayOffset: { x: 0, y: 0 }",
+    "c4: OverlayDocument applies transform translate(overlayOffset.x * uiState.scale, overlayOffset.y * uiState.scale)",
+    "c5: LayerPanel renders X/Y numeric inputs, four nudge buttons and a Reset button, only when an overlay document is present",
+    "c6: npx tsc --noEmit -p tsconfig.json exits 0 with no errors"
+  ],
+  "known_gaps": [
+    "No automated test added: the repository has no test runner (no vitest/jest dependency, no test files); only the 'check' (tsc) script exists.",
+    "The offset applies to all pages uniformly; per-page alignment is not supported.",
+    "Only translation is supported, not rotation or independent scaling of the overlay.",
+    "The nudge step of 1 unscaled unit is a sub-pixel shift at low zoom levels."
+  ],
+  "risky_areas": [
+    "Persistence changes touch files outside the plan (shared/schema.ts, useAutoSave, useManualSave, useExport, PDFUploader); each is an additive optional field mirroring overlayOpacity.",
+    "The documentState memo dependency array in editor-context.tsx had to be extended; missing it would have frozen the overlay position on screen.",
+    "The clamp to +/-CANVAS_BASE_WIDTH (600) is a judgement call and silently limits extreme offsets."
+  ],
+  "verification_notes": "Serena MCP tools were not available in this runtime, so exploration used grep and file reads (fallback noted per the search-tool policy). Confirmed the DocumentState/EditorAction shape and the SET_OVERLAY_OPACITY precedent, initialDocumentState plus the reducer switch and the memoized documentState selector and its dependency array, OverlayDocument's <Page width={CANVAS_BASE_WIDTH} scale={uiState.scale}> (which fixes the offset unit as unscaled canvas units), and LayerPanel's merged docState/uiState 'state' object with its existing Button/Input/Label imports. Grepped every overlayOpacity reference across client, server and shared to map the blast radius of the new field and locate all persistence sites; IMPORT_PROJECT spreads its payload, so restoring a saved offset needs no extra code. No symbols were renamed or deleted. Post-edit type check exited 0."
+}
+```

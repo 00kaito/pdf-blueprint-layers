@@ -1,0 +1,127 @@
+[Phase: IMPLEMENTING | Version: 1.0.0 | Schema: ImplementationReport (contracts.validate_implementation_report)]
+
+You are a senior software engineer. Implement the following plan precisely.
+
+## Task
+umozliw narzedzie / opcje do przesuwania warstwyu overlay wzgledem glownego pliku (jesli z jakiegos powodu warstwa sie rozjedzie chce miec mozliwosc przesuniecie i dostosowania warsty overlay)
+Iteration: 1
+
+### Task Category Profile: feature (v1.0.0)
+- **Required Evidence**: Acceptance-criteria evidence and targeted tests. If no automated test can be added, the report must explain why.
+- **Risk Warnings**: Watch for unexpected side effects on existing workflows and ensure new public interfaces are clean and documented.
+
+
+## Implementation plan
+Summary: Add overlay blueprint offset state and UI controls in LayerPanel to allow users to manually shift and align the overlay PDF document relative to the main document.
+
+### Plan Steps:
+- **Step 1: Update Editor Types for Overlay Offset** (Type: MODIFY, Confidence: verified)
+  Description: Extend DocumentState interface in client/src/lib/types.ts to include overlayOffset: { x: number; y: number } and add SET_OVERLAY_OFFSET action type to EditorAction.
+  Files affected: client/src/lib/types.ts
+
+- **Step 2: Update Editor Reducer State Management** (Type: MODIFY, Confidence: verified)
+  Description: Initialize overlayOffset to { x: 0, y: 0 } in initialDocumentState and handle SET_OVERLAY_OFFSET in editorReducer in client/src/lib/editor-context.tsx.
+  Files affected: client/src/lib/editor-context.tsx
+
+- **Step 3: Render Overlay Offset in OverlayDocument Component** (Type: MODIFY, Confidence: verified)
+  Description: Update OverlayDocument component in client/src/components/editor/Canvas/OverlayDocument.tsx to read docState.overlayOffset and apply scale-adjusted CSS transformation (transform: translate(x * scale, y * scale)) to position the overlay document.
+  Files affected: client/src/components/editor/Canvas/OverlayDocument.tsx
+
+- **Step 4: Add Overlay Offset Controls in LayerPanel** (Type: MODIFY, Confidence: verified)
+  Description: Add UI controls in client/src/components/editor/LayerPanel.tsx under the Overlay Blueprint section (X/Y numerical controls and nudge/reset actions) dispatching SET_OVERLAY_OFFSET actions.
+  Files affected: client/src/components/editor/LayerPanel.tsx
+
+### Identified Risks:
+- Offset calculation without canvas scale adjustment could cause misalignments at different zoom levels.
+- Unclamped offset values might allow the overlay document to be shifted completely off-screen.
+
+## ⚠️ Unfinished criteria from previous review
+These were NOT done yet — focus on them:
+  [c1] DocumentState interface in client/src/lib/types.ts contains overlayOffset property with x and y numeric values.
+  [c2] EditorAction type includes SET_OVERLAY_OFFSET action payload definition.
+  [c3] initialDocumentState in client/src/lib/editor-context.tsx defines overlayOffset with default { x: 0, y: 0 }.
+  [c4] OverlayDocument component in client/src/components/editor/Canvas/OverlayDocument.tsx transforms position using scale and overlayOffset.
+  [c5] LayerPanel component renders offset position input controls for X and Y, plus reset option when an overlay document is present.
+  [c6] TypeScript type check passes without errors.
+
+
+## Instructions
+
+1. **SEARCH TOOL POLICY — Serena first**: For any exploration of the codebase — finding where something is defined, how it's used, what a file contains, locating call sites — use Serena as your PRIMARY tool, not `grep`/plain text search/manually opening files to skim them. Figure out yourself which of Serena's tools fits each question. Only fall back to `grep`, other search, or manually reading files when Serena genuinely cannot answer the question or is unavailable in this runtime — and briefly note in your report why you fell back.
+   - Do not skip this just because the plan already names a file — confirm it with Serena before editing, especially for anything not marked `confidence: verified`.
+
+2. **PRIORITY HIERARCHY**: In case of conflicting information or overlap, resolve them according to this strict hierarchy:
+   - Priority 1: Fix plan / human feedback (`fix_block`) — absolute highest priority.
+   - Priority 2: Unfinished criteria from previous review (`open_block`).
+   - Priority 3: Enriched implementation plan (`Implementation plan`).
+   - Priority 4: Previous iteration changes (`diff_block`) — for context only.
+
+3. **PEER CONTEXT & LOW-CONFIDENCE STEPS**:
+   - Pay close attention to plan steps with low confidence (`confidence` is `assumed` or `uncertain`), steps added/modified by the analyzer (`origin` is `analyzer_added` or `analyzer_modified`), and any listed `plan_issues` or `uncertainties`.
+   - For each such step, you MUST verify it against the real codebase using Serena (per the Search Tool Policy above) before writing any code — do not rely on the plan text alone.
+   - If a step remains uncertain or problematic after verification, document it under "Potential issues" in your implementation report.
+
+4. **STRICT SCOPE BOUNDARIES**:
+   - Do NOT modify or create files that are not listed in `files_affected` for any plan step.
+   - If you must modify a file outside the plan to complete the task, you MUST explicitly list and justify this modification in your implementation report under "Deviations from plan".
+   - Only make the minimal changes necessary to satisfy the plan step and acceptance criteria — do not perform unrelated refactoring or add speculative abstractions.
+
+5. **VERIFICATION — run commands in the foreground, never in the background**:
+   - If there are existing tests covering the files you modified, run those tests and include the test results/output in your implementation report.
+   - Run every verification command (test suite, build, compile) as a **blocking foreground call** and wait for it to return its output. Do NOT launch it in the background, detached, or as an async job.
+   - There is no mechanism here to poll a background job or be notified when it finishes. A command launched in the background will never report back to you, and this session will stall until it is killed.
+   - Never end a turn with only a statement of intent to wait — e.g. "I will wait for the tests to finish", "I have launched the build and will wait". Such a turn performs no work, returns you to the exact same state, and repeats until the session times out. Every turn must contain either a tool call or your final answer.
+   - This whole phase has a hard budget of ~12 minutes, covering every command you run. If a full test run will not comfortably fit, narrow its scope (a single test class or module instead of the entire suite) and state in your report which scope you actually ran.
+
+6. **DISCREPANCY LOGGING**:
+   - If the actual codebase structure does not match the `code_hints` in a plan step, follow the architectural intent of the plan but log this discrepancy in your implementation report under "Deviations from plan". Do not guess or implement blindly.
+
+7. **BLAST-RADIUS CHECK ON RENAME/DELETE**: Before renaming, deleting, or changing the signature of any existing symbol, use Serena to find every reference/call site across the whole codebase, not just the files listed in `files_affected` — a plan step can miss callers. Update or note every reference found. This is not optional.
+
+8. **FILE EDITS**: You MUST use your file editing tools to directly modify, create, or delete files in the project — do NOT just print code to the console.
+
+9. **REPORTING**: After finishing, write a report to `.orchestrator/implementation_report.md` (relative to the project root you are working in — create the `.orchestrator` directory if it does not exist yet) matching the format below.
+
+## Report format (write this to .orchestrator/implementation_report.md)
+```
+# Implementation Report — Iteration 1
+
+## Changes made
+- ...
+
+## Files affected
+- CREATED: path/to/file
+- MODIFIED: path/to/file
+- DELETED: path/to/file
+
+## Verification performed
+None / which symbols/files you looked up with search tools (e.g. Serena) before/after editing, and what you confirmed — required for any low-confidence/uncertain step or any rename/delete
+
+## Plan issues addressed
+- None / list of plan issues/analyzer steps addressed and how
+
+## Deviations from plan
+None / description (e.g. why files outside files_affected were modified or code_hints mismatched)
+
+## Potential issues
+None / description (e.g. lingering uncertainties or low-confidence steps)
+
+## Test results
+None / test run output and whether tests passed
+```
+
+10. **STRUCTURED REPORT ARTIFACT**: In addition to `.orchestrator/implementation_report.md`, you MUST write a valid JSON artifact to `.orchestrator/implementation_report.json` with exact keys:
+`summary` (non-empty string), `files_changed` (list of strings), `commands_run` (list of strings), `tests_run` (list of strings), `test_results` (list of dicts with exit codes), `criteria_addressed` (list of strings), `known_gaps` (list of strings), `risky_areas` (list of strings), `verification_notes` (string).
+## Phase Profile Policy: DEVELOPER
+- Target Model Capability: code_editing
+- Write Access: ALLOWED
+- Preferred Tools: file_edit, file_write, targeted_shell_commands
+- Allowed Tools: file_edit, file_write, targeted_shell_commands, code_search, file_read
+- Prohibited Tools: None
+- Required MCP Servers: None
+- Optional MCP Servers: None
+- Shell Policy: targeted_commands_only
+- Network Policy: restricted
+- Expected Evidence: ('implementation_report', 'git_diff')
+- Stop Conditions: valid_implementation_report_schema, passing_tests
+- Policy Enforcement Mode: ADVISORY (Runtime does not restrict tools natively)

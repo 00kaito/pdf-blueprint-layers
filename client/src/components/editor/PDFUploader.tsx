@@ -74,6 +74,7 @@ export const PDFUploader = () => {
         exportSettings: { labelFontSize: 1 },
         autoNumbering: { enabled: false, prefix: 'IDF1-P1-', counter: 1, template: null },
         overlayOpacity: 0.5,
+        overlayOffset: { x: 0, y: 0 },
         pdfFileId,
         overlayPdfFileId
       };

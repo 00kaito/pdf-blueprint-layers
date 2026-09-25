@@ -1,0 +1,420 @@
+[Phase: REVIEWING | Version: 1.1.0 | Schema: ReviewResult (contracts.validate_review_result)]
+
+You are a strict code reviewer. Your job is to verify whether the implementation meets the criteria and is of high quality.
+
+## Task
+umozliw narzedzie / opcje do przesuwania warstwyu overlay wzgledem glownego pliku (jesli z jakiegos powodu warstwa sie rozjedzie chce miec mozliwosc przesuniecie i dostosowania warsty overlay)
+
+### Task Category Reviewer Checks: feature (v1.0.0)
+- **Reviewer Checks**: Verify all acceptance criteria are met and targeted tests cover the new feature functionality.
+- **Required Evidence to Verify**: Acceptance-criteria evidence and targeted tests. If no automated test can be added, the report must explain why.
+
+
+## Iteration
+1
+
+## Implementation plan & risks
+{
+  "summary": "Add overlay blueprint offset state and UI controls in LayerPanel to allow users to manually shift and align the overlay PDF document relative to the main document.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Update Editor Types for Overlay Offset",
+      "description": "Extend DocumentState interface in client/src/lib/types.ts to include overlayOffset: { x: number; y: number } and add SET_OVERLAY_OFFSET action type to EditorAction.",
+      "files_affected": [
+        "client/src/lib/types.ts"
+      ],
+      "confidence": "verified",
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Update Editor Reducer State Management",
+      "description": "Initialize overlayOffset to { x: 0, y: 0 } in initialDocumentState and handle SET_OVERLAY_OFFSET in editorReducer in client/src/lib/editor-context.tsx.",
+      "files_affected": [
+        "client/src/lib/editor-context.tsx"
+      ],
+      "confidence": "verified",
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Render Overlay Offset in OverlayDocument Component",
+      "description": "Update OverlayDocument component in client/src/components/editor/Canvas/OverlayDocument.tsx to read docState.overlayOffset and apply scale-adjusted CSS transformation (transform: translate(x * scale, y * scale)) to position the overlay document.",
+      "files_affected": [
+        "client/src/components/editor/Canvas/OverlayDocument.tsx"
+      ],
+      "confidence": "verified",
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Add Overlay Offset Controls in LayerPanel",
+      "description": "Add UI controls in client/src/components/editor/LayerPanel.tsx under the Overlay Blueprint section (X/Y numerical controls and nudge/reset actions) dispatching SET_OVERLAY_OFFSET actions.",
+      "files_affected": [
+        "client/src/components/editor/LayerPanel.tsx"
+      ],
+      "confidence": "verified",
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "DocumentState interface in client/src/lib/types.ts contains overlayOffset property with x and y numeric values.",
+      "how_to_verify": "Inspect client/src/lib/types.ts file."
+    },
+    {
+      "id": "c2",
+      "description": "EditorAction type includes SET_OVERLAY_OFFSET action payload definition.",
+      "how_to_verify": "Inspect client/src/lib/types.ts file."
+    },
+    {
+      "id": "c3",
+      "description": "initialDocumentState in client/src/lib/editor-context.tsx defines overlayOffset with default { x: 0, y: 0 }.",
+      "how_to_verify": "Inspect client/src/lib/editor-context.tsx file."
+    },
+    {
+      "id": "c4",
+      "description": "OverlayDocument component in client/src/components/editor/Canvas/OverlayDocument.tsx transforms position using scale and overlayOffset.",
+      "how_to_verify": "Inspect client/src/components/editor/Canvas/OverlayDocument.tsx file."
+    },
+    {
+      "id": "c5",
+      "description": "LayerPanel component renders offset position input controls for X and Y, plus reset option when an overlay document is present.",
+      "how_to_verify": "Inspect client/src/components/editor/LayerPanel.tsx file."
+    },
+    {
+      "id": "c6",
+      "description": "TypeScript type check passes without errors.",
+      "how_to_verify": "Run npm run check command."
+    }
+  ],
+  "risks": [
+    "Offset calculation without canvas scale adjustment could cause misalignments at different zoom levels.",
+    "Unclamped offset values might allow the overlay document to be shifted completely off-screen."
+  ]
+}
+
+> [!WARNING]
+> The git diff below was truncated because it exceeded the size limit (907576 characters withheld).
+
+## Acceptance criteria to verify
+[
+  {
+    "id": "c1",
+    "description": "DocumentState interface in client/src/lib/types.ts contains overlayOffset property with x and y numeric values.",
+    "how_to_verify": "Inspect client/src/lib/types.ts file.",
+    "status": "PENDING",
+    "evidence": null,
+    "discrepancy_note": null
+  },
+  {
+    "id": "c2",
+    "description": "EditorAction type includes SET_OVERLAY_OFFSET action payload definition.",
+    "how_to_verify": "Inspect client/src/lib/types.ts file.",
+    "status": "PENDING",
+    "evidence": null,
+    "discrepancy_note": null
+  },
+  {
+    "id": "c3",
+    "description": "initialDocumentState in client/src/lib/editor-context.tsx defines overlayOffset with default { x: 0, y: 0 }.",
+    "how_to_verify": "Inspect client/src/lib/editor-context.tsx file.",
+    "status": "PENDING",
+    "evidence": null,
+    "discrepancy_note": null
+  },
+  {
+    "id": "c4",
+    "description": "OverlayDocument component in client/src/components/editor/Canvas/OverlayDocument.tsx transforms position using scale and overlayOffset.",
+    "how_to_verify": "Inspect client/src/components/editor/Canvas/OverlayDocument.tsx file.",
+    "status": "PENDING",
+    "evidence": null,
+    "discrepancy_note": null
+  },
+  {
+    "id": "c5",
+    "description": "LayerPanel component renders offset position input controls for X and Y, plus reset option when an overlay document is present.",
+    "how_to_verify": "Inspect client/src/components/editor/LayerPanel.tsx file.",
+    "status": "PENDING",
+    "evidence": null,
+    "discrepancy_note": null
+  },
+  {
+    "id": "c6",
+    "description": "TypeScript type check passes without errors.",
+    "how_to_verify": "Run npm run check command.",
+    "status": "PENDING",
+    "evidence": null,
+    "discrepancy_note": null
+  }
+]
+
+## Implementation report (from Developer)
+# Implementation Report — Iteration 1
+
+## Changes made
+- `client/src/lib/types.ts`: added `overlayOffset: { x: number; y: number }` (documented as unscaled canvas units) to `DocumentState` and the `SET_OVERLAY_OFFSET` action to `EditorAction` [c1, c2].
+- `client/src/lib/editor-context.tsx`: `initialDocumentState.overlayOffset = { x: 0, y: 0 }` [c3]; new `SET_OVERLAY_OFFSET` reducer case that rounds and clamps both axes to ±`CANVAS_BASE_WIDTH` (600) via `clampOverlayOffset`, guarding against the "overlay shifted completely off-screen" risk; `SET_OVERLAY_PDF` with a `null` payload now also resets the offset (a removed overlay should not keep stale alignment, while a newly loaded overlay keeps whatever the project restored); `overlayOffset` exposed through the memoized `documentState` value and added to its dependency array so consumers re-render on change.
+- `client/src/components/editor/Canvas/OverlayDocument.tsx`: reads `docState.overlayOffset` and applies `transform: translate(x * scale, y * scale)` on the overlay wrapper, so the offset tracks the zoom level [c4].
+- `client/src/components/editor/LayerPanel.tsx`: new "Alignment" block inside the existing Overlay Blueprint section, rendered only when `state.overlayPdfFile` is present [c5] — numeric X and Y inputs, four nudge buttons (±1 unit per click, `OVERLAY_NUDGE_STEP`), and a Reset button back to `{ x: 0, y: 0 }`. All dispatch `SET_OVERLAY_OFFSET`; non-finite input values fall back to 0.
+- Persistence (outside the plan's `files_affected`, see Deviations): `overlayOffset` added to `projectStateSchema` and to the autosave / manual-save / zip-export payloads, plus the new-project initial state.
+
+## Files affected
+- MODIFIED: client/src/lib/types.ts
+- MODIFIED: client/src/lib/editor-context.tsx
+- MODIFIED: client/src/components/editor/Canvas/OverlayDocument.tsx
+- MODIFIED: client/src/components/editor/LayerPanel.tsx
+- MODIFIED: client/src/hooks/useAutoSave.ts
+- MODIFIED: client/src/hooks/useManualSave.ts
+- MODIFIED: client/src/hooks/useExport.ts
+- MODIFIED: client/src/components/editor/PDFUploader.tsx
+- MODIFIED: shared/schema.ts
+
+## Verification performed
+Serena was not available in this runtime (no Serena MCP tools were exposed to the session), so exploration fell back to `grep`/file reads — noted here as required by the search-tool policy.
+
+Confirmed before editing:
+- `DocumentState` / `EditorAction` shape and the existing `SET_OVERLAY_OPACITY` precedent in `client/src/lib/types.ts:43-125`.
+- `initialDocumentState`, the reducer switch, and the memoized `documentState` selector plus its dependency array in `client/src/lib/editor-context.tsx` (the dependency array is easy to miss; it was updated).
+- `OverlayDocument` renders `<Page width={CANVAS_BASE_WIDTH} scale={uiState.scale}>`, which fixes the offset unit as unscaled canvas units multiplied by `scale` — this is why the transform scales the offset.
+- `LayerPanel` merges `docState`/`uiState` into a local `state` object and uses `Button`/`Input`/`Label` from `@/components/ui`, all already imported; only the lucide icons `ArrowUp`/`ArrowDown`/`ArrowLeft`/`RotateCcw` were newly imported.
+- Blast radius of the new field: grepped every `overlayOpacity` reference (the analogous existing field) across `client`, `server` and `shared` to find all persistence sites. No symbols were renamed or deleted, so no call sites broke.
+- `IMPORT_PROJECT` is `{ ...state, ...action.payload }`, so persisted offsets restore without further changes.
+
+Post-edit: `npx tsc --noEmit -p tsconfig.json` → exit 0, no diagnostics [c6].
+
+## Plan issues addressed
+- Both listed risks were handled explicitly: the offset is multiplied by `uiState.scale` at render time (zoom correctness), and the reducer clamps to ±600 unscaled units so the overlay can never be pushed fully out of reach.
+
+## Deviations from plan
+- Modified 5 files not listed in any step's `files_affected`: `shared/schema.ts`, `client/src/hooks/useAutoSave.ts`, `client/src/hooks/useManualSave.ts`, `client/src/hooks/useExport.ts`, `client/src/components/editor/PDFUploader.tsx`. Justification: the plan's four files make the offset adjustable but purely in-memory — `projectStateSchema` strips undeclared keys, so the alignment would be silently lost on every reload/autosave round-trip, defeating the task's purpose (being able to shift and adjust the overlay when it drifts). Each change is a single additive optional field mirroring the existing `overlayOpacity` handling; no existing behaviour was altered.
+- No `code_hints` mismatches: all four planned files and symbols existed as described.
+
+## Potential issues
+- No automated test could be added: the repository has no test runner or test files at all (`package.json` scripts are `dev`/`build`/`start`/`check`/`db:push`; no vitest/jest dependency, no `__tests__` directories). Adding a test framework would be well outside this task's scope, so verification rests on the type check plus manual acceptance-criteria review of the rendered controls.
+- The nudge step is 1 unscaled unit (~1/600 of page width); at low zoom a single click is a sub-pixel shift. Users needing coarse moves should type into the X/Y inputs. Worth revisiting if feedback says the step feels too fine.
+- The offset applies to the whole overlay wrapper, so it shifts uniformly across all pages; per-page alignment is not supported.
+- Rotation/scale mismatch between the two PDFs is not addressed — only translation, as specified.
+
+## Test results
+No test suite exists in this repository (see Potential issues). The type check was run instead:
+
+```
+$ npx tsc --noEmit -p tsconfig.json
+(no output — exit code 0)
+```
+
+
+## Git diff (actual changes)
+```diff
+diff --git a/.orchestrator/codebase_summary.md b/.orchestrator/codebase_summary.md
+new file mode 100644
+index 0000000..53022c6
+--- /dev/null
++++ b/.orchestrator/codebase_summary.md
+@@ -0,0 +1,1397 @@
++<!-- CONTEXT SUMMARY
++Phase: ARCHITECTING
++Budget: 60000 chars | Used: 59831 chars
++Cache: 0 hits, 183 misses
++Included files (29): client\src\components\editor\Canvas\OverlayDocument.tsx, tsconfig.json, package.json, package-lock.json, docker-compose.yml, components.json, data\users.json, data\projects.json, .serena\project.yml, .gemini\settings.json, vite.config.ts, vite-plugin-meta-images.ts, refactor_suggestion.md, postcss.config.js, object_file_export_dev.md, jira4.md, jira3.md, jira2.md, jira1.md, implementation_report.md, drizzle.config.ts, database_implementation.md, architecture.md, README.md, EXPORT_OBJECTS_README.md, DOCUMENTATION.md, DEV_README.md, APPLICATION_TECHNICAL_INFO.md, migrations\meta\_journal.json
++Omitted files: 266 files omitted (budget_exceeded, non_priority_extension)
++Tree truncated: False
++-->
++## Context Summary
++- **Phase**: ARCHITECTING
++- **Budget / Used**: 59,831 / 60,000 chars (99.7%)
++- **Cache Stats**: 0 hits, 183 misses
++- **Included Files** (29): client\src\components\editor\Canvas\OverlayDocument.tsx, tsconfig.json, package.json, package-lock.json, docker-compose.yml, components.json, data\users.json, data\projects.json, .serena\project.yml, .gemini\settings.json, vite.config.ts, vite-plugin-meta-images.ts, refactor_suggestion.md, postcss.config.js, object_file_export_dev.md, jira4.md, jira3.md, jira2.md, jira1.md, implementation_report.md, drizzle.config.ts, database_implementation.md, architecture.md, README.md, EXPORT_OBJECTS_README.md, DOCUMENTATION.md, DEV_README.md, APPLICATION_TECHNICAL_INFO.md, migrations\meta\_journal.json
++- **Omitted/Truncated**: 266 files omitted (budget_exceeded, non_priority_extension)
++
++## File tree
++```
++.dockerignore
++.gemini\settings.json
++.gitignore
++.idea\.gitignore
++.idea\misc.xml
++.idea\modules.xml
++.idea\pdf-blueprint-layers.iml
++.idea\vcs.xml
++.idea\workspace.xml
++.replit
++.serena\.gitignore
++.serena\memories\completion_workflow.md
++.serena\memories\project_info.md
++.serena\memories\style_conventions.md
++.serena\memories\suggested_commands.md
++.serena\memories\ui\mobile_updates_2026.md
++.serena\memories\ui\toolbar_refactor.md
++.serena\project.yml
++APPLICATION_TECHNICAL_INFO.md
++ARCHITECTURAL_EVOLUTION.md
++architecture.md
++client\index.html
++client\public\favicon.png
++client\public\opengraph.jpg
++client\src\App.tsx
++client\src\components\editor\Canvas\DrawingLayer.tsx
++client\src\components\editor\Canvas\ObjectRenderer.tsx
++client\src\components\editor\Canvas\OverlayDocument.tsx
++client\src\components\editor\Canvas.tsx
++client\src\components\editor\LayerPanel.tsx
++client\src\components\editor\MobileAddObjectPanel.tsx
++client\src\components\editor\MobileBottomBar.tsx
++client\src\components\editor\ObjectComments.tsx
++client\src\components\editor\ObjectPhotoGallery.tsx
++client\src\components\editor\PDFUploader.tsx
++client\src\components\editor\PMObjectDetailsPanel.tsx
++client\src\components\editor\PropertiesPanel.tsx
++client\src\components\editor\RenameProjectDialog.tsx
++client\src\components\editor\ShareProjectDialog.tsx
++client\src\components\editor\Toolbar\ObjectPropertyEditor.tsx
++client\src\components\editor\Toolbar\ProjectActions.tsx
++client\src\components\editor\Toolbar\ToolSelector.tsx
++client\src\components\editor\Toolbar\ZoomControls.tsx
++client\src\components\editor\Toolbar.tsx
++client\src\components\ui\accordion.tsx
++client\src\components\ui\alert-dialog.tsx
++client\src\components\ui\alert.tsx
++client\src\components\ui\aspect-ratio.tsx
++client\src\components\ui\avatar.tsx
++client\src\components\ui\badge.tsx
++client\src\components\ui\breadcrumb.tsx
++client\src\components\ui\button-group.tsx
++client\src\components\ui\button.tsx
++client\src\components\ui\calendar.tsx
++client\src\components\ui\card.tsx
++client\src\components\ui\carousel.tsx
++client\src\components\ui\chart.tsx
++client\src\components\ui\checkbox.tsx
++client\src\components\ui\collapsible.tsx
++client\src\components\ui\command.tsx
++client\src\components\ui\context-menu.tsx
++client\src\components\ui\dialog.tsx
++client\src\components\ui\drawer.tsx
++client\src\components\ui\dropdown-menu.tsx
++client\src\components\ui\empty.tsx
++client\src\components\ui\field.tsx
++client\src\components\ui\form.tsx
++client\src\components\ui\hover-card.tsx
++client\src\components\ui\input-group.tsx
++client\src\components\ui\input-otp.tsx
++client\src\components\ui\input.tsx
++client\src\components\ui\item.tsx
++client\src\components\ui\kbd.tsx
++client\src\components\ui\label.tsx
++client\src\components\ui\menubar.tsx
++client\src\components\ui\navigation-menu.tsx
++client\src\components\ui\pagination.tsx
++client\src\components\ui\popover.tsx
++client\src\components\ui\progress.tsx
++client\src\components\ui\radio-group.tsx
++client\src\components\ui\resizable.tsx
++client\src\components\ui\scroll-area.tsx
++client\src\components\ui\select.tsx
++client\src\components\ui\separator.tsx
++client\src\components\ui\sheet.tsx
++client\src\components\ui\sidebar.tsx
++client\src\components\ui\skeleton.tsx
++client\src\components\ui\slider.tsx
++client\src\components\ui\sonner.tsx
++client\src\components\ui\spinner.tsx
++client\src\components\ui\switch.tsx
++client\src\components\ui\table.tsx
++client\src\components\ui\tabs.tsx
++client\src\components\ui\textarea.tsx
++client\src\components\ui\toast.tsx
++client\src\components\ui\toaster.tsx
++client\src\components\ui\toggle-group.tsx
++client\src\components\ui\toggle.tsx
++client\src\components\ui\tooltip.tsx
++client\src\components\UserIdentificationModal.tsx
++client\src\core\constants.ts
++client\src\core\icon-shapes.ts
++client\src\core\image-compress.ts
++client\src\core\pdf-math.ts
++client\src\core\svg-utils.ts
++client\src\hooks\use-mobile.tsx
++client\src\hooks\use-toast.ts
++client\src\hooks\useAuth.ts
++client\src\hooks\useAutoSave.ts
++client\src\hooks
+```
+
+## Search Tool Policy — Serena first
+The diff and implementation report are claims, not proof. Before marking any criterion DONE, use Serena as your PRIMARY tool (not `grep`/plain text search) to independently check the current state of the actual codebase against those claims — figure out yourself which of Serena's tools fits each check. Only fall back to `grep`, other search, or manually reading files when Serena genuinely cannot answer the question or is unavailable in this runtime.
+- Do not approve a criterion solely because the diff text or implementation report says so — confirm the referenced symbol/file actually exists and matches, in the codebase as it stands now.
+- For anything renamed, deleted, or refactored, check the rest of the codebase for callers/references that may now be broken — the diff alone won't show breakage outside the changed hunks.
+
+## Your output — respond with ONLY valid JSON, no markdown fences, no explanation
+
+{
+  "iteration": 1,
+  "overall_status": "APPROVED | CHANGES_REQUESTED",
+  "diff_truncated": true,
+  "previous_issues_resolved": "YES | NO | PARTIAL | N/A",
+  "verification_performed": "What you independently checked in the actual codebase (via Serena or fallback tools) beyond reading the diff/report, and what you confirmed. State 'NONE' only if no tools were available.",
+  "criteria_results": [
+    {
+      "id": "c1",
+      "description": "copy from criteria",
+      "status": "DONE | PENDING | FAILED",
+      "evidence": "specific line/file/function that proves it, or explanation why it's missing",
+      "confidence": "HIGH | MEDIUM | LOW",
+      "discrepancy_note": "optional explanation of any minor discrepancy or deviation between the code and the criterion description, even if status is DONE"
+    }
+  ],
+  "blocking_issues": [
+    "[file_path:line_number] specific issue that must be fixed before APPROVED (always specify location)"
+  ],
+  "suggestions": [
+    "non-blocking suggestion (optional improvements)"
+  ],
+  "next_focus": "1-2 sentences telling the developer exactly what to do next (only if CHANGES_REQUESTED)",
+  "commit_message": {
+    "subject": "Subject line in ENGLISH (max 50 chars, imperative mood, no period)",
+    "body": "Detailed explanation in ENGLISH (what changed and why, wrapped at 72 chars/line)"
+  }
+}
+
+Rules:
+- APPROVED only if ALL criteria have status DONE.
+- Be strict — "looks like it might work" is NOT evidence.
+- evidence must reference actual code in the diff or existing files.
+- Criteria verification must be based on static code analysis from the diff and codebase context (structural, signatures, logic).
+- If a criterion cannot be verified from the diff or implementation report, mark it PENDING or FAILED with a clear explanation.
+- previous_issues_resolved: set to "N/A" if no previous_blocking_issues were provided. Otherwise, check each previous blocking issue against the current diff and set "YES" only if ALL were resolved, "PARTIAL" if some were resolved, or "NO" if none were addressed.
+- commit_message is MANDATORY when overall_status is APPROVED — the orchestrator uses it to create the final commit that replaces the intermediate iteration commits. Never omit it on APPROVED. Otherwise, leave it null or omit it.
+- commit_message MUST be written in ENGLISH, even when the task description, criteria, code comments, or this conversation are in another language.
+- Follow Git commit best practices for commit_message:
+  - Subject: Use imperative mood ("Add feature", not "Added feature"), max 50 chars, no trailing period, single line, no task-id prefix (the orchestrator adds it).
+  - Body: Explain WHAT changed and WHY. Wrap lines at 72 characters. Describe the whole task, not just the last iteration.
+- If the git diff is empty or missing, you must return CHANGES_REQUESTED and add a blocking issue stating no changes were detected, unless the task required deletion or verifying no changes.
+
+## Location & Detail in Issues
+- For every blocking issue in `blocking_issues`, you MUST specify the file path and function/class name along with approximate line numbers or diff hunk location. Format: `[path/to/file.py:L123] description of issue`.
+
+## Safety & Security Checklist
+Verify that the code does not introduce:
+1. SQL injection, command injection, or path traversal vulnerabilities.
+2. Hardcoded secrets (API keys, passwords, credentials).
+3. Unsafe deserialization or unsafe execution of user input.
+4. Race conditions or resource leaks (files, sockets, database connections left open).
+5. Insecure default configurations or permissions.
+Add any safety issues to `blocking_issues`.
+## Phase Profile Policy: REVIEWER
+- Target Model Capability: strict_review
+- Write Access: PROHIBITED
+- Preferred Tools: git_diff_inspection, implementation_report_review, telemetry_review
+- Allowed Tools: git_diff_inspection, implementation_report_review, telemetry_review, sonar_report_review
+- Prohibited Tools: file_write, file_edit, shell_execution
+- Required MCP Servers: None
+- Optional MCP Servers: None
+- Shell Policy: prohibited
+- Network Policy: disabled
+- Expected Evidence: ('review_result',)
+- Stop Conditions: valid_review_result_schema
+- Policy Enforcement Mode: ADVISORY (Runtime does not restrict tools natively)

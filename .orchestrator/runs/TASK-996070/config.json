@@ -1,0 +1,140 @@
+{
+  "base_dir": "C:\\Users\\PrzemyslawB\\ERP\\pdf-blueprint-layers",
+  "runs_dir": "C:\\Users\\PrzemyslawB\\ERP\\pdf-blueprint-layers\\.orchestrator\\runs",
+  "db_path": "C:\\Users\\PrzemyslawB\\ERP\\pdf-blueprint-layers\\.orchestrator\\orchestrator.db",
+  "max_iterations": 6,
+  "max_stuck_rounds": 2,
+  "min_diff_lines": 1,
+  "claude_timeout": 720,
+  "agy_timeout": 1800,
+  "git_timeout": 30,
+  "max_runtime_sec": 0,
+  "agent_max_retries": 3,
+  "agent_retry_delay": 5.0,
+  "claude_bin": "C:\\Users\\PrzemyslawB\\.local\\bin\\claude.EXE",
+  "claude_model": "claude-opus-4-5",
+  "agy_bin": "C:\\Users\\PrzemyslawB\\AppData\\Local\\agy\\bin\\agy.EXE",
+  "agy_model": "Gemini 3.5 Flash (Medium)",
+  "codex_bin": "C:\\Users\\PrzemyslawB\\AppData\\Local\\Programs\\OpenAI\\Codex\\bin\\codex.EXE",
+  "codex_model": "gpt-5.5",
+  "codex_timeout": 1800,
+  "aider_bin": "aider",
+  "architect_runtime": "agy",
+  "architect_model": "Gemini 3.6 Flash (Medium)",
+  "analyzer_runtime": "claude",
+  "analyzer_model": null,
+  "developer_runtime": "claude",
+  "developer_model": "claude-opus-5",
+  "reviewer_runtime": "agy",
+  "reviewer_model": "Gemini 3.6 Flash (Medium)",
+  "capability_models": {
+    "fast_reasoning": [
+      [
+        "agy",
+        "Gemini 3.5 Flash (Medium)"
+      ],
+      [
+        "claude",
+        "claude-3-5-haiku-20241022"
+      ]
+    ],
+    "deep_reasoning": [
+      [
+        "claude",
+        "claude-opus-4-5"
+      ],
+      [
+        "agy",
+        "Gemini 3.5 Flash (Medium)"
+      ]
+    ],
+    "code_editing": [
+      [
+        "agy",
+        "Gemini 3.1 Pro (Low)"
+      ],
+      [
+        "claude",
+        "claude-3-7-sonnet-20250219"
+      ]
+    ],
+    "strict_review": [
+      [
+        "claude",
+        "claude-opus-4-5"
+      ],
+      [
+        "agy",
+        "Gemini 3.5 Flash (Medium)"
+      ]
+    ]
+  },
+  "escalation_max_steps": 1,
+  "escalation_ladder": {
+    "fast_reasoning": "deep_reasoning",
+    "deep_reasoning": "strict_review",
+    "code_editing": "strict_review",
+    "strict_review": "strict_review"
+  },
+  "explicit_phase_overrides": [
+    "architect",
+    "developer",
+    "reviewer"
+  ],
+  "task_category_override": "",
+  "workflow_fast_max_files": 3,
+  "workflow_fast_max_lines": 120,
+  "workflow_fast_max_modules": 1,
+  "workflow_standard_max_files": 12,
+  "workflow_standard_max_lines": 600,
+  "workflow_standard_max_modules": 2,
+  "workflow_high_risk_path_patterns": [
+    "auth",
+    "security",
+    "permission",
+    "secret",
+    "migration",
+    "schema",
+    "payment",
+    "billing",
+    "transaction",
+    "deployment",
+    "terraform",
+    "k8s",
+    "docker"
+  ],
+  "workflow_dependency_file_patterns": [
+    "requirements*.txt",
+    "pyproject.toml",
+    "setup.py",
+    "setup.cfg",
+    "*.lock",
+    "*-lock.json",
+    "*-lock.yaml",
+    "*.lock.json",
+    "go.sum"
+  ],
+  "workflow_profile_override": "",
+  "workflow_profile_override_by": "",
+  "workflow_profile_override_reason": "",
+  "use_analyzer": false,
+  "superpowers_enabled": false,
+  "use_sonar": false,
+  "sonar_runtime": null,
+  "sonar_model": null,
+  "sonar_max_rounds": 2,
+  "sonar_severities": "BLOCKER,CRITICAL,MAJOR",
+  "sonar_scope": "changed",
+  "sonar_pre_existing_in_report": 5,
+  "sonar_project_key": "",
+  "use_git": true,
+  "git_bin": "git",
+  "git_add_all": false,
+  "enable_squash": true,
+  "max_diff_chars": 100000,
+  "log_level": "INFO",
+  "log_to_file": true,
+  "model_pricing": {},
+  "effective_sonar_runtime": "claude",
+  "effective_sonar_model": "claude-opus-5"
+}

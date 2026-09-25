@@ -22,6 +22,7 @@ export function useAutoSave() {
       exportSettings: docState.exportSettings,
       autoNumbering: docState.autoNumbering,
       overlayOpacity: docState.overlayOpacity,
+      overlayOffset: docState.overlayOffset,
       pdfFileId: docState.pdfFileId,
       overlayPdfFileId: docState.overlayPdfFileId,
       activeLayerId: uiState.activeLayerId
@@ -75,6 +76,7 @@ export function useAutoSave() {
     docState.exportSettings, 
     docState.autoNumbering, 
     docState.overlayOpacity,
+    docState.overlayOffset,
     docState.projectId,
     docState.pdfFileId,
     docState.overlayPdfFileId,

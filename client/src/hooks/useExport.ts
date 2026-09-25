@@ -98,6 +98,7 @@ export const useExport = () => {
       exportSettings: docState.exportSettings,
       autoNumbering: docState.autoNumbering,
       overlayOpacity: docState.overlayOpacity,
+      overlayOffset: docState.overlayOffset,
     }, null, 2);
 
     zip.file('project.json', projectData);

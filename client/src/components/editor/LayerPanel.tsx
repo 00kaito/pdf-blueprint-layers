@@ -1,7 +1,10 @@
 import React, {useState} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {
+    ArrowDown,
+    ArrowLeft,
     ArrowRight,
+    ArrowUp,
     CheckCircle2,
     ChevronDown,
     ChevronRight,
@@ -16,6 +19,7 @@ import {
     Layers,
     PenTool,
     Plus,
+    RotateCcw,
     Square,
     Star,
     Trash2,
@@ -32,6 +36,9 @@ import {Checkbox} from "@/components/ui/checkbox";
 import {Label} from "@/components/ui/label";
 import {cn} from '@/lib/utils';
 import {useCurrentUser} from '@/hooks/useAuth';
+
+/** Step (unscaled canvas units) applied by the overlay nudge buttons. */
+const OVERLAY_NUDGE_STEP = 1;
 
 const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
   if (type === 'text') return <Type className="w-3 h-3" />;
@@ -154,6 +161,16 @@ export const LayerPanel = () => {
   };
   const progressPercent = counts.total > 0 ? (counts.completed / counts.total) * 100 : 0;
 
+  const overlayOffset = state.overlayOffset ?? { x: 0, y: 0 };
+  const setOverlayOffset = (x: number, y: number) => {
+    dispatch({
+      type: 'SET_OVERLAY_OFFSET',
+      payload: { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 }
+    });
+  };
+  const nudgeOverlay = (dx: number, dy: number) =>
+    setOverlayOffset(overlayOffset.x + dx, overlayOffset.y + dy);
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Overlay Blueprint Section */}
@@ -220,6 +237,61 @@ export const LayerPanel = () => {
                 onValueChange={([val]) => dispatch({ type: 'SET_OVERLAY_OPACITY', payload: val })}
                 className="py-2"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground font-medium uppercase">Alignment</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1 text-[10px]"
+                  onClick={() => setOverlayOffset(0, 0)}
+                  title="Reset overlay alignment"
+                  data-testid="overlay-offset-reset"
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Reset
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="overlay-offset-x" className="text-[10px] text-muted-foreground">X</Label>
+                  <Input
+                    id="overlay-offset-x"
+                    type="number"
+                    value={overlayOffset.x}
+                    onChange={(e) => setOverlayOffset(Number(e.target.value), overlayOffset.y)}
+                    className="h-6 w-16 text-[10px] px-1"
+                    data-testid="overlay-offset-x"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="overlay-offset-y" className="text-[10px] text-muted-foreground">Y</Label>
+                  <Input
+                    id="overlay-offset-y"
+                    type="number"
+                    value={overlayOffset.y}
+                    onChange={(e) => setOverlayOffset(overlayOffset.x, Number(e.target.value))}
+                    className="h-6 w-16 text-[10px] px-1"
+                    data-testid="overlay-offset-y"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" className="h-6 w-6" title="Nudge left" onClick={() => nudgeOverlay(-OVERLAY_NUDGE_STEP, 0)}>
+                  <ArrowLeft className="w-3 h-3" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-6 w-6" title="Nudge right" onClick={() => nudgeOverlay(OVERLAY_NUDGE_STEP, 0)}>
+                  <ArrowRight className="w-3 h-3" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-6 w-6" title="Nudge up" onClick={() => nudgeOverlay(0, -OVERLAY_NUDGE_STEP)}>
+                  <ArrowUp className="w-3 h-3" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-6 w-6" title="Nudge down" onClick={() => nudgeOverlay(0, OVERLAY_NUDGE_STEP)}>
+                  <ArrowDown className="w-3 h-3" />
+                </Button>
+              </div>
             </div>
           </div>
         )}

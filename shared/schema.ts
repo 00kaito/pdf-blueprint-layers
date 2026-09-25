@@ -55,6 +55,7 @@ export const projectStateSchema = z.object({
   exportSettings: z.any().optional(),
   autoNumbering: z.any().optional(),
   overlayOpacity: z.number().optional(),
+  overlayOffset: z.object({ x: z.number(), y: z.number() }).optional(),
   pdfFileId: z.string().optional().nullable(),
   overlayPdfFileId: z.string().optional().nullable(),
   activeLayerId: z.string().optional().nullable(),

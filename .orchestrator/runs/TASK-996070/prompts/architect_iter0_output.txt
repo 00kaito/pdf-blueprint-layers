@@ -1,0 +1,83 @@
+```json
+{
+  "summary": "Add overlay blueprint offset state and UI controls in LayerPanel to allow users to manually shift and align the overlay PDF document relative to the main document.",
+  "plan": [
+    {
+      "step": 1,
+      "title": "Update Editor Types for Overlay Offset",
+      "description": "Extend DocumentState interface in client/src/lib/types.ts to include overlayOffset: { x: number; y: number } and add SET_OVERLAY_OFFSET action type to EditorAction.",
+      "files_affected": [
+        "client/src/lib/types.ts"
+      ],
+      "confidence": "verified",
+      "type": "MODIFY"
+    },
+    {
+      "step": 2,
+      "title": "Update Editor Reducer State Management",
+      "description": "Initialize overlayOffset to { x: 0, y: 0 } in initialDocumentState and handle SET_OVERLAY_OFFSET in editorReducer in client/src/lib/editor-context.tsx.",
+      "files_affected": [
+        "client/src/lib/editor-context.tsx"
+      ],
+      "confidence": "verified",
+      "type": "MODIFY"
+    },
+    {
+      "step": 3,
+      "title": "Render Overlay Offset in OverlayDocument Component",
+      "description": "Update OverlayDocument component in client/src/components/editor/Canvas/OverlayDocument.tsx to read docState.overlayOffset and apply scale-adjusted CSS transformation (transform: translate(x * scale, y * scale)) to position the overlay document.",
+      "files_affected": [
+        "client/src/components/editor/Canvas/OverlayDocument.tsx"
+      ],
+      "confidence": "verified",
+      "type": "MODIFY"
+    },
+    {
+      "step": 4,
+      "title": "Add Overlay Offset Controls in LayerPanel",
+      "description": "Add UI controls in client/src/components/editor/LayerPanel.tsx under the Overlay Blueprint section (X/Y numerical controls and nudge/reset actions) dispatching SET_OVERLAY_OFFSET actions.",
+      "files_affected": [
+        "client/src/components/editor/LayerPanel.tsx"
+      ],
+      "confidence": "verified",
+      "type": "MODIFY"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "c1",
+      "description": "DocumentState interface in client/src/lib/types.ts contains overlayOffset property with x and y numeric values.",
+      "how_to_verify": "Inspect client/src/lib/types.ts file."
+    },
+    {
+      "id": "c2",
+      "description": "EditorAction type includes SET_OVERLAY_OFFSET action payload definition.",
+      "how_to_verify": "Inspect client/src/lib/types.ts file."
+    },
+    {
+      "id": "c3",
+      "description": "initialDocumentState in client/src/lib/editor-context.tsx defines overlayOffset with default { x: 0, y: 0 }.",
+      "how_to_verify": "Inspect client/src/lib/editor-context.tsx file."
+    },
+    {
+      "id": "c4",
+      "description": "OverlayDocument component in client/src/components/editor/Canvas/OverlayDocument.tsx transforms position using scale and overlayOffset.",
+      "how_to_verify": "Inspect client/src/components/editor/Canvas/OverlayDocument.tsx file."
+    },
+    {
+      "id": "c5",
+      "description": "LayerPanel component renders offset position input controls for X and Y, plus reset option when an overlay document is present.",
+      "how_to_verify": "Inspect client/src/components/editor/LayerPanel.tsx file."
+    },
+    {
+      "id": "c6",
+      "description": "TypeScript type check passes without errors.",
+      "how_to_verify": "Run npm run check command."
+    }
+  ],
+  "risks": [
+    "Offset calculation without canvas scale adjustment could cause misalignments at different zoom levels.",
+    "Unclamped offset values might allow the overlay document to be shifted completely off-screen."
+  ]
+}
+```
