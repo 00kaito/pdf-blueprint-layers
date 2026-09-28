@@ -179,3 +179,6 @@
 2026-09-25 17:57:32,522 [INFO] [agy] success on attempt 1 (75.8s)
 2026-09-25 17:57:32,554 [INFO] Review result: APPROVED, open criteria: [], blocking issues: 0
 2026-09-25 17:57:32,556 [INFO] Squashing intermediate commits into one: [TASK-996070] Add overlay blueprint offset controls and alignment
+2026-09-25 17:57:33,511 [INFO] [git] Final commit created: [TASK-996070] Add overlay blueprint offset controls and alignment
+2026-09-25 17:57:33,511 [INFO] Final commit created successfully
+2026-09-25 17:57:33,523 [INFO] ═══ Task TASK-996070 finished with status=TaskStatus.APPROVED ═══

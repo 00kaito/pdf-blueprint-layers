@@ -2,6 +2,7 @@ import React, {createContext, ReactNode, useContext, useMemo, useReducer} from '
 import {DocumentState, EditorAction, EditorObject, EditorState, UIState} from './types';
 import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
+import {createInitialHistory, HistoryAction, HistoryEntry, withHistory} from './history';
 
 /** Maximum manual overlay shift (unscaled canvas units) — keeps the overlay reachable on screen. */
 const MAX_OVERLAY_OFFSET = CANVAS_BASE_WIDTH;
@@ -379,13 +380,33 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
   }
 };
 
+const historyReducer = withHistory(editorReducer);
+
+export type HistoryInfo = {
+  /** Applied changes, oldest first. */
+  past: HistoryEntry[];
+  /** Undone changes that can be redone, most recently undone first. */
+  future: HistoryEntry[];
+  canUndo: boolean;
+  canRedo: boolean;
+};
+
 export const DocumentStateContext = createContext<DocumentState | null>(null);
-export const DocumentDispatchContext = createContext<React.Dispatch<EditorAction> | null>(null);
+export const DocumentDispatchContext = createContext<React.Dispatch<HistoryAction> | null>(null);
 export const UIStateContext = createContext<UIState | null>(null);
-export const UIDispatchContext = createContext<React.Dispatch<EditorAction> | null>(null);
+export const UIDispatchContext = createContext<React.Dispatch<HistoryAction> | null>(null);
+export const HistoryContext = createContext<HistoryInfo | null>(null);
 
 export const EditorProvider = ({ children }: { children: ReactNode }) => {
-  const [state, dispatch] = useReducer(editorReducer, initialState);
+  const [historyState, dispatch] = useReducer(historyReducer, initialState, createInitialHistory);
+  const state = historyState.editor;
+
+  const historyInfo = useMemo<HistoryInfo>(() => ({
+    past: historyState.past,
+    future: historyState.future,
+    canUndo: historyState.past.length > 0,
+    canRedo: historyState.future.length > 0,
+  }), [historyState.past, historyState.future]);
 
   const documentState = useMemo(() => ({
     projectId: state.projectId,
@@ -421,7 +442,9 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       <DocumentDispatchContext.Provider value={dispatch}>
         <UIStateContext.Provider value={uiState}>
           <UIDispatchContext.Provider value={dispatch}>
-            {children}
+            <HistoryContext.Provider value={historyInfo}>
+              {children}
+            </HistoryContext.Provider>
           </UIDispatchContext.Provider>
         </UIStateContext.Provider>
       </DocumentDispatchContext.Provider>
@@ -455,3 +478,14 @@ export const useUIDispatch = () => {
   return context;
 };
 
+export const useHistory = () => {
+  const history = useContext(HistoryContext);
+  const dispatch = useContext(DocumentDispatchContext);
+  if (!history || !dispatch) throw new Error('useHistory must be used within EditorProvider');
+  return {
+    ...history,
+    undo: () => dispatch({ type: 'UNDO' }),
+    redo: () => dispatch({ type: 'REDO' }),
+    jumpTo: (index: number) => dispatch({ type: 'JUMP_TO_HISTORY', payload: index }),
+  };
+};

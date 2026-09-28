@@ -6,6 +6,7 @@ import {Separator} from '@/components/ui/separator';
 import {useCurrentUser} from '@/hooks/useAuth';
 import {ObjectPropertyEditor} from './Toolbar/ObjectPropertyEditor';
 import {ZoomControls} from './Toolbar/ZoomControls';
+import {HistoryControls} from './Toolbar/HistoryControls';
 import {ProjectActions} from './Toolbar/ProjectActions';
 import {ToolSelector} from './Toolbar/ToolSelector';
 import {useIsMobile} from '@/hooks/use-mobile';
@@ -88,6 +89,8 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
         {!isMobile && (
           <>
             <Separator orientation="vertical" className="h-6 hidden md:block" />
+            <HistoryControls />
+            <Separator orientation="vertical" className="h-6" />
             <ZoomControls scale={uiState.scale} />
             <Separator orientation="vertical" className="h-6" />
           </>

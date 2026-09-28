@@ -65,13 +65,27 @@ export const Canvas = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't delete if user is typing in an input or contentEditable
+      // Leave shortcuts (delete, undo…) to the field if user is typing in an input or contentEditable
       if (
         e.target instanceof HTMLInputElement || 
         e.target instanceof HTMLTextAreaElement ||
         (e.target as HTMLElement).isContentEditable
       ) {
         return;
+      }
+
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase();
+        if (key === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          dispatch({ type: 'UNDO' });
+          return;
+        }
+        if (key === 'y' || (key === 'z' && e.shiftKey)) {
+          e.preventDefault();
+          dispatch({ type: 'REDO' });
+          return;
+        }
       }
 
       if (isTech) return;
