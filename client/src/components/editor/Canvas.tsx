@@ -14,6 +14,8 @@ import {DrawingLayer} from './Canvas/DrawingLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import {useCurrentUser} from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {useToast} from '@/hooks/use-toast';
+import {floodFillRegion} from '@/core/flood-fill';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -30,6 +32,8 @@ export const Canvas = () => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageCanvasRef = useRef<HTMLCanvasElement>(null);
+  const { toast } = useToast();
   const { drawingPath, isDrawing, onMouseDown, onMouseMove, onMouseUp } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const [, setNumPages] = useState<number>(0);
 
@@ -122,6 +126,7 @@ export const Canvas = () => {
       return;
     }
     if (state.tool === 'draw') { onMouseDown(e); }
+    else if (state.tool === 'fill') { handleFill(e); }
     else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
        const rect = containerRef.current?.getBoundingClientRect();
        if (rect) {
@@ -149,6 +154,46 @@ export const Canvas = () => {
           dispatch({ type: 'INCREMENT_COUNTER' });
        }
     } else { dispatch({ type: 'SELECT_OBJECT', payload: null }); }
+  };
+
+  /** Paint-bucket: fills the enclosed area of the main blueprint under the cursor. */
+  const handleFill = (e: React.MouseEvent) => {
+    const source = pageCanvasRef.current;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!source || !rect || !state.pdfFile) return;
+    const x = (e.clientX - rect.left) / state.scale;
+    const y = (e.clientY - rect.top) / state.scale;
+    const result = floodFillRegion(source, x, y, state.fillColor);
+    if (!result) {
+      toast({ title: 'Nothing to fill', description: 'Click inside an area enclosed by lines, not on a line.' });
+      return;
+    }
+    if (result.coverage > 0.5 && !window.confirm(
+      `This fill covers ${Math.round(result.coverage * 100)}% of the page — the area is probably not closed. Fill anyway?`
+    )) {
+      return;
+    }
+    dispatch({
+      type: 'ADD_FILL',
+      payload: {
+        newLayerId: uuidv4(),
+        object: {
+          id: uuidv4(),
+          type: 'image',
+          isFill: true,
+          name: '',
+          x: result.x,
+          y: result.y,
+          width: result.width,
+          height: result.height,
+          layerId: '', // set by the reducer to the Colors layer
+          content: result.dataUrl,
+          color: state.fillColor,
+          opacity: state.fillOpacity,
+          rotation: 0,
+        },
+      },
+    });
   };
 
   const debouncedScroll = useMemo(() => debounce((scroll: { x: number, y: number }) => {
@@ -195,7 +240,7 @@ export const Canvas = () => {
   };
 
   return (
-    <div className="flex-1 bg-muted/30 overflow-auto relative select-none" 
+    <div className={`flex-1 bg-muted/30 overflow-auto relative select-none${state.tool === 'fill' ? ' cursor-crosshair' : ''}`} 
       onMouseDown={handleMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onScroll={handleScroll}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
       {...touchGestures}
@@ -205,6 +250,7 @@ export const Canvas = () => {
           {state.pdfFile ? (
             <Document file={state.pdfFile} onLoadSuccess={({numPages}) => setNumPages(numPages)} className="border border-border bg-white">
               <Page 
+                canvasRef={pageCanvasRef}
                 pageNumber={state.currentPage} 
                 renderTextLayer={false} 
                 renderAnnotationLayer={false} 

@@ -71,6 +71,9 @@ export const ObjectRenderer = memo(({
   const [isRotating, setIsRotating] = useState(false);
 
   const isSelected = selectedObjectIds.includes(obj.id);
+  // Paint-bucket fills are traced from the blueprint, so they stay pinned to it.
+  const isFill = !!obj.isFill;
+  const lockGeometry = isFill || !!disableMovement;
 
   const touchGestures = useTouchGestures({
     onTap: () => {
@@ -193,8 +196,8 @@ export const ObjectRenderer = memo(({
       }}
       scale={1}
       bounds="parent"
-      disableDragging={disableMovement || isTech || layer.locked || tool !== 'select' || isRotating}
-      enableResizing={isTech || disableMovement ? {} : (!layer.locked && isSelected)}
+      disableDragging={lockGeometry || isTech || layer.locked || tool !== 'select' || isRotating}
+      enableResizing={isTech || lockGeometry ? {} : (!layer.locked && isSelected)}
       resizeHandleClasses={{
         bottomRight: "bg-primary w-2 h-2 rounded-full",
         bottomLeft:  "bg-primary w-2 h-2 rounded-full",
@@ -204,11 +207,13 @@ export const ObjectRenderer = memo(({
       className={cn(
         "group z-20",
         isSelected ? "ring-1 ring-primary ring-offset-1" : "",
-        layer.locked ? "pointer-events-none" : "cursor-move"
+        // While the bucket is active, clicks go through a fill to the blueprint (re-fill = recolour).
+        layer.locked || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
       )}
-      style={{ opacity: obj.opacity ?? 1, zIndex: isSelected ? 30 : 20 }}
+      // Fills sit below regular objects and drawn paths.
+      style={{ opacity: obj.opacity ?? 1, zIndex: isSelected ? 30 : isFill ? 8 : 20 }}
     >
-      {isSelected && !layer.locked && !disableMovement && (
+      {isSelected && !layer.locked && !lockGeometry && (
         <div 
           className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 hover:scale-110 transition-transform"
           onMouseDown={handleRotationMouseDown}
@@ -273,12 +278,12 @@ export const ObjectRenderer = memo(({
           )}
       </div>
 
-      <div 
+      {!isFill && <div 
         className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/80 border border-border px-1.5 py-0.5 rounded text-[10px] font-medium pointer-events-none shadow-sm"
         style={{ transform: `translateX(-50%)` }}
       >
         {obj.name}
-      </div>
+      </div>}
     </Rnd>
   );
 });

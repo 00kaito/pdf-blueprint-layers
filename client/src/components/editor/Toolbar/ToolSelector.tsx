@@ -10,6 +10,7 @@ import {
     Hexagon,
     Image as ImageIcon,
     MousePointer2,
+    PaintBucket,
     Pencil,
     Plus,
     Settings2,
@@ -26,7 +27,11 @@ import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/compon
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
+import {Slider} from "@/components/ui/slider";
 import {useObjectCreation} from '@/hooks/useObjectCreation';
+import {FILL_LAYER_NAME} from '@/lib/editor-context';
+
+const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
 
 interface ToolSelectorProps {
   isTech: boolean;
@@ -74,6 +79,101 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               </TooltipTrigger>
               <TooltipContent>Draw</TooltipContent>
             </Tooltip>
+
+            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={uiState.tool === 'fill'}
+                    onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'fill' : 'select' })}
+                    size="sm"
+                    className="h-8 w-8 rounded-none border-none relative"
+                    data-testid="tool-fill"
+                  >
+                    <PaintBucket className="w-4 h-4" />
+                    <span
+                      className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full"
+                      style={{ backgroundColor: uiState.fillColor, opacity: Math.max(uiState.fillOpacity, 0.3) }}
+                    />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>Fill area with colour (goes to layer "{FILL_LAYER_NAME}")</TooltipContent>
+              </Tooltip>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-6 rounded-none px-0 border-l border-input hover:bg-muted" data-testid="fill-settings">
+                    <Settings2 className="w-3 h-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-60" side="bottom" align="center">
+                  <div className="space-y-3">
+                    <h4 className="font-medium leading-none">Fill</h4>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={uiState.fillColor}
+                        onChange={(e) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillColor: e.target.value } })}
+                        className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer"
+                        data-testid="fill-color"
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        {FILL_PRESETS.map(c => (
+                          <button
+                            key={c}
+                            type="button"
+                            className={`w-5 h-5 rounded border ${uiState.fillColor === c ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
+                            style={{ backgroundColor: c }}
+                            onClick={() => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillColor: c } })}
+                            title={c}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Opacity</Label>
+                        <span className="text-[10px] font-mono bg-muted px-1 rounded">{Math.round(uiState.fillOpacity * 100)}%</span>
+                      </div>
+                      <Slider
+                        value={[uiState.fillOpacity]}
+                        min={0.05}
+                        max={1}
+                        step={0.05}
+                        onValueChange={([v]) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillOpacity: v } })}
+                        data-testid="fill-opacity"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      Click inside an area enclosed by lines. Clicking an already filled area again replaces its colour.
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {uiState.tool === 'fill' && (
+              // Quick settings shown while the bucket is active, so opacity can be tuned without opening the popover.
+              <div className="flex items-center gap-2 px-2 h-8 rounded-md border border-input bg-background" data-testid="fill-inline-settings">
+                <input
+                  type="color"
+                  value={uiState.fillColor}
+                  onChange={(e) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillColor: e.target.value } })}
+                  className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer"
+                  title="Fill colour"
+                />
+                <span className="text-[10px] uppercase font-bold text-muted-foreground">Opacity</span>
+                <Slider
+                  value={[uiState.fillOpacity]}
+                  min={0.05}
+                  max={1}
+                  step={0.05}
+                  onValueChange={([v]) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillOpacity: v } })}
+                  className="w-24"
+                  data-testid="fill-opacity-inline"
+                />
+                <span className="text-[10px] font-mono w-8 text-right">{Math.round(uiState.fillOpacity * 100)}%</span>
+              </div>
+            )}
 
             <Separator orientation="vertical" className="h-6 mx-1" />
 

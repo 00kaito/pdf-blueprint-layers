@@ -93,6 +93,7 @@ const describe = (action: EditorAction, prev: EditorState): string => {
   const layerName = (id: string) => prev.layers.find(l => l.id === id)?.name ?? 'layer';
 
   switch (action.type) {
+    case 'ADD_FILL': return 'Fill area';
     case 'ADD_OBJECT': return `Add ${action.payload.name || action.payload.type}`;
     case 'UPDATE_OBJECT': {
       const keys = Object.keys(action.payload.updates);

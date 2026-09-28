@@ -38,6 +38,8 @@ export type EditorObject = {
   issueDescription?: string;
   comments?: string[];
   notes?: string;
+  /** Area filled with the paint-bucket tool (content = colour PNG mask); lives in the Colors layer. */
+  isFill?: boolean;
 };
 
 export type DocumentState = {
@@ -75,7 +77,10 @@ export type UIState = {
   currentPage: number;
   scale: number;
   scrollPos: { x: number; y: number };
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp';
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill';
+  /** Paint-bucket settings (hex colour, 0–1 opacity). */
+  fillColor: string;
+  fillOpacity: number;
   showStatusColors: boolean;
   objectDetailsOpen: boolean;
   isImporting: boolean;
@@ -124,4 +129,7 @@ export type EditorAction =
   | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } }
   | { type: 'TOGGLE_STATUS_COLORS' }
   | { type: 'SET_IMPORTING'; payload: boolean }
-  | { type: 'RESET_EDITOR' };
+  | { type: 'RESET_EDITOR' }
+  | { type: 'SET_FILL_SETTINGS'; payload: Partial<Pick<UIState, 'fillColor' | 'fillOpacity'>> }
+  /** Adds a paint-bucket fill to the Colors layer (created if missing). Re-filling the same area replaces it. */
+  | { type: 'ADD_FILL'; payload: { object: EditorObject; newLayerId: string } };

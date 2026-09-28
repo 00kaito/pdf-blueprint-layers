@@ -13,6 +13,7 @@ import {
 } from 'pdf-lib';
 import {getPhysicalCoords, getVisualDimensions, hexToRgb} from '@/core/pdf-math';
 import {svgToPng} from '@/core/svg-utils';
+import {tintImage} from '@/core/flood-fill';
 import {buildIconPath} from '@/core/icon-shapes';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {useProjectList} from '@/hooks/useProjects';
@@ -187,6 +188,9 @@ export const useExport = () => {
             let contentToEmbed = obj.content;
             if (obj.content.startsWith('data:image/svg+xml')) {
                 contentToEmbed = await svgToPng(obj.content, scaledWidth, scaledHeight, obj.color);
+            } else if (obj.isFill && obj.color) {
+                // The fill may have been recoloured after it was created.
+                contentToEmbed = await tintImage(obj.content, obj.color);
             }
             const image = contentToEmbed.startsWith('data:image/png') 
                 ? await pdfDoc.embedPng(contentToEmbed) 

@@ -97,11 +97,20 @@ app.use((req, res, next) => {
     }
 
     const port = config.port;
+    httpServer.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(`Port ${port} is already in use — stop the other process or set PORT to a free port.`);
+      } else {
+        console.error("Server error:", err);
+      }
+      process.exit(1);
+    });
     httpServer.listen(
       {
         port,
         host: "0.0.0.0",
-        reusePort: true,
+        // SO_REUSEPORT is not supported on Windows (listen fails with ENOTSUP).
+        reusePort: process.platform !== "win32",
       },
       () => {
         log(`serving on port ${port}`);

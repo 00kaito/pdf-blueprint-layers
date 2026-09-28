@@ -4,6 +4,12 @@ import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 import {createInitialHistory, HistoryAction, HistoryEntry, withHistory} from './history';
 
+/** Every paint-bucket fill lands in this layer. */
+export const FILL_LAYER_NAME = 'Colors';
+
+/** Two fills whose bounds differ by less than this (canvas units) are the same area. */
+const SAME_FILL_EPSILON = 0.5;
+
 /** Maximum manual overlay shift (unscaled canvas units) — keeps the overlay reachable on screen. */
 const MAX_OVERLAY_OFFSET = CANVAS_BASE_WIDTH;
 
@@ -45,7 +51,9 @@ const initialUIState: UIState = {
   tool: 'select',
   showStatusColors: false,
   objectDetailsOpen: false,
-  isImporting: false
+  isImporting: false,
+  fillColor: '#3b82f6',
+  fillOpacity: 0.35
 };
 
 const initialState: EditorState = {
@@ -373,6 +381,35 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, showStatusColors: !state.showStatusColors };
     case 'SET_IMPORTING':
       return { ...state, isImporting: action.payload };
+    case 'SET_FILL_SETTINGS':
+      return { ...state, ...action.payload };
+    case 'ADD_FILL': {
+      const { object, newLayerId } = action.payload;
+      let layers = state.layers;
+      let layer = layers.find(l => l.name.trim().toLowerCase() === FILL_LAYER_NAME.toLowerCase());
+      if (!layer) {
+        // Lowest order so fills sit underneath everything else in the exported PDF.
+        const minOrder = Math.min(...layers.map(l => l.order), 0);
+        layer = { id: newLayerId, name: FILL_LAYER_NAME, visible: true, locked: false, order: minOrder - 1, opacity: 1 };
+        layers = [...layers, layer];
+      } else if (!layer.visible) {
+        layers = layers.map(l => l.id === layer!.id ? { ...l, visible: true } : l);
+      }
+      const layerId = layer.id;
+      const same = state.objects.find(o =>
+        o.isFill && o.layerId === layerId &&
+        Math.abs(o.x - object.x) < SAME_FILL_EPSILON &&
+        Math.abs(o.y - object.y) < SAME_FILL_EPSILON &&
+        Math.abs(o.width - object.width) < SAME_FILL_EPSILON &&
+        Math.abs(o.height - object.height) < SAME_FILL_EPSILON
+      );
+      const objects = same
+        ? state.objects.map(o => o.id === same.id
+            ? { ...o, content: object.content, color: object.color, opacity: object.opacity }
+            : o)
+        : [...state.objects, { ...object, layerId }];
+      return { ...state, layers, objects };
+    }
     case 'RESET_EDITOR':
       return { ...state, ...initialDocumentState };
     default:
@@ -435,7 +472,9 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     showStatusColors: state.showStatusColors,
     objectDetailsOpen: state.objectDetailsOpen,
     isImporting: state.isImporting,
-  }), [state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
+    fillColor: state.fillColor,
+    fillOpacity: state.fillOpacity,
+  }), [state.fillColor, state.fillOpacity, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

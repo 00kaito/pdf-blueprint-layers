@@ -28,6 +28,8 @@ export const ObjectPropertyEditor = ({
   if (selectedObjects.length === 0 || isTech) return null;
 
   const firstObject = selectedObjects[0];
+  const allFills = selectedObjects.every(o => o.isFill);
+  const anyFill = selectedObjects.some(o => o.isFill);
 
   const handleDelete = () => {
     dispatch({ type: 'DELETE_OBJECTS', payload: selectedObjectIds });
@@ -97,7 +99,21 @@ export const ObjectPropertyEditor = ({
           </div>
         </>
       )}
-      <Select 
+      {allFills && (
+        <>
+          <Separator orientation="vertical" className="h-6 mx-1" />
+          <div className="w-24 flex items-center gap-2" title="Fill opacity">
+            <Slider
+               value={[firstObject.opacity ?? 1]}
+               min={0.05} max={1} step={0.05}
+               onValueChange={([val]) => dispatch({ type: 'UPDATE_OBJECTS', payload: { ids: selectedObjectIds, updates: { opacity: val } } })}
+            />
+          </div>
+          <span className="text-[10px] font-mono w-8">{Math.round((firstObject.opacity ?? 1) * 100)}%</span>
+        </>
+      )}
+      {/* Fills always live in the Colors layer */}
+      {!anyFill && <Select 
         value={selectedObjects.every(o => o.layerId === firstObject.layerId) ? firstObject.layerId : undefined} 
         onValueChange={handleMoveToLayer}
       >
@@ -105,7 +121,7 @@ export const ObjectPropertyEditor = ({
           <SelectValue placeholder="Mixed layers" />
         </SelectTrigger>
         <SelectContent>{layers.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
-      </Select>
+      </Select>}
       <Button variant="destructive" size="icon" onClick={handleDelete} className="h-8 w-8 ml-2">
         <Trash2 className="w-4 h-4" />
       </Button>
