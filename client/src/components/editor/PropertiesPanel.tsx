@@ -12,6 +12,7 @@ import {Button} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
 import {ObjectPhotoGallery} from './ObjectPhotoGallery';
 import {ObjectComments} from './ObjectComments';
+import {LabelPositionPicker} from './LabelPositionPicker';
 import {useCurrentUser} from '@/hooks/useAuth';
 
 export const PropertiesPanel = () => {
@@ -135,6 +136,10 @@ export const PropertiesPanel = () => {
                     onChange={(e) => handleUpdate({ name: e.target.value })}
                     className="h-8 text-xs"
                   />
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-muted-foreground">Label position</span>
+                    <LabelPositionPicker objects={selectedObjects} onChange={(updates) => handleUpdate(updates)} />
+                  </div>
                 </div>
               )}
 

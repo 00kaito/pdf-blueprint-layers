@@ -13,6 +13,7 @@ import {
     Eye,
     EyeOff,
     FileText,
+    Hand,
     Heart,
     Hexagon,
     Image as ImageIcon,
@@ -279,6 +280,19 @@ export const LayerPanel = () => {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {!isTech && (
+                  <Button
+                    variant={uiState.tool === 'pan-overlay' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-6 px-2 text-[10px] mr-1"
+                    title="Drag the overlay on the canvas to align it (Esc to finish)"
+                    onClick={() => dispatch({ type: 'SET_TOOL', payload: uiState.tool === 'pan-overlay' ? 'select' : 'pan-overlay' })}
+                    data-testid="overlay-pan-toggle"
+                  >
+                    <Hand className="w-3 h-3 mr-1" />
+                    {uiState.tool === 'pan-overlay' ? 'Done' : 'Drag'}
+                  </Button>
+                )}
                 <Button variant="outline" size="icon" className="h-6 w-6" title="Nudge left" onClick={() => nudgeOverlay(-OVERLAY_NUDGE_STEP, 0)}>
                   <ArrowLeft className="w-3 h-3" />
                 </Button>

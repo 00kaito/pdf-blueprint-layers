@@ -13,9 +13,13 @@ const SAME_FILL_EPSILON = 0.5;
 /** Maximum manual overlay shift (unscaled canvas units) — keeps the overlay reachable on screen. */
 const MAX_OVERLAY_OFFSET = CANVAS_BASE_WIDTH;
 
+/** Rounds to 0.1 canvas unit — hand dragging at high zoom needs finer steps than whole units. */
+const clampOverlayCoord = (v: number) =>
+  Math.min(MAX_OVERLAY_OFFSET, Math.max(-MAX_OVERLAY_OFFSET, Math.round(v * 10) / 10 || 0));
+
 const clampOverlayOffset = (offset: { x: number; y: number }) => ({
-  x: Math.min(MAX_OVERLAY_OFFSET, Math.max(-MAX_OVERLAY_OFFSET, Math.round(offset.x) || 0)),
-  y: Math.min(MAX_OVERLAY_OFFSET, Math.max(-MAX_OVERLAY_OFFSET, Math.round(offset.y) || 0)),
+  x: clampOverlayCoord(offset.x),
+  y: clampOverlayCoord(offset.y),
 });
 
 const initialDocumentState: DocumentState = {
@@ -93,6 +97,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         overlayPdfFile: action.payload,
         // Removing the overlay drops its manual alignment as well.
         overlayOffset: action.payload === null ? { x: 0, y: 0 } : state.overlayOffset,
+        tool: action.payload === null && state.tool === 'pan-overlay' ? 'select' : state.tool,
       };
     case 'SET_OVERLAY_OPACITY':
       return { ...state, overlayOpacity: action.payload };
@@ -229,6 +234,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         height: o.height,
         layerId: o.layerId, // placeholder
         name: o.name,
+        labelPosition: o.labelPosition,
+        labelOffset: o.labelOffset ? { ...o.labelOffset } : undefined,
         content: o.content,
         color: o.color,
         status: o.status,
@@ -411,7 +418,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, layers, objects };
     }
     case 'RESET_EDITOR':
-      return { ...state, ...initialDocumentState };
+      return { ...state, ...initialDocumentState, tool: state.tool === 'pan-overlay' ? 'select' : state.tool };
     default:
       return state;
   }

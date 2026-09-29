@@ -16,6 +16,13 @@ export type EditorObject = {
   height: number;
   layerId: string;
   name?: string; // User-defined name
+  /** Side of the object the name label is drawn on (default 'bottom'). */
+  labelPosition?: 'bottom' | 'top' | 'left' | 'right';
+  /**
+   * Manually dragged label: offset of the label centre from the object centre, in unscaled canvas
+   * units. Overrides `labelPosition`; a dashed leader line then connects the label to the object.
+   */
+  labelOffset?: { x: number; y: number };
   content?: string; // For text or image URL
   pathData?: string; // For SVG paths
   metadata?: {
@@ -77,7 +84,8 @@ export type UIState = {
   currentPage: number;
   scale: number;
   scrollPos: { x: number; y: number };
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill';
+  /** 'pan-overlay' = hand tool dragging the overlay blueprint to align it with the main one. */
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay';
   /** Paint-bucket settings (hex colour, 0–1 opacity). */
   fillColor: string;
   fillOpacity: number;

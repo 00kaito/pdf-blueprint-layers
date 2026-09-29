@@ -5,8 +5,11 @@ import JSZip from 'jszip';
 import {
     degrees,
     PDFDocument,
+    PDFName,
+    PDFStream,
     popGraphicsState,
     pushGraphicsState,
+    setGraphicsState,
     rotateDegrees,
     StandardFonts,
     translate
@@ -15,6 +18,7 @@ import {getPhysicalCoords, getVisualDimensions, hexToRgb} from '@/core/pdf-math'
 import {svgToPng} from '@/core/svg-utils';
 import {tintImage} from '@/core/flood-fill';
 import {buildIconPath} from '@/core/icon-shapes';
+import {DEFAULT_LABEL_POSITION, getLabelAnchor, getLeaderLine} from '@/core/label-position';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {useProjectList} from '@/hooks/useProjects';
 
@@ -138,6 +142,79 @@ export const useExport = () => {
       (layerOrderById[a.layerId] ?? 0) - (layerOrderById[b.layerId] ?? 0)
     );
 
+    // Overlay PDF Pass: Draw the overlay if one exists
+    if (docState.overlayPdfFile) {
+       try {
+          console.log("[Export] Embedding overlay PDF...");
+          const overlayBuffer = await docState.overlayPdfFile.arrayBuffer();
+          // Embed the page matching the current view (or the first page if overlay is shorter)
+          const tempDoc = await PDFDocument.load(overlayBuffer, { ignoreEncryption: true });
+          const overlayPageCount = tempDoc.getPageCount();
+          const pageIndex = Math.min(uiState.currentPage - 1, overlayPageCount - 1);
+          
+          const overlaySourcePage = tempDoc.getPages()[pageIndex];
+          const overlayRotation = overlaySourcePage.getRotation().angle;
+          const isOverlayRotated = overlayRotation === 90 || overlayRotation === 270;
+          
+          const [embeddedPage] = await pdfDoc.embedPdf(overlayBuffer, [pageIndex]);
+          // drawPage({ opacity }) only sets the fill alpha (ca), so the blueprint's lines (stroke
+          // alpha, CA) stayed opaque, and the overlay's own graphics states could override it anyway.
+          // Making the embedded page a transparency group lets one alpha apply to it as a whole.
+          await embeddedPage.embed();
+          const overlayXObject = pdfDoc.context.lookup(embeddedPage.ref);
+          if (overlayXObject instanceof PDFStream) {
+            overlayXObject.dict.set(PDFName.of('Group'), pdfDoc.context.obj({ Type: 'Group', S: 'Transparency' }));
+          }
+          const overlayAlpha = Math.min(1, Math.max(0, docState.overlayOpacity));
+          const overlayGsKey = page.node.newExtGState('GS', pdfDoc.context.obj({
+            Type: 'ExtGState',
+            ca: overlayAlpha,
+            CA: overlayAlpha,
+          }));
+          
+          const offset = docState.overlayOffset || { x: 0, y: 0 };
+          const scaleFactor = vW / CANVAS_BASE_WIDTH;
+          const scaledOffsetX = offset.x * scaleFactor;
+          const scaledOffsetY = offset.y * scaleFactor;
+          
+          const rawW = embeddedPage.width;
+          const rawH = embeddedPage.height;
+          
+          const visualWNative = isOverlayRotated ? rawH : rawW;
+          const visualHNative = isOverlayRotated ? rawW : rawH;
+          
+          const embScale = vW / visualWNative;
+          
+          const overlayVisualWidth = vW;
+          const overlayVisualHeight = visualHNative * embScale;
+          
+          const vCx = scaledOffsetX + (overlayVisualWidth / 2);
+          const vCy = scaledOffsetY + (overlayVisualHeight / 2);
+          
+          const { x: pCx, y: pCy } = getPhysicalCoords(vCx, vCy, pW, pH, pageRotation);
+          
+          page.pushOperators(
+            pushGraphicsState(),
+            translate(pCx, pCy),
+            rotateDegrees(pageRotation),
+            rotateDegrees(-overlayRotation),
+            translate(-(rawW * embScale) / 2, -(rawH * embScale) / 2),
+            setGraphicsState(overlayGsKey)
+          );
+          
+          page.drawPage(embeddedPage, {
+              x: 0,
+              y: 0,
+              width: rawW * embScale,
+              height: rawH * embScale,
+          });
+          
+          page.pushOperators(popGraphicsState());
+       } catch (e) {
+          console.error("[Export] Failed to embed overlay PDF:", e);
+       }
+    }
+
     // Pass 1: Draw non-text objects (images, icons, paths)
     for (const obj of sortedObjects) {
        const layer = docState.layers.find(l => l.id === obj.layerId);
@@ -229,15 +306,45 @@ export const useExport = () => {
        if (obj.name) {
           const labelFontSize = docState.exportSettings.labelFontSize * scaleFactor;
           const textWidth = helveticaFont.widthOfTextAtSize(obj.name, labelFontSize);
-          const { x: pLx, y: pLy } = getPhysicalCoords(vCx, vCy + (scaledHeight / 2 + labelFontSize * 0.9), pW, pH, pageRotation);
+          const boxWidth = textWidth + labelFontSize;
+          const { centerX, baselineY } = getLabelAnchor(
+            obj.labelPosition ?? DEFAULT_LABEL_POSITION,
+            { cx: vCx, cy: vCy, width: scaledWidth, height: scaledHeight },
+            boxWidth,
+            labelFontSize,
+            obj.labelOffset && { x: obj.labelOffset.x * scaleFactor, y: obj.labelOffset.y * scaleFactor },
+          );
+
+          if (obj.labelOffset) {
+            // Dashed leader line in the object's colour from the object to its dragged label.
+            const leader = getLeaderLine(
+              { cx: vCx, cy: vCy, w: scaledWidth, h: scaledHeight },
+              { cx: centerX, cy: baselineY - labelFontSize / 4, w: boxWidth, h: labelFontSize * 1.5 },
+              labelFontSize * 0.3,
+            );
+            if (leader) {
+              page.drawLine({
+                start: getPhysicalCoords(leader.from.x, leader.from.y, pW, pH, pageRotation),
+                end: getPhysicalCoords(leader.to.x, leader.to.y, pW, pH, pageRotation),
+                thickness: Math.max(0.3, labelFontSize * 0.08),
+                color: hexToRgb(obj.color || '#000000'),
+                dashArray: [labelFontSize * 0.4, labelFontSize * 0.3],
+                opacity: layer.opacity ?? 1,
+              });
+            }
+          }
+          // Anchor corners are computed in visual space and mapped individually, so the label stays
+          // on the chosen side on rotated pages too.
+          const boxCorner = getPhysicalCoords(centerX - boxWidth / 2, baselineY + labelFontSize / 2, pW, pH, pageRotation);
+          const textStart = getPhysicalCoords(centerX - textWidth / 2, baselineY, pW, pH, pageRotation);
           
           page.drawRectangle({
-             x: pLx - (textWidth + labelFontSize) / 2, y: pLy - labelFontSize / 2, 
-             width: textWidth + labelFontSize, height: labelFontSize * 1.5,
+             x: boxCorner.x, y: boxCorner.y, 
+             width: boxWidth, height: labelFontSize * 1.5,
              color: hexToRgb('#ffffff'), opacity: 0.6, rotate: degrees(pageRotation),
           });
           page.drawText(obj.name, {
-             x: pLx - textWidth / 2, y: pLy, size: labelFontSize, font: helveticaFont, color: hexToRgb('#000000'), rotate: degrees(pageRotation),
+             x: textStart.x, y: textStart.y, size: labelFontSize, font: helveticaFont, color: hexToRgb('#000000'), rotate: degrees(pageRotation),
           });
        }
     }

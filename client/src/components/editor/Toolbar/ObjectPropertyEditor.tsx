@@ -8,6 +8,7 @@ import {Input} from "@/components/ui/input";
 import {Slider} from '@/components/ui/slider';
 import {useDocumentDispatch, useUIDispatch} from '@/lib/editor-context';
 import {EditorObject, Layer} from '@/lib/types';
+import {LabelPositionPicker} from '../LabelPositionPicker';
 
 interface ObjectPropertyEditorProps {
   selectedObjects: EditorObject[];
@@ -49,6 +50,11 @@ export const ObjectPropertyEditor = ({
           value={selectedObjects.every(o => o.name === firstObject.name) ? (firstObject.name || '') : ''} 
           onChange={(e) => dispatch({ type: 'UPDATE_OBJECTS', payload: { ids: selectedObjectIds, updates: { name: e.target.value } } })}
           placeholder={selectedObjects.length > 1 ? "Mixed..." : "No label"}
+        />
+        <LabelPositionPicker
+          className="ml-1 pl-1 border-l border-input"
+          objects={selectedObjects}
+          onChange={(updates) => dispatch({ type: 'UPDATE_OBJECTS', payload: { ids: selectedObjectIds, updates } })}
         />
       </div>
 

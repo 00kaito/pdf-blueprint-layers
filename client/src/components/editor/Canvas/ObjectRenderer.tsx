@@ -1,4 +1,4 @@
-import React, {useState, memo} from 'react';
+import React, {useLayoutEffect, useRef, useState, memo} from 'react';
 import {Rnd} from 'react-rnd';
 import {ArrowRight, Camera, Circle, Heart, Hexagon, RotateCw, Square, Star, Triangle} from 'lucide-react';
 import {useDocumentDispatch, useUIDispatch} from '@/lib/editor-context';
@@ -6,6 +6,18 @@ import {useTouchGestures} from '@/hooks/useTouchGestures';
 import {cn} from '@/lib/utils';
 import {EditorObject, Layer} from '@/lib/types';
 import {useCurrentUser} from '@/hooks/useAuth';
+import {DEFAULT_LABEL_POSITION, getLeaderLine, LabelPosition} from '@/core/label-position';
+
+/** Label placement around the object box; the label never moves the object itself. */
+const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {
+  bottom: 'top-full mt-1 left-1/2 -translate-x-1/2',
+  top: 'bottom-full mb-1 left-1/2 -translate-x-1/2',
+  left: 'right-full mr-1 top-1/2 -translate-y-1/2',
+  right: 'left-full ml-1 top-1/2 -translate-y-1/2',
+};
+
+/** Pointer travel (px) before a press on the label counts as a drag rather than a click. */
+const LABEL_DRAG_THRESHOLD = 3;
 
 interface ObjectRendererProps {
   obj: EditorObject;
@@ -94,6 +106,77 @@ export const ObjectRenderer = memo(({
     : (obj.color || '#000000');
   
   const indicatorColor = obj.type !== 'text' ? getStatusColor(obj.status) : null;
+
+  // --- Label: optional manual placement + dashed leader line back to the object ---
+  const labelRef = useRef<HTMLDivElement>(null);
+  const [labelSize, setLabelSize] = useState({ w: 0, h: 0 });
+  const [dragLabelOffset, setDragLabelOffset] = useState<{ x: number; y: number } | null>(null);
+  const labelDragRef = useRef<{
+    pointerId: number; startX: number; startY: number; origin: { x: number; y: number }; moved: boolean;
+  } | null>(null);
+  const labelOffset = dragLabelOffset ?? obj.labelOffset ?? null;
+  const canMoveLabel = !isTech && !disableMovement && !layer.locked && tool === 'select';
+
+  useLayoutEffect(() => {
+    const el = labelRef.current;
+    if (!el) return;
+    setLabelSize(s => (s.w === el.offsetWidth && s.h === el.offsetHeight ? s : { w: el.offsetWidth, h: el.offsetHeight }));
+  }, [obj.name, labelOffset !== null]);
+
+  const handleLabelPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!canMoveLabel || e.button !== 0) return;
+    e.stopPropagation();
+    const el = e.currentTarget;
+    let origin = obj.labelOffset;
+    if (!origin) {
+      // Start from wherever the side placement currently puts the label.
+      const parent = el.offsetParent as HTMLElement | null;
+      const lr = el.getBoundingClientRect();
+      const pr = parent?.getBoundingClientRect();
+      origin = pr
+        ? { x: (lr.left + lr.width / 2 - (pr.left + pr.width / 2)) / scale, y: (lr.top + lr.height / 2 - (pr.top + pr.height / 2)) / scale }
+        : { x: 0, y: 0 };
+    }
+    el.setPointerCapture(e.pointerId);
+    labelDragRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, origin, moved: false };
+  };
+
+  const handleLabelPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = labelDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(dx, dy) < LABEL_DRAG_THRESHOLD) return;
+    drag.moved = true;
+    setDragLabelOffset({ x: drag.origin.x + dx / scale, y: drag.origin.y + dy / scale });
+  };
+
+  const handleLabelPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = labelDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    labelDragRef.current = null;
+    if (drag.moved && dragLabelOffset) {
+      const round = (v: number) => Math.round(v * 100) / 100;
+      dispatch({
+        type: 'UPDATE_OBJECT',
+        payload: { id: obj.id, updates: { labelOffset: { x: round(dragLabelOffset.x), y: round(dragLabelOffset.y) } } },
+      });
+    } else {
+      uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+    }
+    setDragLabelOffset(null);
+  };
+
+  const boxW = obj.width * scale, boxH = obj.height * scale;
+  const labelCenter = labelOffset
+    ? { x: boxW / 2 + labelOffset.x * scale, y: boxH / 2 + labelOffset.y * scale }
+    : null;
+  const leader = labelCenter && obj.name && labelSize.w > 0
+    ? getLeaderLine(
+        { cx: boxW / 2, cy: boxH / 2, w: boxW, h: boxH },
+        { cx: labelCenter.x, cy: labelCenter.y, w: labelSize.w, h: labelSize.h },
+        4,
+      )
+    : null;
 
   const handleRotationMouseDown = (e: React.MouseEvent) => {
     if (isTech || disableMovement) return;
@@ -195,6 +278,7 @@ export const ObjectRenderer = memo(({
         }
       }}
       scale={1}
+      cancel=".object-label"
       bounds="parent"
       disableDragging={lockGeometry || isTech || layer.locked || tool !== 'select' || isRotating}
       enableResizing={isTech || lockGeometry ? {} : (!layer.locked && isSelected)}
@@ -278,9 +362,32 @@ export const ObjectRenderer = memo(({
           )}
       </div>
 
+      {!isFill && leader && (
+        <svg className="absolute left-0 top-0 overflow-visible pointer-events-none" width={boxW} height={boxH}>
+          <line
+            x1={leader.from.x} y1={leader.from.y} x2={leader.to.x} y2={leader.to.y}
+            stroke={displayColor} strokeWidth={1.5} strokeDasharray="4 3" strokeLinecap="round"
+          />
+        </svg>
+      )}
+
       {!isFill && <div 
-        className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/80 border border-border px-1.5 py-0.5 rounded text-[10px] font-medium pointer-events-none shadow-sm"
-        style={{ transform: `translateX(-50%)` }}
+        ref={labelRef}
+        className={cn(
+          "object-label absolute whitespace-nowrap border border-border px-1.5 py-0.5 rounded text-[10px] font-medium shadow-sm touch-none",
+          // A detached label is opaque so the leader line visibly ends at its border.
+          labelCenter ? "bg-white -translate-x-1/2 -translate-y-1/2" : cn("bg-white/80", LABEL_POSITION_CLASSES[obj.labelPosition ?? DEFAULT_LABEL_POSITION]),
+          canMoveLabel && obj.name ? "pointer-events-auto cursor-move" : "pointer-events-none",
+          dragLabelOffset && "ring-1 ring-primary"
+        )}
+        style={labelCenter ? { left: labelCenter.x, top: labelCenter.y } : undefined}
+        title={canMoveLabel && obj.name ? 'Drag to move the label' : undefined}
+        onPointerDown={handleLabelPointerDown}
+        onPointerMove={handleLabelPointerMove}
+        onPointerUp={handleLabelPointerUp}
+        onPointerCancel={handleLabelPointerUp}
+        onMouseDown={(e) => { if (canMoveLabel) e.stopPropagation(); }}
+        onClick={(e) => e.stopPropagation()}
       >
         {obj.name}
       </div>}
