@@ -9,6 +9,7 @@ import {
     Heart,
     Hexagon,
     Image as ImageIcon,
+    Magnet,
     MousePointer2,
     PaintBucket,
     Pencil,
@@ -87,6 +88,25 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
           </TooltipTrigger>
           <TooltipContent>Select</TooltipContent>
         </Tooltip>
+
+        {!isTech && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Toggle
+                pressed={uiState.snapEnabled}
+                onPressedChange={(p) => dispatch({ type: 'SET_SNAP_ENABLED', payload: p })}
+                size="sm"
+                className="h-8 w-8"
+                data-testid="snap-toggle"
+              >
+                <Magnet className="w-4 h-4" />
+              </Toggle>
+            </TooltipTrigger>
+            <TooltipContent>
+              Snap to objects {uiState.snapEnabled ? 'on' : 'off'} — aligns edges and centres while dragging (hold Alt to move freely, Shift to move in 0.5 ft steps)
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         {!isTech && (
           <>
@@ -342,7 +362,7 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                     <Ruler className="w-4 h-4" />
                   </Toggle>
                 </TooltipTrigger>
-                <TooltipContent>Measuring tape {calibration ? '(hold Shift for a straight line)' : '(set the scale with the probe first)'}</TooltipContent>
+                <TooltipContent>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'}</TooltipContent>
               </Tooltip>
             </div>
 
@@ -366,6 +386,18 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                 >
                   <MoveHorizontal className="w-3.5 h-3.5" />
                 </Toggle>
+                {uiState.measureTape && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={() => dispatch({ type: 'SET_MEASURE_TAPE', payload: null })}
+                    title="Remove the measuring tape from the blueprint (Esc)"
+                    data-testid="measure-clear-tape"
+                  >
+                    Clear tape
+                  </Button>
+                )}
                 {calibration && (
                   <Button
                     variant="ghost"

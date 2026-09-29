@@ -40,6 +40,16 @@ const saveIpadMode = (value: boolean) => {
   try { localStorage.setItem(IPAD_MODE_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
 };
 
+const SNAP_STORAGE_KEY = 'editor.snapEnabled';
+
+const loadSnapEnabled = (): boolean => {
+  try { return localStorage.getItem(SNAP_STORAGE_KEY) !== 'false'; } catch { return true; }
+};
+
+const saveSnapEnabled = (value: boolean) => {
+  try { localStorage.setItem(SNAP_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
+};
+
 const initialDocumentState: DocumentState = {
   projectId: null,
   pdfFileId: null,
@@ -80,7 +90,9 @@ const initialUIState: UIState = {
   drawColor: '#000000',
   drawStrokeWidth: 2,
   drawStraight: false,
-  ipadMode: loadIpadMode()
+  ipadMode: loadIpadMode(),
+  measureTape: null,
+  snapEnabled: loadSnapEnabled()
 };
 
 const initialState: EditorState = {
@@ -109,6 +121,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         currentPage: 1,
         pdfCanvasHeight: CANVAS_BASE_HEIGHT,
         measureCalibration: null,
+        measureTape: null,
       };
     case 'SET_PDF_DIMENSIONS':
       return {
@@ -235,7 +248,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, scrollPos: action.payload };
     case 'IMPORT_PROJECT':
       // Projects saved before the measuring tape have no calibration — don't keep the previous project's.
-      return { ...state, measureCalibration: null, ...action.payload };
+      return { ...state, measureCalibration: null, measureTape: null, ...action.payload };
     case 'SET_MEASURE_CALIBRATION':
       return { ...state, measureCalibration: action.payload };
     case 'REORDER_LAYERS': {
@@ -420,6 +433,10 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, ...action.payload };
     case 'SET_IPAD_MODE':
       return { ...state, ipadMode: action.payload };
+    case 'SET_MEASURE_TAPE':
+      return { ...state, measureTape: action.payload };
+    case 'SET_SNAP_ENABLED':
+      return { ...state, snapEnabled: action.payload };
     case 'ADD_FILL': {
       const { object, newLayerId } = action.payload;
       let layers = state.layers;
@@ -448,7 +465,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, layers, objects };
     }
     case 'RESET_EDITOR':
-      return { ...state, ...initialDocumentState, tool: state.tool === 'pan-overlay' ? 'select' : state.tool };
+      return { ...state, ...initialDocumentState, measureTape: null, tool: state.tool === 'pan-overlay' ? 'select' : state.tool };
     default:
       return state;
   }
@@ -476,6 +493,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
   const state = historyState.editor;
 
   useEffect(() => saveIpadMode(state.ipadMode), [state.ipadMode]);
+  useEffect(() => saveSnapEnabled(state.snapEnabled), [state.snapEnabled]);
 
   const historyInfo = useMemo<HistoryInfo>(() => ({
     past: historyState.past,
@@ -518,7 +536,9 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     drawStrokeWidth: state.drawStrokeWidth,
     drawStraight: state.drawStraight,
     ipadMode: state.ipadMode,
-  }), [state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
+    measureTape: state.measureTape,
+    snapEnabled: state.snapEnabled,
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

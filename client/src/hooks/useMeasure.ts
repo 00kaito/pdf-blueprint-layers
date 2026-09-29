@@ -14,8 +14,8 @@ const MIN_SCREEN_LENGTH = 4;
  * so a calibration made at one zoom level measures correctly at any other.
  */
 export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
-  const { state: uiState } = useUI();
-  /** Line being dragged, or the last measurement (kept on screen until the next one). */
+  const { state: uiState, dispatch } = useUI();
+  /** Line being dragged (a finished measurement becomes the tape in UIState.measureTape). */
   const [line, setLine] = useState<MeasureLine | null>(null);
   const [isMeasuring, setIsMeasuring] = useState(false);
   /** Calibration line waiting for the user to type its real length. */
@@ -23,8 +23,8 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
   const pointerRef = useRef<{ id: number; type: string } | null>(null);
   const lineRef = useRef<MeasureLine | null>(null);
 
-  const latest = useRef({ scale: uiState.scale, tool: uiState.tool, straight: uiState.drawStraight });
-  latest.current = { scale: uiState.scale, tool: uiState.tool, straight: uiState.drawStraight };
+  const latest = useRef({ scale: uiState.scale, tool: uiState.tool, straight: uiState.drawStraight, hasTape: !!uiState.measureTape, dispatch });
+  latest.current = { scale: uiState.scale, tool: uiState.tool, straight: uiState.drawStraight, hasTape: !!uiState.measureTape, dispatch };
 
   const toCanvasPoint = useCallback((clientX: number, clientY: number): Point | null => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -38,16 +38,22 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     setLine(next);
   };
 
-  // A new tool starts with a clean slate.
+  // A new tool drops an unfinished line; the tape itself stays until it is removed.
   useEffect(() => {
     updateLine(null);
     setPendingCalibration(null);
   }, [uiState.tool]);
 
-  // Esc clears the measurement on screen.
+  // Esc removes the tape (in any tool — it stays on the blueprint after measuring). Not while typing,
+  // and not in the overlay hand tool, where Esc means "done".
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && lineRef.current && !pointerRef.current) updateLine(null);
+      const { tool, hasTape, dispatch } = latest.current;
+      const target = e.target as HTMLElement | null;
+      const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || !!target?.isContentEditable;
+      if (e.key === 'Escape' && hasTape && !typing && tool !== 'pan-overlay' && !pointerRef.current) {
+        dispatch({ type: 'SET_MEASURE_TAPE', payload: null });
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -71,13 +77,21 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
       const current = lineRef.current;
       pointerRef.current = null;
       setIsMeasuring(false);
-      const { scale, tool } = latest.current;
+      const { scale, tool, dispatch } = latest.current;
       const tooShort = !current || segmentLength(current.a, current.b) * scale < MIN_SCREEN_LENGTH;
       if (!commit || tooShort) {
         updateLine(null);
         return;
       }
-      if (tool === 'calibrate') setPendingCalibration(current);
+      if (tool === 'calibrate') {
+        setPendingCalibration(current);
+      } else {
+        // The new measurement replaces the tape on the blueprint, and the tape is "put down":
+        // back to the select tool, so objects can be grabbed right away. Measuring again = pick the tape again.
+        dispatch({ type: 'SET_MEASURE_TAPE', payload: current });
+        updateLine(null);
+        dispatch({ type: 'SET_TOOL', payload: 'select' });
+      }
     };
 
     const handleMove = (e: PointerEvent) => {

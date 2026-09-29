@@ -111,6 +111,10 @@ export type UIState = {
   drawStraight: boolean;
   /** Tablet mode: only a stylus (or mouse) draws, fingers scroll / zoom — palm rejection. Remembered per device. */
   ipadMode: boolean;
+  /** Measuring tape left on the blueprint (unscaled canvas units, `a` = where it was pulled from). Session only. */
+  measureTape: { a: { x: number; y: number }; b: { x: number; y: number } } | null;
+  /** Snap dragged objects to the edges / centres of nearby objects. Remembered per device. */
+  snapEnabled: boolean;
   showStatusColors: boolean;
   objectDetailsOpen: boolean;
   isImporting: boolean;
@@ -164,5 +168,7 @@ export type EditorAction =
   | { type: 'SET_FILL_SETTINGS'; payload: Partial<Pick<UIState, 'fillColor' | 'fillOpacity'>> }
   | { type: 'SET_DRAW_SETTINGS'; payload: Partial<Pick<UIState, 'drawColor' | 'drawStrokeWidth' | 'drawStraight'>> }
   | { type: 'SET_IPAD_MODE'; payload: boolean }
+  | { type: 'SET_MEASURE_TAPE'; payload: UIState['measureTape'] }
+  | { type: 'SET_SNAP_ENABLED'; payload: boolean }
   /** Adds a paint-bucket fill to the Colors layer (created if missing). Re-filling the same area replaces it. */
   | { type: 'ADD_FILL'; payload: { object: EditorObject; newLayerId: string } };

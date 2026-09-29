@@ -7,6 +7,9 @@ import {cn} from '@/lib/utils';
 import {EditorObject, Layer} from '@/lib/types';
 import {useCurrentUser} from '@/hooks/useAuth';
 import {DEFAULT_LABEL_POSITION, getLeaderLine, LabelPosition} from '@/core/label-position';
+import {Box, Guide, SNAP_DISTANCE_PX, snapBox, stepPoint} from '@/core/snapping';
+import {CANVAS_BASE_WIDTH} from '@/core/constants';
+import {dragStore} from '@/lib/drag-store';
 
 /** Label placement around the object box; the label never moves the object itself. */
 const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {
@@ -27,7 +30,23 @@ interface ObjectRendererProps {
   selectedObjectIds: string[];
   showStatusColors: boolean;
   disableMovement?: boolean;
+  /** Snap to nearby objects while dragging (Alt disables it for one drag move). */
+  snapEnabled?: boolean;
+  /** Boxes the object can snap to (must be stable — read lazily at drag time). */
+  getSnapTargets?: (excludeId: string) => Box[];
+  /** Page height in unscaled canvas units, for keeping a dragged object on the page. */
+  pageHeight?: number;
+  /** Shift-drag steps (0.5 ft in canvas units) and the tape they follow; null without a measuring scale. */
+  dragStep?: { step: number; tape: { a: { x: number; y: number }; b: { x: number; y: number } } | null } | null;
 }
+
+/** Client coordinates of a mouse or touch event. */
+const clientPoint = (e: MouseEvent | TouchEvent) => {
+  const t = 'touches' in e ? (e.touches[0] ?? e.changedTouches[0]) : null;
+  return t ? { x: t.clientX, y: t.clientY } : { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY };
+};
+
+const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), Math.max(min, max));
 
 const IconRenderer = ({ iconType, color }: { iconType: string, color?: string }) => {
   const props = { className: "w-full h-full", style: { color } };
@@ -74,13 +93,21 @@ export const ObjectRenderer = memo(({
   tool, 
   selectedObjectIds, 
   showStatusColors,
-  disableMovement 
+  disableMovement,
+  snapEnabled = true,
+  getSnapTargets,
+  pageHeight,
+  dragStep,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
   const dispatch = useDocumentDispatch();
   const uiDispatch = useUIDispatch();
   const [isRotating, setIsRotating] = useState(false);
+  /** Position (unscaled) while dragging — driven from the cursor, so snapping never makes the object drift. */
+  const [dragPos, setDragPos] = useState<{ x: number; y: number; seq: number } | null>(null);
+  const dragPosRef = useRef<{ x: number; y: number; seq: number } | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
 
   const isSelected = selectedObjectIds.includes(obj.id);
   // Paint-bucket fills are traced from the blueprint, so they stay pinned to it.
@@ -248,11 +275,58 @@ export const ObjectRenderer = memo(({
   return (
     <Rnd
       key={obj.id}
-      position={{ x: obj.x * scale, y: obj.y * scale }}
+      position={{
+        // While dragging, react-draggable renders its own position and only takes ours when the prop
+        // changes. A snapped object can keep the same position for several moves, so alternate an
+        // invisible 0.001 px to make every move override it (otherwise the object drifts off the snap).
+        x: (dragPos?.x ?? obj.x) * scale + (dragPos && dragPos.seq % 2 ? 0.001 : 0),
+        y: (dragPos?.y ?? obj.y) * scale,
+      }}
       size={{ width: obj.width * scale, height: obj.height * scale }}
-      onDragStop={(e: any, d) => {
-        if (isTech || disableMovement) return;
-        dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: d.x / scale, y: d.y / scale } } });
+      onDragStart={(e: any) => {
+        const p = clientPoint(e);
+        dragStartRef.current = { x: obj.x, y: obj.y, clientX: p.x, clientY: p.y };
+      }}
+      onDrag={(e: any) => {
+        const start = dragStartRef.current;
+        if (!start) return;
+        const p = clientPoint(e);
+        // Raw position from the cursor (not react-draggable's own, which already contains the last snap).
+        let x = start.x + (p.x - start.clientX) / scale;
+        let y = start.y + (p.y - start.clientY) / scale;
+        const stepping = e.shiftKey && !!dragStep;
+        if (stepping) {
+          // Shift: the centre jumps in 0.5 ft steps (along / across the tape if there is one).
+          const half = { x: obj.width / 2, y: obj.height / 2 };
+          const c = stepPoint(
+            { x: x + half.x, y: y + half.y },
+            { x: start.x + half.x, y: start.y + half.y },
+            dragStep!.step,
+            dragStep!.tape,
+          );
+          x = c.x - half.x;
+          y = c.y - half.y;
+        }
+        x = clamp(x, 0, CANVAS_BASE_WIDTH - obj.width);
+        y = pageHeight ? clamp(y, 0, pageHeight - obj.height) : Math.max(0, y);
+        let guides: Guide[] = [];
+        if (!stepping && snapEnabled && !e.altKey && getSnapTargets) {
+          const snapped = snapBox({ x, y, width: obj.width, height: obj.height }, getSnapTargets(obj.id), SNAP_DISTANCE_PX / scale);
+          ({ x, y, guides } = snapped);
+        }
+        dragPosRef.current = { x, y, seq: (dragPosRef.current?.seq ?? 0) + 1 };
+        setDragPos(dragPosRef.current);
+        dragStore.set({ objectId: obj.id, box: { x, y, width: obj.width, height: obj.height }, guides });
+      }}
+      onDragStop={() => {
+        const pos = dragPosRef.current;
+        dragStartRef.current = null;
+        dragPosRef.current = null;
+        setDragPos(null);
+        dragStore.set(null);
+        // No movement (a plain click) or movement not allowed: nothing to save.
+        if (!pos || isTech || disableMovement) return;
+        dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: pos.x, y: pos.y } } });
       }}
       onResizeStop={(e: any, dir, ref, delta, pos) => {
         if (isTech || disableMovement) return;

@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {MeasureCalibration} from '@/lib/types';
+import {X} from 'lucide-react';
+import {MeasureCalibration, UIState} from '@/lib/types';
 import {MeasureLine} from '@/hooks/useMeasure';
 import {feetPerUnit, formatFeet, formatFeetInches, parseFeet, Point, segmentLength} from '@/core/measure';
 import {Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle} from '@/components/ui/dialog';
@@ -7,7 +8,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 
-const MEASURE_COLOR = '#dc2626';
+export const MEASURE_COLOR = '#dc2626';
 const CALIBRATION_COLOR = '#d97706';
 /** Half-length of the end ticks, in screen px. */
 const TICK = 7;
@@ -16,15 +17,22 @@ interface MeasureLayerProps {
   tool: string;
   scale: number;
   calibration: MeasureCalibration | null;
+  /** Line being dragged right now (calibration or a new measurement). */
   line: MeasureLine | null;
+  /** Measuring tape left on the blueprint. */
+  tape: UIState['measureTape'];
   pendingCalibration: MeasureLine | null;
   onCalibrate: (calibration: MeasureCalibration) => void;
   onCancelCalibration: () => void;
+  onRemoveTape: () => void;
 }
 
 /** A dimension line in screen px: the segment plus perpendicular end ticks and a label at its middle. */
-const DimensionLine = ({ a, b, scale, color, label, dashed }: {
+export const DimensionLine = ({ a, b, scale, color, label, dashed, markStart, onRemove }: {
   a: Point; b: Point; scale: number; color: string; label: string; dashed?: boolean;
+  /** Dot at `a`, showing the direction the tape was pulled out in (distances count from here). */
+  markStart?: boolean;
+  onRemove?: () => void;
 }) => {
   const ax = a.x * scale, ay = a.y * scale, bx = b.x * scale, by = b.y * scale;
   const len = Math.hypot(bx - ax, by - ay) || 1;
@@ -40,12 +48,25 @@ const DimensionLine = ({ a, b, scale, color, label, dashed }: {
         <line x1={ax} y1={ay} x2={bx} y2={by} stroke="white" strokeWidth={5} strokeLinecap="round" opacity={0.8} />
         <line x1={ax} y1={ay} x2={bx} y2={by} stroke={color} strokeWidth={2} strokeLinecap="round" strokeDasharray={dashed ? '6 4' : undefined} />
         {ticks}
+        {markStart && <circle cx={ax} cy={ay} r={4} fill={color} stroke="white" strokeWidth={1.5} />}
       </svg>
       <div
-        className="absolute pointer-events-none whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold text-white shadow-md"
+        className="absolute pointer-events-none flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold text-white shadow-md"
         style={{ left: (ax + bx) / 2, top: (ay + by) / 2, transform: 'translate(-50%, calc(-100% - 8px))', backgroundColor: color }}
       >
         {label}
+        {onRemove && (
+          <button
+            type="button"
+            className="pointer-events-auto -mr-1 rounded p-0.5 hover:bg-white/25"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            title="Remove measuring tape"
+            data-testid="remove-tape"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
       </div>
     </>
   );
@@ -96,27 +117,35 @@ const CalibrationDialog = ({ line, onConfirm, onCancel }: {
 
 /** Calibration reference and measuring-tape lines, drawn over the blueprint. */
 export const MeasureLayer = ({
-  tool, scale, calibration, line, pendingCalibration, onCalibrate, onCancelCalibration,
+  tool, scale, calibration, line, tape, pendingCalibration, onCalibrate, onCancelCalibration, onRemoveTape,
 }: MeasureLayerProps) => {
-  const active = tool === 'measure' || tool === 'calibrate';
   const ftPerUnit = feetPerUnit(calibration);
-
-  let lineLabel = '';
-  if (line) {
-    if (tool === 'calibrate') {
-      lineLabel = pendingCalibration ? 'Enter length…' : 'Reference';
-    } else if (ftPerUnit) {
-      const feet = segmentLength(line.a, line.b) * ftPerUnit;
-      lineLabel = `${formatFeet(feet)} · ${formatFeetInches(feet)}`;
-    } else {
-      lineLabel = 'Set the scale first';
-    }
-  }
+  const lengthLabel = (l: MeasureLine) => {
+    if (!ftPerUnit) return 'Set the scale first';
+    const feet = segmentLength(l.a, l.b) * ftPerUnit;
+    return `${formatFeet(feet)} · ${formatFeetInches(feet)}`;
+  };
+  const lineLabel = !line ? '' : tool === 'calibrate'
+    ? (pendingCalibration ? 'Enter length…' : 'Reference')
+    : lengthLabel(line);
+  // While a new measurement is being dragged it takes the place of the old tape.
+  const showTape = tape && !(line && tool === 'measure');
 
   return (
     <>
-      {active && (
+      {(tool === 'calibrate' || line || showTape) && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 35 }}>
+          {showTape && (
+            <DimensionLine
+              a={tape.a}
+              b={tape.b}
+              scale={scale}
+              color={MEASURE_COLOR}
+              label={lengthLabel(tape)}
+              markStart
+              onRemove={onRemoveTape}
+            />
+          )}
           {/* The reference is only shown while re-calibrating, not while measuring. */}
           {calibration && tool === 'calibrate' && !line && (
             <DimensionLine
@@ -135,6 +164,7 @@ export const MeasureLayer = ({
               scale={scale}
               color={tool === 'calibrate' ? CALIBRATION_COLOR : MEASURE_COLOR}
               label={lineLabel}
+              markStart={tool === 'measure'}
             />
           )}
         </div>

@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {v4 as uuidv4} from 'uuid';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {Document, Page, pdfjs} from 'react-pdf';
@@ -11,10 +11,12 @@ import {useDrawing} from '@/hooks/useDrawing';
 import {usePinchZoom} from '@/hooks/usePinchZoom';
 import {useMeasure} from '@/hooks/useMeasure';
 import {isStrokeTool} from '@/core/pointer-input';
-import {formatFeet} from '@/core/measure';
+import {feetPerUnit, formatFeet} from '@/core/measure';
+import type {Box} from '@/core/snapping';
 import {ObjectRenderer} from './Canvas/ObjectRenderer';
 import {DrawingLayer} from './Canvas/DrawingLayer';
 import {MeasureLayer} from './Canvas/MeasureLayer';
+import {GuidesLayer} from './Canvas/GuidesLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import {useCurrentUser} from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -24,6 +26,9 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set worker URL to local Vite asset using the standard URL constructor
+/** Shift-drag moves objects in steps of this many feet. */
+const DRAG_STEP_FEET = 0.5;
+
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url
@@ -41,6 +46,24 @@ export const Canvas = () => {
   const { toast } = useToast();
   const { drawingPath, isDrawing, onPointerDown } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const measure = useMeasure(containerRef as React.RefObject<HTMLDivElement>);
+
+  // Stable for the memoised ObjectRenderers; reads the current objects only when a drag needs them.
+  const snapSourceRef = useRef({ objects: docState.objects, layers: docState.layers });
+  snapSourceRef.current = { objects: docState.objects, layers: docState.layers };
+  /** Shift-drag step: 0.5 ft (needs the measuring scale), following the tape when there is one. */
+  const ftPerUnitValue = feetPerUnit(docState.measureCalibration);
+  const dragStep = useMemo(
+    () => ftPerUnitValue ? { step: DRAG_STEP_FEET / ftPerUnitValue, tape: uiState.measureTape } : null,
+    [ftPerUnitValue, uiState.measureTape],
+  );
+
+  const getSnapTargets = useCallback((excludeId: string): Box[] => {
+    const { objects, layers } = snapSourceRef.current;
+    const visible = new Set(layers.filter(l => l.visible).map(l => l.id));
+    return objects
+      .filter(o => o.id !== excludeId && o.type !== 'path' && !o.isFill && visible.has(o.layerId))
+      .map(o => ({ x: o.x, y: o.y, width: o.width, height: o.height }));
+  }, []);
   const [, setNumPages] = useState<number>(0);
 
   useEffect(() => {
@@ -332,6 +355,8 @@ export const Canvas = () => {
             scale={state.scale}
             calibration={state.measureCalibration}
             line={measure.line}
+            tape={state.measureTape}
+            onRemoveTape={() => dispatch({ type: 'SET_MEASURE_TAPE', payload: null })}
             pendingCalibration={measure.pendingCalibration}
             onCancelCalibration={measure.clearPendingCalibration}
             onCalibrate={(calibration) => {
@@ -341,6 +366,7 @@ export const Canvas = () => {
               toast({ title: 'Scale set', description: `Reference line = ${formatFeet(calibration.feet)}. Drag to measure any distance.` });
             }}
           />
+          <GuidesLayer scale={state.scale} tape={state.measureTape} ftPerUnit={feetPerUnit(state.measureCalibration)} />
 
           {state.objects.map((obj) => {
             const layer = state.layers.find(l => l.id === obj.layerId);
@@ -356,6 +382,10 @@ export const Canvas = () => {
                 selectedObjectIds={state.selectedObjectIds}
                 showStatusColors={state.showStatusColors}
                 disableMovement={disableMovement}
+                snapEnabled={state.snapEnabled}
+                getSnapTargets={getSnapTargets}
+                pageHeight={docState.pdfCanvasHeight}
+                dragStep={dragStep}
               />
             );
           })}
