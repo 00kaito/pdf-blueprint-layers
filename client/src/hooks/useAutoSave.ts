@@ -10,10 +10,16 @@ export function useAutoSave() {
   const timeoutRef = useRef<any>(null);
   const lastStateRef = useRef<string>("");
   const activeSaveRef = useRef<boolean>(false);
+  /** Calibration + project it belongs to, to save a new measuring scale right away. */
+  const lastCalibrationRef = useRef({ projectId: docState.projectId, calibration: docState.measureCalibration });
 
   const doSave = async (retryCount = 0) => {
     if (!docState.projectId) return;
-    if (activeSaveRef.current && retryCount === 0) return;
+    if (activeSaveRef.current && retryCount === 0) {
+      // Don't drop this change — try again once the running save is done.
+      timeoutRef.current = setTimeout(() => doSave(), 500);
+      return;
+    }
     
     const payload = {
       layers: docState.layers,
@@ -63,7 +69,13 @@ export function useAutoSave() {
       clearTimeout(timeoutRef.current);
     }
 
-    timeoutRef.current = setTimeout(() => doSave(), 2000);
+    // A new (or cleared) measuring scale is saved at once — it is set rarely and must not be lost
+    // to a reload within the debounce. Opening another project is not a change of its scale.
+    const last = lastCalibrationRef.current;
+    const calibrationChanged = last.projectId === docState.projectId && last.calibration !== docState.measureCalibration;
+    lastCalibrationRef.current = { projectId: docState.projectId, calibration: docState.measureCalibration };
+
+    timeoutRef.current = setTimeout(() => doSave(), calibrationChanged ? 0 : 2000);
 
     return () => {
       if (timeoutRef.current) {

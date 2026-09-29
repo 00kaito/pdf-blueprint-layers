@@ -151,15 +151,19 @@ export const ContextBar = () => {
           <StrokeModeSwitch freeLabel="Any angle" />
           <Toggle
             pressed={uiState.tool === 'calibrate'}
-            // Leaving the probe goes back to the tape — or to Select when there is no scale to measure with.
-            onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'calibrate' : calibration ? 'measure' : 'select' })}
+            // Leaving the probe goes back to the tape. Without a scale there is nothing to measure with
+            // (picking the tape starts the probe), so the probe stays on until a scale is set.
+            onPressedChange={(p) => {
+              if (p) dispatch({ type: 'SET_TOOL', payload: 'calibrate' });
+              else if (calibration) dispatch({ type: 'SET_TOOL', payload: 'measure' });
+            }}
             size="sm"
             className="h-6 min-w-0 px-2 gap-1 text-xs"
             title="Scale probe: draw a line over a known dimension and enter its length in feet (K)"
             data-testid="tool-calibrate"
           >
             <Crosshair className="w-3.5 h-3.5" />
-            {calibration ? 'Re-probe scale' : 'Probe scale'}
+            {uiState.tool === 'calibrate' ? 'Probing…' : calibration ? 'Re-probe scale' : 'Probe scale'}
           </Toggle>
           {uiState.measureTape && (
             <Button
@@ -178,8 +182,13 @@ export const ContextBar = () => {
               variant="ghost"
               size="sm"
               className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-              onClick={() => dispatch({ type: 'SET_MEASURE_CALIBRATION', payload: null })}
-              title="Remove the measuring scale"
+              onClick={() => {
+                // The scale is saved with the project, so removing it is confirmed (re-probing replaces it anyway).
+                if (window.confirm('Remove the measuring scale saved with this project? You will have to probe it again to measure.')) {
+                  dispatch({ type: 'SET_MEASURE_CALIBRATION', payload: null });
+                }
+              }}
+              title="Remove the measuring scale saved with this project"
               data-testid="measure-clear-scale"
             >
               Clear scale

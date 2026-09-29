@@ -394,7 +394,7 @@ export const Canvas = () => {
               dispatch({ type: 'SET_MEASURE_CALIBRATION', payload: calibration });
               measure.clearPendingCalibration();
               dispatch({ type: 'SET_TOOL', payload: 'measure' });
-              toast({ title: 'Scale set', description: `Reference line = ${formatFeet(calibration.feet)}. Drag to measure any distance.` });
+              toast({ title: 'Scale set', description: `Reference line = ${formatFeet(calibration.feet)}${docState.projectId ? ', saved with the project' : ''}. Drag to measure any distance.` });
             }}
           />
           <GuidesLayer scale={state.scale} tape={state.measureTape} ftPerUnit={feetPerUnit(state.measureCalibration)} />
