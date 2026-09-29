@@ -99,7 +99,7 @@ export const ObjectPropertyEditor = ({
           <div className="w-24 flex items-center gap-2">
             <Slider
                value={[firstObject.strokeWidth || 2]}
-               min={1} max={20} step={1}
+               min={0.5} max={20} step={0.5}
                onValueChange={([val]) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: firstObject.id, updates: { strokeWidth: val } } })}
             />
           </div>

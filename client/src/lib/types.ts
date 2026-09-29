@@ -89,6 +89,9 @@ export type UIState = {
   /** Paint-bucket settings (hex colour, 0–1 opacity). */
   fillColor: string;
   fillOpacity: number;
+  /** Draw (pencil) settings: hex colour and stroke width in unscaled canvas units. */
+  drawColor: string;
+  drawStrokeWidth: number;
   showStatusColors: boolean;
   objectDetailsOpen: boolean;
   isImporting: boolean;
@@ -139,5 +142,6 @@ export type EditorAction =
   | { type: 'SET_IMPORTING'; payload: boolean }
   | { type: 'RESET_EDITOR' }
   | { type: 'SET_FILL_SETTINGS'; payload: Partial<Pick<UIState, 'fillColor' | 'fillOpacity'>> }
+  | { type: 'SET_DRAW_SETTINGS'; payload: Partial<Pick<UIState, 'drawColor' | 'drawStrokeWidth'>> }
   /** Adds a paint-bucket fill to the Colors layer (created if missing). Re-filling the same area replaces it. */
   | { type: 'ADD_FILL'; payload: { object: EditorObject; newLayerId: string } };

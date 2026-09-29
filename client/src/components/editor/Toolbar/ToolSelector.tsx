@@ -32,6 +32,12 @@ import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {FILL_LAYER_NAME} from '@/lib/editor-context';
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
+const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
+
+/** Brush size range, in unscaled canvas units (same units as EditorObject.strokeWidth). */
+const MIN_BRUSH_SIZE = 0.5;
+const MAX_BRUSH_SIZE = 20;
+const BRUSH_SIZE_STEP = 0.5;
 
 interface ToolSelectorProps {
   isTech: boolean;
@@ -66,19 +72,106 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
 
         {!isTech && (
           <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Toggle 
-                  pressed={uiState.tool === 'draw'} 
-                  onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'draw' : 'select' })}
-                  size="sm"
-                  className="h-8 w-8"
-                >
-                  <Pencil className="w-4 h-4" />
-                </Toggle>
-              </TooltipTrigger>
-              <TooltipContent>Draw</TooltipContent>
-            </Tooltip>
+            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle 
+                    pressed={uiState.tool === 'draw'} 
+                    onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'draw' : 'select' })}
+                    size="sm"
+                    className="h-8 w-8 rounded-none border-none relative"
+                    data-testid="tool-draw"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    <span
+                      className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full"
+                      style={{ backgroundColor: uiState.drawColor }}
+                    />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>Draw (hold Shift for a straight line)</TooltipContent>
+              </Tooltip>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-6 rounded-none px-0 border-l border-input hover:bg-muted" data-testid="draw-settings">
+                    <Settings2 className="w-3 h-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-60" side="bottom" align="center">
+                  <div className="space-y-3">
+                    <h4 className="font-medium leading-none">Brush</h4>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={uiState.drawColor}
+                        onChange={(e) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawColor: e.target.value } })}
+                        className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer"
+                        data-testid="draw-color"
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        {DRAW_PRESETS.map(c => (
+                          <button
+                            key={c}
+                            type="button"
+                            className={`w-5 h-5 rounded border ${uiState.drawColor === c ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
+                            style={{ backgroundColor: c }}
+                            onClick={() => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawColor: c } })}
+                            title={c}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Brush size</Label>
+                        <span className="text-[10px] font-mono bg-muted px-1 rounded">{uiState.drawStrokeWidth}</span>
+                      </div>
+                      <Slider
+                        value={[uiState.drawStrokeWidth]}
+                        min={MIN_BRUSH_SIZE}
+                        max={MAX_BRUSH_SIZE}
+                        step={BRUSH_SIZE_STEP}
+                        onValueChange={([v]) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawStrokeWidth: v } })}
+                        data-testid="draw-size"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {uiState.tool === 'draw' && (
+              // Quick settings shown while drawing, like the bucket's inline settings.
+              <div className="flex items-center gap-2 px-2 h-8 rounded-md border border-input bg-background" data-testid="draw-inline-settings">
+                <input
+                  type="color"
+                  value={uiState.drawColor}
+                  onChange={(e) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawColor: e.target.value } })}
+                  className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer"
+                  title="Brush colour"
+                />
+                <span className="text-[10px] uppercase font-bold text-muted-foreground">Size</span>
+                <Slider
+                  value={[uiState.drawStrokeWidth]}
+                  min={MIN_BRUSH_SIZE}
+                  max={MAX_BRUSH_SIZE}
+                  step={BRUSH_SIZE_STEP}
+                  onValueChange={([v]) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawStrokeWidth: v } })}
+                  className="w-24"
+                  data-testid="draw-size-inline"
+                />
+                <span className="w-6 flex items-center justify-center" title={`${uiState.drawStrokeWidth}`}>
+                  <span
+                    className="rounded-full"
+                    style={{
+                      backgroundColor: uiState.drawColor,
+                      width: Math.max(2, Math.min(20, uiState.drawStrokeWidth * 1.5)),
+                      height: Math.max(2, Math.min(20, uiState.drawStrokeWidth * 1.5)),
+                    }}
+                  />
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
               <Tooltip>

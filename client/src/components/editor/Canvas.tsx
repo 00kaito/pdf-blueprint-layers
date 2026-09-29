@@ -34,7 +34,7 @@ export const Canvas = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pageCanvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
-  const { drawingPath, isDrawing, onMouseDown, onMouseMove, onMouseUp } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
+  const { drawingPath, isDrawing, onMouseDown } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const [, setNumPages] = useState<number>(0);
 
   useEffect(() => {
@@ -240,8 +240,8 @@ export const Canvas = () => {
   };
 
   return (
-    <div className={`flex-1 bg-muted/30 overflow-auto relative select-none${state.tool === 'fill' ? ' cursor-crosshair' : ''}`} 
-      onMouseDown={handleMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onScroll={handleScroll}
+    <div className={`flex-1 bg-muted/30 overflow-auto relative select-none${state.tool === 'fill' || state.tool === 'draw' ? ' cursor-crosshair' : ''}`} 
+      onMouseDown={handleMouseDown} onScroll={handleScroll}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
       {...touchGestures}
     >
@@ -286,6 +286,8 @@ export const Canvas = () => {
             layers={state.layers}
             scale={state.scale}
             selectedObjectIds={state.selectedObjectIds}
+            drawColor={state.drawColor}
+            drawStrokeWidth={state.drawStrokeWidth}
           />
 
           {state.objects.map((obj) => {

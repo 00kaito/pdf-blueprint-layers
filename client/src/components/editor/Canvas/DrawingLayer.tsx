@@ -1,7 +1,6 @@
 import React, {memo} from 'react';
 import {useDocumentDispatch, useUIDispatch} from '@/lib/editor-context';
 import {EditorObject, Layer} from '@/lib/types';
-import {cn} from '@/lib/utils';
 
 interface DrawingLayerProps {
   drawingPath: string | null;
@@ -10,13 +9,14 @@ interface DrawingLayerProps {
   layers: Layer[];
   scale: number;
   selectedObjectIds: string[];
+  /** Colour / stroke width (unscaled) of the stroke being drawn. */
+  drawColor: string;
+  drawStrokeWidth: number;
 }
 
-const scalePath = (path: string, scale: number) => {
-  return path.replace(/([0-9.]+),([0-9.]+)/g, (match, x, y) => {
-    return `${parseFloat(x) * scale},${parseFloat(y) * scale}`;
-  });
-};
+/** Scales every coordinate of a stored path ("M x y L x y …", unscaled canvas units) to screen pixels. */
+const scalePath = (path: string, scale: number) =>
+  path.replace(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi, (n) => String(parseFloat(n) * scale));
 
 export const DrawingLayer = memo(({ 
   drawingPath, 
@@ -24,7 +24,9 @@ export const DrawingLayer = memo(({
   objects, 
   layers, 
   scale, 
-  selectedObjectIds 
+  selectedObjectIds,
+  drawColor,
+  drawStrokeWidth
 }: DrawingLayerProps) => {
   const dispatch = useDocumentDispatch();
   const uiDispatch = useUIDispatch();
@@ -39,16 +41,16 @@ export const DrawingLayer = memo(({
             <path 
               key={obj.id} 
               d={scalePath(obj.pathData, scale)} 
-              stroke={obj.color || "black"} 
               strokeWidth={(obj.strokeWidth || 2) * scale} 
               fill="none" 
               strokeLinecap="round" 
               strokeLinejoin="round" 
-              style={{ opacity: obj.opacity ?? 1 }} 
-              className={cn(
-                "cursor-pointer pointer-events-auto transition-colors", 
-                selectedObjectIds.includes(obj.id) ? "stroke-primary" : "stroke-black hover:stroke-primary/50"
-              )} 
+              // CSS vars only resolve in style, not in SVG presentation attributes.
+              style={{
+                opacity: obj.opacity ?? 1,
+                stroke: selectedObjectIds.includes(obj.id) ? 'hsl(var(--primary))' : (obj.color || '#000000'),
+              }}
+              className="cursor-pointer pointer-events-auto" 
               onClick={(e: any) => { 
                 e.stopPropagation(); 
                 if (e.ctrlKey || e.metaKey) {
@@ -63,7 +65,7 @@ export const DrawingLayer = memo(({
       </svg>
       {isDrawing && drawingPath && (
         <svg className="absolute inset-0 pointer-events-none overflow-visible" style={{ width: '100%', height: '100%', zIndex: 30 }}>
-          <path d={scalePath(drawingPath, scale)} stroke="black" strokeWidth={2 * scale} fill="none" strokeDasharray="5,5" />
+          <path d={scalePath(drawingPath, scale)} stroke={drawColor} strokeWidth={drawStrokeWidth * scale} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
     </>

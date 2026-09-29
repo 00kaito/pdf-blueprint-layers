@@ -57,7 +57,9 @@ const initialUIState: UIState = {
   objectDetailsOpen: false,
   isImporting: false,
   fillColor: '#3b82f6',
-  fillOpacity: 0.35
+  fillOpacity: 0.35,
+  drawColor: '#000000',
+  drawStrokeWidth: 2
 };
 
 const initialState: EditorState = {
@@ -389,6 +391,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
     case 'SET_IMPORTING':
       return { ...state, isImporting: action.payload };
     case 'SET_FILL_SETTINGS':
+    case 'SET_DRAW_SETTINGS':
       return { ...state, ...action.payload };
     case 'ADD_FILL': {
       const { object, newLayerId } = action.payload;
@@ -481,7 +484,9 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     isImporting: state.isImporting,
     fillColor: state.fillColor,
     fillOpacity: state.fillOpacity,
-  }), [state.fillColor, state.fillOpacity, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
+    drawColor: state.drawColor,
+    drawStrokeWidth: state.drawStrokeWidth,
+  }), [state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>
