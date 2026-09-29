@@ -1,5 +1,4 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { useUI } from '@/lib/editor-context';
 
 interface TouchGesturesOptions {
   onTap?: () => void;
@@ -18,12 +17,10 @@ export const useTouchGestures = ({
   doubleTapDelay = 300,
   longPressDelay = 500,
 }: TouchGesturesOptions) => {
-  const { state: uiState, dispatch: uiDispatch } = useUI();
   const lastTapRef = useRef<number>(0);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMovedRef = useRef<boolean>(false);
-  const initialPinchDistanceRef = useRef<number | null>(null);
 
   const clearLongPressTimer = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -32,18 +29,13 @@ export const useTouchGestures = ({
     }
   }, []);
 
-  const getDistance = (t1: React.Touch | Touch, t2: React.Touch | Touch) => {
-    return Math.sqrt(Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2));
-  };
-
   const onTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
+    // Multi-touch (pinch) is handled by usePinchZoom; it is never a tap.
+    if (e.touches.length !== 1) {
       clearLongPressTimer();
-      initialPinchDistanceRef.current = getDistance(e.touches[0], e.touches[1]);
+      touchStartRef.current = null;
       return;
     }
-
-    if (e.touches.length !== 1) return;
 
     const touch = e.touches[0];
     const now = Date.now();
@@ -60,20 +52,6 @@ export const useTouchGestures = ({
   }, [onLongPress, longPressDelay, clearLongPressTimer]);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinchDistanceRef.current !== null) {
-      e.preventDefault();
-      const currentDistance = getDistance(e.touches[0], e.touches[1]);
-      const scaleFactor = currentDistance / initialPinchDistanceRef.current;
-      
-      uiDispatch({ 
-        type: 'SET_SCALE', 
-        payload: Math.max(0.1, Math.min(10, uiState.scale * scaleFactor)) 
-      });
-      
-      initialPinchDistanceRef.current = currentDistance;
-      return;
-    }
-
     if (!touchStartRef.current || e.touches.length !== 1) return;
 
     const touch = e.touches[0];
@@ -84,13 +62,9 @@ export const useTouchGestures = ({
       isMovedRef.current = true;
       clearLongPressTimer();
     }
-  }, [moveThreshold, clearLongPressTimer, uiDispatch, uiState.scale]);
+  }, [moveThreshold, clearLongPressTimer]);
 
   const onTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length < 2) {
-      initialPinchDistanceRef.current = null;
-    }
-
     clearLongPressTimer();
 
     if (!touchStartRef.current) return;

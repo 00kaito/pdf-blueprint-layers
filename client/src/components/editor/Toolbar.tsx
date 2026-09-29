@@ -10,6 +10,7 @@ import {HistoryControls} from './Toolbar/HistoryControls';
 import {ProjectActions} from './Toolbar/ProjectActions';
 import {ToolSelector} from './Toolbar/ToolSelector';
 import {useIsMobile} from '@/hooks/use-mobile';
+import {cn} from '@/lib/utils';
 
 export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   const { data: user } = useCurrentUser();
@@ -21,8 +22,9 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   const selectedObjects = docState.objects.filter(o => uiState.selectedObjectIds.includes(o.id));
 
   return (
-    <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-between shrink-0">
-      <div className="flex items-center gap-4">
+    <div className={cn("h-16 border-b border-border bg-card flex items-center px-4 justify-between shrink-0 gap-4", uiState.ipadMode && "ipad-mode")}>
+      {/* On narrow screens (iPad portrait) the tools scroll sideways instead of being cut off. */}
+      <div className="flex items-center gap-4 min-w-0 h-full overflow-x-auto [scrollbar-width:none]">
         {!isMobile && (
           <>
             <Button 
@@ -69,7 +71,7 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 shrink-0">
         {user && (
           <div className="hidden md:flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
             <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

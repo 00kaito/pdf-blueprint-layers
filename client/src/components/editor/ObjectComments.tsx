@@ -102,7 +102,7 @@ export const ObjectComments: React.FC<ObjectCommentsProps> = ({ objectId, commen
               <p className="whitespace-pre-wrap pr-6">{comment}</p>
               {!isTech && (
                 <button
-                  className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
                   onClick={() => handleDeleteComment(index)}
                 >
                   <Trash2 className="h-3 w-3" />

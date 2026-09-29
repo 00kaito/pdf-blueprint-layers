@@ -104,6 +104,7 @@ export const useExport = () => {
       autoNumbering: docState.autoNumbering,
       overlayOpacity: docState.overlayOpacity,
       overlayOffset: docState.overlayOffset,
+      measureCalibration: docState.measureCalibration,
     }, null, 2);
 
     zip.file('project.json', projectData);

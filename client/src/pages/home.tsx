@@ -1,10 +1,10 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {PDFUploader} from '@/components/editor/PDFUploader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useCurrentUser } from '@/hooks/useAuth';
-import { Loader2 } from "lucide-react";
+import { Loader2, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Canvas = lazy(() => import('@/components/editor/Canvas').then(module => ({ default: module.Canvas })));
@@ -21,6 +21,7 @@ const Home = () => {
   const { isSaving } = useAutoSave();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
+  const [showLayers, setShowLayers] = useState(true);
 
   if (!docState.pdfFile) {
     return <PDFUploader />;
@@ -59,18 +60,38 @@ const Home = () => {
       )}
       <div className="flex flex-col h-screen overflow-hidden bg-background">
         <Toolbar isSaving={isSaving} />
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left Sidebar */}
-          <div className="flex flex-col overflow-y-auto border-r border-border w-64 bg-card shrink-0">
-            <LayerPanel />
-          </div>
+        <div className="flex flex-1 overflow-hidden relative">
+          {/* Left Sidebar (collapsible, to give the canvas room on a tablet) */}
+          {showLayers && (
+            <div className="flex flex-col overflow-y-auto border-r border-border w-64 bg-card shrink-0">
+              <LayerPanel onCollapse={() => setShowLayers(false)} />
+            </div>
+          )}
+          {!showLayers && (
+            <button
+              type="button"
+              onClick={() => setShowLayers(true)}
+              className={cn(
+                "absolute top-2 left-2 z-40 flex items-center gap-1.5 rounded-md border border-border bg-card/95 px-2 text-xs font-medium shadow-md hover:bg-muted",
+                uiState.ipadMode ? "h-10" : "h-8"
+              )}
+              title="Show layers & progress"
+              data-testid="show-layer-panel"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+              Layers
+            </button>
+          )}
           
           {/* Main Canvas Area */}
           <Canvas />
 
-          {/* Right Sidebar - Properties Panel */}
+          {/* Right Sidebar - Properties Panel. In iPad mode it floats over the canvas instead of narrowing it. */}
           {hasSelectedObject && (
-            <div className="flex flex-col overflow-y-auto border-l border-border w-64 bg-card shrink-0">
+            <div className={cn(
+              "flex flex-col overflow-y-auto border-l border-border w-64 bg-card shrink-0",
+              uiState.ipadMode && "absolute right-0 top-0 bottom-0 z-40 shadow-xl"
+            )}>
               <PropertiesPanel />
             </div>
           )}

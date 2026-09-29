@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
+import {canDrawWith} from '@/core/pointer-input';
 
 type Point = { x: number; y: number };
 
@@ -20,6 +21,9 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
   const [drawingPath, setDrawingPath] = useState('');
   const [isDrawing, setIsDrawing] = useState(false);
   const pointsRef = useRef<Point[]>([]);
+  /** Pointer that owns the current stroke; other pointers (e.g. a resting palm) are ignored. */
+  const pointerIdRef = useRef<number | null>(null);
+  const pointerTypeRef = useRef<string>('');
 
   // Latest values for the window listeners, which live for the whole stroke.
   const snapshot = () => ({
@@ -28,6 +32,7 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     pdfCanvasHeight: docState.pdfCanvasHeight,
     color: uiState.drawColor,
     strokeWidth: uiState.drawStrokeWidth,
+    straight: uiState.drawStraight,
     dispatch,
   });
   const latest = useRef(snapshot());
@@ -40,27 +45,30 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     return { x: (clientX - rect.left) / scale, y: (clientY - rect.top) / scale };
   }, [containerRef]);
 
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0 || uiState.tool !== 'draw' || !uiState.activeLayerId) return;
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (uiState.tool !== 'draw' || !uiState.activeLayerId) return;
+    if (pointerIdRef.current !== null || !canDrawWith(e, uiState.ipadMode)) return;
     const start = toCanvasPoint(e.clientX, e.clientY);
     if (!start) return;
     e.preventDefault();
+    pointerIdRef.current = e.pointerId;
+    pointerTypeRef.current = e.pointerType;
     pointsRef.current = [start];
     setDrawingPath(toPathData(pointsRef.current));
     setIsDrawing(true);
-  }, [uiState.tool, uiState.activeLayerId, toCanvasPoint]);
+  }, [uiState.tool, uiState.activeLayerId, uiState.ipadMode, toCanvasPoint]);
 
   // Track the stroke on window so it continues (and ends) when the pointer leaves the canvas.
   useEffect(() => {
     if (!isDrawing) return;
 
-    const handleMove = (e: MouseEvent) => {
+    const addPoint = (clientX: number, clientY: number, straight: boolean) => {
       const points = pointsRef.current;
-      let p = toCanvasPoint(e.clientX, e.clientY);
+      let p = toCanvasPoint(clientX, clientY);
       if (!p || points.length === 0) return;
 
-      if (e.shiftKey) {
-        // Shift: straight horizontal / vertical line from the stroke start.
+      if (straight) {
+        // Straight horizontal / vertical line from the stroke start.
         const start = points[0];
         p = Math.abs(p.x - start.x) > Math.abs(p.y - start.y) ? { x: p.x, y: start.y } : { x: start.x, y: p.y };
         pointsRef.current = [start, p];
@@ -69,16 +77,25 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
         if (Math.hypot(p.x - last.x, p.y - last.y) < MIN_POINT_DISTANCE) return;
         pointsRef.current = [...points, p];
       }
+    };
+
+    const handleMove = (e: PointerEvent) => {
+      if (e.pointerId !== pointerIdRef.current) return;
+      const straight = e.shiftKey || latest.current.straight;
+      // A stylus reports far more samples than frames; coalesced events keep curves smooth.
+      const samples = e.getCoalescedEvents?.() ?? [];
+      for (const s of samples.length > 0 ? samples : [e]) addPoint(s.clientX, s.clientY, straight);
       setDrawingPath(toPathData(pointsRef.current));
     };
 
-    const handleUp = () => {
+    const finish = (commit: boolean) => {
       const points = pointsRef.current;
       const { activeLayerId, pdfCanvasHeight, color, strokeWidth, dispatch } = latest.current;
+      pointerIdRef.current = null;
       pointsRef.current = [];
       setIsDrawing(false);
       setDrawingPath('');
-      if (points.length < 2 || !activeLayerId) return;
+      if (!commit || points.length < 2 || !activeLayerId) return;
       dispatch({
         type: 'ADD_OBJECT',
         payload: {
@@ -89,13 +106,25 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
       });
     };
 
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
+    const handleUp = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(true); };
+    // A second finger joining a finger stroke means a pinch, not drawing. (A palm next to a stylus stroke is ignored.)
+    const handleOtherDown = (e: PointerEvent) => {
+      if (e.pointerId !== pointerIdRef.current && e.pointerType === 'touch' && pointerTypeRef.current === 'touch') finish(false);
+    };
+    // The browser took over the pointer (e.g. started scrolling) — drop the unfinished stroke.
+    const handleCancel = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(false); };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleCancel);
+    window.addEventListener('pointerdown', handleOtherDown, true);
     return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('pointerdown', handleOtherDown, true);
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleCancel);
     };
   }, [isDrawing, toCanvasPoint]);
 
-  return { drawingPath, isDrawing, onMouseDown };
+  return { drawingPath, isDrawing, onPointerDown };
 };

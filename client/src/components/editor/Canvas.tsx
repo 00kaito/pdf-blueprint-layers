@@ -8,9 +8,13 @@ import {getVisualDimensions} from '@/core/pdf-math';
 import {Upload} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {useDrawing} from '@/hooks/useDrawing';
-import {useTouchGestures} from '@/hooks/useTouchGestures';
+import {usePinchZoom} from '@/hooks/usePinchZoom';
+import {useMeasure} from '@/hooks/useMeasure';
+import {isStrokeTool} from '@/core/pointer-input';
+import {formatFeet} from '@/core/measure';
 import {ObjectRenderer} from './Canvas/ObjectRenderer';
 import {DrawingLayer} from './Canvas/DrawingLayer';
+import {MeasureLayer} from './Canvas/MeasureLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import {useCurrentUser} from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -31,10 +35,12 @@ export const Canvas = () => {
   const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageCanvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
-  const { drawingPath, isDrawing, onMouseDown } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
+  const { drawingPath, isDrawing, onPointerDown } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
+  const measure = useMeasure(containerRef as React.RefObject<HTMLDivElement>);
   const [, setNumPages] = useState<number>(0);
 
   useEffect(() => {
@@ -43,13 +49,36 @@ export const Canvas = () => {
     }
   }, [isTech, uiState.tool, dispatch]);
 
-  const touchGestures = useTouchGestures({
-    onTap: () => {
-      dispatch({ type: 'SELECT_OBJECT', payload: null });
-    }
-  });
-
   const state = { ...docState, ...uiState };
+
+  // Safari scrolls with the Apple Pencil too, and a palm resting on the screen scrolls mid-stroke.
+  // Both need a non-passive native listener to be cancelled (React's touch listeners are passive).
+  const drawGuardRef = useRef({ tool: state.tool, isDrawing });
+  drawGuardRef.current = { tool: state.tool, isDrawing: isDrawing || measure.isMeasuring };
+  usePinchZoom(
+    scrollRef as React.RefObject<HTMLDivElement>,
+    containerRef as React.RefObject<HTMLDivElement>,
+    () => drawGuardRef.current.isDrawing,
+  );
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    // `touchType` is Safari-only and missing from the DOM typings.
+    const isStylus = (e: TouchEvent) =>
+      Array.from(e.changedTouches).some(t => (t as Touch & { touchType?: string }).touchType === 'stylus');
+    const onTouchStart = (e: TouchEvent) => {
+      if (isStrokeTool(drawGuardRef.current.tool) && isStylus(e)) e.preventDefault();
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (drawGuardRef.current.isDrawing && e.cancelable) e.preventDefault();
+    };
+    scroller.addEventListener('touchstart', onTouchStart, { passive: false });
+    scroller.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => {
+      scroller.removeEventListener('touchstart', onTouchStart);
+      scroller.removeEventListener('touchmove', onTouchMove);
+    };
+  }, []);
   const mousePosRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -120,13 +149,20 @@ export const Canvas = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state.selectedObjectIds, dispatch, isTech]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (isTech) return;
+    if (state.tool === 'draw') onPointerDown(e);
+    else if (state.tool === 'measure' || state.tool === 'calibrate') measure.onPointerDown(e);
+  };
+
+  // Click (not pointerdown) so that a finger that starts scrolling never fills, stamps or deselects.
+  const handleClick = (e: React.MouseEvent) => {
     if (isTech) {
       dispatch({ type: 'SELECT_OBJECT', payload: null });
       return;
     }
-    if (state.tool === 'draw') { onMouseDown(e); }
-    else if (state.tool === 'fill') { handleFill(e); }
+    if (isStrokeTool(state.tool)) return;
+    if (state.tool === 'fill') { handleFill(e); }
     else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
        const rect = containerRef.current?.getBoundingClientRect();
        if (rect) {
@@ -240,10 +276,12 @@ export const Canvas = () => {
   };
 
   return (
-    <div className={`flex-1 bg-muted/30 overflow-auto relative select-none${state.tool === 'fill' || state.tool === 'draw' ? ' cursor-crosshair' : ''}`} 
-      onMouseDown={handleMouseDown} onScroll={handleScroll}
+    <div ref={scrollRef} className={`flex-1 bg-muted/30 overflow-auto relative select-none${state.tool === 'fill' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''}`} 
+      // Fingers pan (pinch is handled by usePinchZoom); outside iPad mode a finger draws, so nothing scrolls.
+      // No iOS long-press callout / magnifier over the blueprint.
+      style={{ touchAction: isStrokeTool(state.tool) && !state.ipadMode ? 'none' : 'pan-x pan-y', WebkitTouchCallout: 'none' }}
+      onPointerDown={handlePointerDown} onClick={handleClick} onScroll={handleScroll}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
-      {...touchGestures}
     >
       <div className="min-w-full min-h-full flex p-8">
         <div ref={containerRef} className="relative shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: docState.pdfCanvasHeight * state.scale }}>
@@ -288,6 +326,20 @@ export const Canvas = () => {
             selectedObjectIds={state.selectedObjectIds}
             drawColor={state.drawColor}
             drawStrokeWidth={state.drawStrokeWidth}
+          />
+          <MeasureLayer
+            tool={state.tool}
+            scale={state.scale}
+            calibration={state.measureCalibration}
+            line={measure.line}
+            pendingCalibration={measure.pendingCalibration}
+            onCancelCalibration={measure.clearPendingCalibration}
+            onCalibrate={(calibration) => {
+              dispatch({ type: 'SET_MEASURE_CALIBRATION', payload: calibration });
+              measure.clearPendingCalibration();
+              dispatch({ type: 'SET_TOOL', payload: 'measure' });
+              toast({ title: 'Scale set', description: `Reference line = ${formatFeet(calibration.feet)}. Drag to measure any distance.` });
+            }}
           />
 
           {state.objects.map((obj) => {

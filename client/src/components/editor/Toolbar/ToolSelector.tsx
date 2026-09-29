@@ -13,9 +13,13 @@ import {
     PaintBucket,
     Pencil,
     Plus,
+    Crosshair,
+    MoveHorizontal,
+    Ruler,
     Settings2,
     Square,
     Star,
+    Tablet,
     Triangle,
     Type,
     X
@@ -30,6 +34,8 @@ import {Label} from "@/components/ui/label";
 import {Slider} from "@/components/ui/slider";
 import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {FILL_LAYER_NAME} from '@/lib/editor-context';
+import {useToast} from '@/hooks/use-toast';
+import {formatFeet} from '@/core/measure';
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
 const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
@@ -47,6 +53,18 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const { handleAddText, handleAddIcon, handleImageUpload, handleCustomIconUpload, getCenterPosition } = useObjectCreation();
+  const { toast } = useToast();
+  const calibration = docState.measureCalibration;
+
+  const selectMeasure = (pressed: boolean) => {
+    if (pressed && !calibration) {
+      // The tape needs a scale: start with the calibration probe.
+      dispatch({ type: 'SET_TOOL', payload: 'calibrate' });
+      toast({ title: 'Set the scale first', description: 'Draw a line over a known dimension, then enter its length in feet.' });
+      return;
+    }
+    dispatch({ type: 'SET_TOOL', payload: pressed ? 'measure' : 'select' });
+  };
 
   const handleDragStart = (e: React.DragEvent, type: string, content?: string) => {
       e.dataTransfer.setData('application/editor-object', type);
@@ -140,6 +158,25 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               </Popover>
             </div>
 
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Toggle
+                  pressed={uiState.ipadMode}
+                  onPressedChange={(p) => dispatch({ type: 'SET_IPAD_MODE', payload: p })}
+                  size="sm"
+                  className="h-8 w-8"
+                  data-testid="ipad-mode"
+                >
+                  <Tablet className="w-4 h-4" />
+                </Toggle>
+              </TooltipTrigger>
+              <TooltipContent>
+                iPad mode {uiState.ipadMode ? 'on' : 'off'}: {uiState.ipadMode
+                  ? 'only the pencil draws, fingers scroll and zoom'
+                  : 'fingers draw too'}
+              </TooltipContent>
+            </Tooltip>
+
             {uiState.tool === 'draw' && (
               // Quick settings shown while drawing, like the bucket's inline settings.
               <div className="flex items-center gap-2 px-2 h-8 rounded-md border border-input bg-background" data-testid="draw-inline-settings">
@@ -160,6 +197,16 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                   className="w-24"
                   data-testid="draw-size-inline"
                 />
+                <Toggle
+                  pressed={uiState.drawStraight}
+                  onPressedChange={(p) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawStraight: p } })}
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  title="Straight horizontal / vertical lines (same as holding Shift)"
+                  data-testid="draw-straight"
+                >
+                  <MoveHorizontal className="w-3.5 h-3.5" />
+                </Toggle>
                 <span className="w-6 flex items-center justify-center" title={`${uiState.drawStrokeWidth}`}>
                   <span
                     className="rounded-full"
@@ -268,6 +315,72 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               </div>
             )}
 
+            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={uiState.tool === 'calibrate'}
+                    onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'calibrate' : 'select' })}
+                    size="sm"
+                    className="h-8 w-8 rounded-none border-none"
+                    data-testid="tool-calibrate"
+                  >
+                    <Crosshair className="w-4 h-4" />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>Scale probe: draw a line over a known dimension and enter its length in feet</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={uiState.tool === 'measure'}
+                    onPressedChange={selectMeasure}
+                    size="sm"
+                    className="h-8 w-8 rounded-none border-none border-l border-input"
+                    data-testid="tool-measure"
+                  >
+                    <Ruler className="w-4 h-4" />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>Measuring tape {calibration ? '(hold Shift for a straight line)' : '(set the scale with the probe first)'}</TooltipContent>
+              </Tooltip>
+            </div>
+
+            {(uiState.tool === 'measure' || uiState.tool === 'calibrate') && (
+              <div className="flex items-center gap-2 px-2 h-8 rounded-md border border-input bg-background text-xs whitespace-nowrap" data-testid="measure-inline-settings">
+                {calibration ? (
+                  <span className="text-muted-foreground">
+                    Scale ref: <span className="font-mono font-medium text-foreground">{formatFeet(calibration.feet)}</span>
+                  </span>
+                ) : (
+                  <span className="text-amber-600 font-medium">
+                    {uiState.tool === 'calibrate' ? 'Draw a line over a known dimension' : 'No scale set'}
+                  </span>
+                )}
+                <Toggle
+                  pressed={uiState.drawStraight}
+                  onPressedChange={(p) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawStraight: p } })}
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  title="Straight horizontal / vertical lines (same as holding Shift)"
+                >
+                  <MoveHorizontal className="w-3.5 h-3.5" />
+                </Toggle>
+                {calibration && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={() => dispatch({ type: 'SET_MEASURE_CALIBRATION', payload: null })}
+                    title="Remove the measuring scale"
+                    data-testid="measure-clear-scale"
+                  >
+                    Clear scale
+                  </Button>
+                )}
+              </div>
+            )}
+
             <Separator orientation="vertical" className="h-6 mx-1" />
 
             <Tooltip>
@@ -345,7 +458,7 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                           >
                             <img src={icon.url} alt={icon.name} className="w-full h-full object-contain" />
                           </Button>
-                          <button className="absolute -top-1 -right-1 hidden group-hover:flex bg-destructive text-destructive-foreground rounded-full w-4 h-4 items-center justify-center"
+                          <button className="absolute -top-1 -right-1 hidden group-hover:flex [@media(hover:none)]:flex bg-destructive text-destructive-foreground rounded-full w-4 h-4 items-center justify-center"
                             onClick={(e) => { e.stopPropagation(); dispatch({ type: 'DELETE_CUSTOM_ICON', payload: icon.id }); }}>
                             <X className="w-3 h-3" />
                           </button>

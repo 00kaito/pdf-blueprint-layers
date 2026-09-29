@@ -1,4 +1,4 @@
-import React, {createContext, ReactNode, useContext, useMemo, useReducer} from 'react';
+import React, {createContext, ReactNode, useContext, useEffect, useMemo, useReducer} from 'react';
 import {DocumentState, EditorAction, EditorObject, EditorState, UIState} from './types';
 import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
@@ -22,6 +22,24 @@ const clampOverlayOffset = (offset: { x: number; y: number }) => ({
   y: clampOverlayCoord(offset.y),
 });
 
+const IPAD_MODE_STORAGE_KEY = 'editor.ipadMode';
+
+/** Saved choice, or on by default on touch-first devices (iPad, tablets). */
+const loadIpadMode = (): boolean => {
+  try {
+    const saved = localStorage.getItem(IPAD_MODE_STORAGE_KEY);
+    if (saved !== null) return saved === 'true';
+  } catch { /* storage unavailable */ }
+  if (typeof window === 'undefined' || navigator.maxTouchPoints === 0) return false;
+  // iPadOS Safari identifies itself as a Mac ("desktop website" mode) — a touch-capable "Mac" is an iPad.
+  const isIpad = /iPad|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
+  return isIpad || window.matchMedia('(pointer: coarse)').matches;
+};
+
+const saveIpadMode = (value: boolean) => {
+  try { localStorage.setItem(IPAD_MODE_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
+};
+
 const initialDocumentState: DocumentState = {
   projectId: null,
   pdfFileId: null,
@@ -43,7 +61,8 @@ const initialDocumentState: DocumentState = {
     labelFontSize: 1
   },
   customIcons: [],
-  pdfCanvasHeight: CANVAS_BASE_HEIGHT
+  pdfCanvasHeight: CANVAS_BASE_HEIGHT,
+  measureCalibration: null
 };
 
 const initialUIState: UIState = {
@@ -59,7 +78,9 @@ const initialUIState: UIState = {
   fillColor: '#3b82f6',
   fillOpacity: 0.35,
   drawColor: '#000000',
-  drawStrokeWidth: 2
+  drawStrokeWidth: 2,
+  drawStraight: false,
+  ipadMode: loadIpadMode()
 };
 
 const initialState: EditorState = {
@@ -87,6 +108,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         objects: [],
         currentPage: 1,
         pdfCanvasHeight: CANVAS_BASE_HEIGHT,
+        measureCalibration: null,
       };
     case 'SET_PDF_DIMENSIONS':
       return {
@@ -212,7 +234,10 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
     case 'SET_SCROLL':
       return { ...state, scrollPos: action.payload };
     case 'IMPORT_PROJECT':
-      return { ...state, ...action.payload };
+      // Projects saved before the measuring tape have no calibration — don't keep the previous project's.
+      return { ...state, measureCalibration: null, ...action.payload };
+    case 'SET_MEASURE_CALIBRATION':
+      return { ...state, measureCalibration: action.payload };
     case 'REORDER_LAYERS': {
       const { sourceIndex, destinationIndex } = action.payload;
       const result = Array.from(state.layers);
@@ -393,6 +418,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
     case 'SET_FILL_SETTINGS':
     case 'SET_DRAW_SETTINGS':
       return { ...state, ...action.payload };
+    case 'SET_IPAD_MODE':
+      return { ...state, ipadMode: action.payload };
     case 'ADD_FILL': {
       const { object, newLayerId } = action.payload;
       let layers = state.layers;
@@ -448,6 +475,8 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
   const [historyState, dispatch] = useReducer(historyReducer, initialState, createInitialHistory);
   const state = historyState.editor;
 
+  useEffect(() => saveIpadMode(state.ipadMode), [state.ipadMode]);
+
   const historyInfo = useMemo<HistoryInfo>(() => ({
     past: historyState.past,
     future: historyState.future,
@@ -470,7 +499,8 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     exportSettings: state.exportSettings,
     customIcons: state.customIcons,
     pdfCanvasHeight: state.pdfCanvasHeight,
-  }), [state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.overlayOffset, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight]);
+    measureCalibration: state.measureCalibration,
+  }), [state.measureCalibration, state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.overlayOffset, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight]);
 
   const uiState = useMemo(() => ({
     selectedObjectIds: state.selectedObjectIds,
@@ -486,7 +516,9 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     fillOpacity: state.fillOpacity,
     drawColor: state.drawColor,
     drawStrokeWidth: state.drawStrokeWidth,
-  }), [state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
+    drawStraight: state.drawStraight,
+    ipadMode: state.ipadMode,
+  }), [state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

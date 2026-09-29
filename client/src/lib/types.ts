@@ -49,6 +49,19 @@ export type EditorObject = {
   isFill?: boolean;
 };
 
+/**
+ * Scale reference for the measuring tape, set with the calibration tool: a line drawn over a known
+ * dimension of the blueprint. Stored in unscaled canvas units, so it is independent of the zoom.
+ */
+export type MeasureCalibration = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  /** Real length of the reference line, in feet. */
+  feet: number;
+};
+
 export type DocumentState = {
   projectId: string | null;
   pdfFileId: string | null;
@@ -76,6 +89,7 @@ export type DocumentState = {
   };
   customIcons: { id: string; url: string; name: string }[];
   pdfCanvasHeight: number;
+  measureCalibration: MeasureCalibration | null;
 };
 
 export type UIState = {
@@ -85,13 +99,18 @@ export type UIState = {
   scale: number;
   scrollPos: { x: number; y: number };
   /** 'pan-overlay' = hand tool dragging the overlay blueprint to align it with the main one. */
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay';
+  /** 'calibrate' = set the measuring scale from a known dimension; 'measure' = measuring tape. */
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure';
   /** Paint-bucket settings (hex colour, 0–1 opacity). */
   fillColor: string;
   fillOpacity: number;
   /** Draw (pencil) settings: hex colour and stroke width in unscaled canvas units. */
   drawColor: string;
   drawStrokeWidth: number;
+  /** Straight horizontal / vertical strokes (touch replacement for holding Shift). */
+  drawStraight: boolean;
+  /** Tablet mode: only a stylus (or mouse) draws, fingers scroll / zoom — palm rejection. Remembered per device. */
+  ipadMode: boolean;
   showStatusColors: boolean;
   objectDetailsOpen: boolean;
   isImporting: boolean;
@@ -133,6 +152,7 @@ export type EditorAction =
   | { type: 'SET_AUTO_NUMBERING'; payload: Partial<DocumentState['autoNumbering']> }
   | { type: 'INCREMENT_COUNTER' }
   | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<DocumentState['exportSettings']> }
+  | { type: 'SET_MEASURE_CALIBRATION'; payload: MeasureCalibration | null }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }
   | { type: 'SET_PDF_DIMENSIONS'; payload: { width: number; height: number } }
@@ -142,6 +162,7 @@ export type EditorAction =
   | { type: 'SET_IMPORTING'; payload: boolean }
   | { type: 'RESET_EDITOR' }
   | { type: 'SET_FILL_SETTINGS'; payload: Partial<Pick<UIState, 'fillColor' | 'fillOpacity'>> }
-  | { type: 'SET_DRAW_SETTINGS'; payload: Partial<Pick<UIState, 'drawColor' | 'drawStrokeWidth'>> }
+  | { type: 'SET_DRAW_SETTINGS'; payload: Partial<Pick<UIState, 'drawColor' | 'drawStrokeWidth' | 'drawStraight'>> }
+  | { type: 'SET_IPAD_MODE'; payload: boolean }
   /** Adds a paint-bucket fill to the Colors layer (created if missing). Re-filling the same area replaces it. */
   | { type: 'ADD_FILL'; payload: { object: EditorObject; newLayerId: string } };

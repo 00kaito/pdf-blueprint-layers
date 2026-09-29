@@ -109,9 +109,23 @@ export const PropertiesPanel = () => {
                 {isMultiSelect ? `${selectedObjects.length} Objects Selected` : 'Object Properties'}
             </h3>
         </div>
-        {isMultiSelect && (
-            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase">Bulk Edit</span>
-        )}
+        <div className="flex items-center gap-2">
+          {isMultiSelect && (
+              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase">Bulk Edit</span>
+          )}
+          {!isTech && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("text-muted-foreground hover:text-destructive", uiState.ipadMode ? "h-10 w-10" : "h-7 w-7")}
+              onClick={() => dispatch({ type: 'DELETE_OBJECTS', payload: selectedObjects.map(o => o.id) })}
+              title={isMultiSelect ? `Delete ${selectedObjects.length} objects` : 'Delete object'}
+              data-testid="properties-delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
       
       <div className="flex-1 overflow-y-auto">

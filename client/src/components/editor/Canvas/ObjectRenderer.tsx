@@ -360,6 +360,16 @@ export const ObjectRenderer = memo(({
               style={{ backgroundColor: indicatorColor }}
             />
           )}
+          {/* Photo marker, mirroring the status dot in the opposite corner. */}
+          {!isFill && obj.type !== 'path' && !!obj.photos?.length && (
+            <div
+              className="absolute bottom-0 left-0 w-3 h-3 rounded-full bg-sky-500 border border-white shadow-sm z-50 flex items-center justify-center pointer-events-none"
+              title={`${obj.photos.length} photo(s)`}
+              data-testid="photo-indicator"
+            >
+              <Camera className="w-2 h-2 text-white" strokeWidth={3} />
+            </div>
+          )}
       </div>
 
       {!isFill && leader && (

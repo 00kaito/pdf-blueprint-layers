@@ -9,7 +9,7 @@ const COALESCE_WINDOW_MS = 1000;
 /** Document fields restored by undo/redo. File handles and ids are deliberately excluded. */
 type Snapshot = Pick<
   DocumentState,
-  'layers' | 'objects' | 'overlayOpacity' | 'overlayOffset' | 'autoNumbering' | 'exportSettings' | 'customIcons'
+  'layers' | 'objects' | 'overlayOpacity' | 'overlayOffset' | 'autoNumbering' | 'exportSettings' | 'customIcons' | 'measureCalibration'
 >;
 
 export type HistoryEntry = {
@@ -57,6 +57,7 @@ const takeSnapshot = (s: EditorState): Snapshot => ({
   autoNumbering: s.autoNumbering,
   exportSettings: s.exportSettings,
   customIcons: s.customIcons,
+  measureCalibration: s.measureCalibration,
 });
 
 const snapshotChanged = (a: EditorState, b: EditorState) =>
@@ -66,7 +67,8 @@ const snapshotChanged = (a: EditorState, b: EditorState) =>
   a.overlayOffset !== b.overlayOffset ||
   a.autoNumbering !== b.autoNumbering ||
   a.exportSettings !== b.exportSettings ||
-  a.customIcons !== b.customIcons;
+  a.customIcons !== b.customIcons ||
+  a.measureCalibration !== b.measureCalibration;
 
 /** Applies a snapshot, keeping selection / active layer consistent with the restored document. */
 const applySnapshot = (s: EditorState, snap: Snapshot, selection: string[]): EditorState => {
@@ -123,6 +125,7 @@ const describe = (action: EditorAction, prev: EditorState): string => {
     case 'SET_AUTO_NUMBERING': return 'Change auto-numbering';
     case 'INCREMENT_COUNTER': return 'Increment counter';
     case 'SET_EXPORT_SETTINGS': return 'Change export settings';
+    case 'SET_MEASURE_CALIBRATION': return action.payload ? `Set measuring scale (${action.payload.feet} ft)` : 'Clear measuring scale';
     case 'ADD_CUSTOM_ICON': return `Add icon ${action.payload.name}`;
     case 'DELETE_CUSTOM_ICON': return 'Delete custom icon';
     case 'ADD_OBJECT_PHOTO': return `Add photo to ${objName(action.payload.id)}`;

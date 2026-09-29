@@ -100,3 +100,14 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* iPad mode: finger-sized hit targets in the toolbar (Apple HIG: >= 44pt). Unlayered, so it wins over utilities. */
+.ipad-mode button,
+.ipad-mode label[for] {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+}
+.ipad-mode [role="slider"] {
+  width: 1.5rem;
+  height: 1.5rem;
+}

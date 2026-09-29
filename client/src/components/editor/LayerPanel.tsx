@@ -9,6 +9,7 @@ import {
     ChevronDown,
     ChevronRight,
     Circle,
+    Camera,
     Copy,
     Eye,
     EyeOff,
@@ -18,6 +19,7 @@ import {
     Hexagon,
     Image as ImageIcon,
     Layers,
+    PanelLeftClose,
     PenTool,
     Plus,
     RotateCcw,
@@ -60,7 +62,7 @@ const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
   return <Square className="w-3 h-3" />;
 };
 
-export const LayerPanel = () => {
+export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
@@ -179,6 +181,18 @@ export const LayerPanel = () => {
         <div className="flex items-center gap-2 font-medium text-sm mb-3">
           <Copy className="w-4 h-4 text-primary" />
           Overlay Blueprint
+          {onCollapse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onCollapse}
+              className={cn("ml-auto -my-1 text-muted-foreground", uiState.ipadMode ? "h-10 w-10" : "h-7 w-7")}
+              title="Hide panel"
+              data-testid="hide-layer-panel"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </Button>
+          )}
         </div>
         
         {!state.overlayPdfFile ? (
@@ -535,13 +549,27 @@ export const LayerPanel = () => {
                           )}
                         </div>
 
+                        {!!obj.photos?.length && (
+                          <span className="flex items-center gap-0.5 text-sky-600 shrink-0" title={`${obj.photos.length} photo(s)`}>
+                            <Camera className="w-3 h-3" />
+                            <span className="text-[10px] font-mono">{obj.photos.length}</span>
+                          </span>
+                        )}
+
                         {!isTech && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               dispatch({ type: 'DELETE_OBJECT', payload: obj.id });
                             }}
-                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-0.5"
+                            className={cn(
+                              "text-muted-foreground hover:text-destructive transition-opacity shrink-0",
+                              // Touch screens have no hover: keep the button visible there and on the selected row.
+                              uiState.ipadMode
+                                ? "p-2 -my-1.5"
+                                : cn("p-0.5 [@media(hover:none)]:opacity-100", state.selectedObjectIds.includes(obj.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100")
+                            )}
+                            title="Delete object"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

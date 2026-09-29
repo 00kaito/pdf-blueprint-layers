@@ -72,6 +72,7 @@ export function useManualSave() {
           autoNumbering: docState.autoNumbering,
           overlayOpacity: docState.overlayOpacity,
           overlayOffset: docState.overlayOffset,
+          measureCalibration: docState.measureCalibration,
           pdfFileId: currentPdfFileId,
           overlayPdfFileId: currentOverlayPdfFileId,
           activeLayerId: uiState.activeLayerId
