@@ -10,7 +10,9 @@ import {Button} from '@/components/ui/button';
 import {useDrawing} from '@/hooks/useDrawing';
 import {usePinchZoom} from '@/hooks/usePinchZoom';
 import {useMeasure} from '@/hooks/useMeasure';
-import {isStrokeTool} from '@/core/pointer-input';
+import {useSpacePan} from '@/hooks/useSpacePan';
+import type {UIState} from '@/lib/types';
+import {fingerUsesTool, isStrokeTool} from '@/core/pointer-input';
 import {feetPerUnit, formatFeet} from '@/core/measure';
 import type {Box} from '@/core/snapping';
 import {ObjectRenderer} from './Canvas/ObjectRenderer';
@@ -26,6 +28,15 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set worker URL to local Vite asset using the standard URL constructor
+/** Single-key tool shortcuts (shown in the toolbar tooltips). */
+export const TOOL_SHORTCUTS: Record<string, UIState['tool']> = {
+  v: 'select',
+  p: 'draw',
+  b: 'fill',
+  m: 'measure',
+  k: 'calibrate',
+};
+
 /** Shift-drag moves objects in steps of this many feet. */
 const DRAG_STEP_FEET = 0.5;
 
@@ -46,6 +57,9 @@ export const Canvas = () => {
   const { toast } = useToast();
   const { drawingPath, isDrawing, onPointerDown } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const measure = useMeasure(containerRef as React.RefObject<HTMLDivElement>);
+  const spacePan = useSpacePan(scrollRef as React.RefObject<HTMLDivElement>);
+  const shortcutStateRef = useRef({ tool: uiState.tool, hasCalibration: !!docState.measureCalibration });
+  shortcutStateRef.current = { tool: uiState.tool, hasCalibration: !!docState.measureCalibration };
 
   // Stable for the memoised ObjectRenderers; reads the current objects only when a drag needs them.
   const snapSourceRef = useRef({ objects: docState.objects, layers: docState.layers });
@@ -145,6 +159,21 @@ export const Canvas = () => {
       }
 
       if (isTech) return;
+
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const { tool, hasCalibration } = shortcutStateRef.current;
+        const shortcut = TOOL_SHORTCUTS[e.key.toLowerCase()];
+        if (shortcut && !e.repeat) {
+          e.preventDefault();
+          // The tape needs a scale first, like the toolbar button.
+          dispatch({ type: 'SET_TOOL', payload: shortcut === 'measure' && !hasCalibration ? 'calibrate' : shortcut });
+          return;
+        }
+        // Esc = back to selecting (the overlay hand tool handles its own Esc).
+        if (e.key === 'Escape' && tool !== 'select' && tool !== 'pan-overlay') {
+          dispatch({ type: 'SET_TOOL', payload: 'select' });
+        }
+      }
 
       if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedObjectIds.length > 0) {
         dispatch({ type: 'DELETE_OBJECTS', payload: state.selectedObjectIds });
@@ -299,10 +328,12 @@ export const Canvas = () => {
   };
 
   return (
-    <div ref={scrollRef} className={`flex-1 bg-muted/30 overflow-auto relative select-none${state.tool === 'fill' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''}`} 
-      // Fingers pan (pinch is handled by usePinchZoom); outside iPad mode a finger draws, so nothing scrolls.
-      // No iOS long-press callout / magnifier over the blueprint.
-      style={{ touchAction: isStrokeTool(state.tool) && !state.ipadMode ? 'none' : 'pan-x pan-y', WebkitTouchCallout: 'none' }}
+    <div ref={scrollRef} data-canvas-scroller className={`flex-1 bg-muted/30 overflow-auto relative select-none${
+      spacePan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
+    }`} 
+      // When a finger operates the tool nothing scrolls natively — two fingers pan / zoom (usePinchZoom).
+      // Otherwise fingers scroll. No iOS long-press callout / magnifier over the blueprint.
+      style={{ touchAction: fingerUsesTool(state.tool, state.ipadMode) ? 'none' : 'pan-x pan-y', WebkitTouchCallout: 'none' }}
       onPointerDown={handlePointerDown} onClick={handleClick} onScroll={handleScroll}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
     >

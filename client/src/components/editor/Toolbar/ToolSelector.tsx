@@ -10,17 +10,15 @@ import {
     Hexagon,
     Image as ImageIcon,
     Magnet,
+    MoveHorizontal,
     MousePointer2,
     PaintBucket,
     Pencil,
     Plus,
-    Crosshair,
-    MoveHorizontal,
     Ruler,
     Settings2,
     Square,
     Star,
-    Tablet,
     Triangle,
     Type,
     X
@@ -36,15 +34,25 @@ import {Slider} from "@/components/ui/slider";
 import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {FILL_LAYER_NAME} from '@/lib/editor-context';
 import {useToast} from '@/hooks/use-toast';
-import {formatFeet} from '@/core/measure';
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
 const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
 
 /** Brush size range, in unscaled canvas units (same units as EditorObject.strokeWidth). */
-const MIN_BRUSH_SIZE = 0.5;
-const MAX_BRUSH_SIZE = 20;
-const BRUSH_SIZE_STEP = 0.5;
+export const MIN_BRUSH_SIZE = 0.5;
+export const MAX_BRUSH_SIZE = 20;
+export const BRUSH_SIZE_STEP = 0.5;
+
+/** Corner badge on the line tools while straight-line mode is on, so the mode shows in the main row too. */
+const StraightBadge = ({ show }: { show: boolean }) => show ? (
+  <span
+    className="absolute top-0.5 right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-white ring-1 ring-background pointer-events-none"
+    title="Straight-line mode"
+    data-testid="straight-badge"
+  >
+    <MoveHorizontal className="!size-2.5" strokeWidth={3} />
+  </span>
+) : null;
 
 interface ToolSelectorProps {
   isTech: boolean;
@@ -86,7 +94,7 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               <MousePointer2 className="w-4 h-4" />
             </Toggle>
           </TooltipTrigger>
-          <TooltipContent>Select</TooltipContent>
+          <TooltipContent>Select <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">V</kbd></TooltipContent>
         </Tooltip>
 
         {!isTech && (
@@ -121,13 +129,14 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                     data-testid="tool-draw"
                   >
                     <Pencil className="w-4 h-4" />
+                    <StraightBadge show={uiState.drawStraight} />
                     <span
-                      className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full"
+                      className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full ring-1 ring-white/70"
                       style={{ backgroundColor: uiState.drawColor }}
                     />
                   </Toggle>
                 </TooltipTrigger>
-                <TooltipContent>Draw (hold Shift for a straight line)</TooltipContent>
+                <TooltipContent>Draw (hold Shift for a straight line) <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">P</kbd></TooltipContent>
               </Tooltip>
               <Popover>
                 <PopoverTrigger asChild>
@@ -178,68 +187,6 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               </Popover>
             </div>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Toggle
-                  pressed={uiState.ipadMode}
-                  onPressedChange={(p) => dispatch({ type: 'SET_IPAD_MODE', payload: p })}
-                  size="sm"
-                  className="h-8 w-8"
-                  data-testid="ipad-mode"
-                >
-                  <Tablet className="w-4 h-4" />
-                </Toggle>
-              </TooltipTrigger>
-              <TooltipContent>
-                iPad mode {uiState.ipadMode ? 'on' : 'off'}: {uiState.ipadMode
-                  ? 'only the pencil draws, fingers scroll and zoom'
-                  : 'fingers draw too'}
-              </TooltipContent>
-            </Tooltip>
-
-            {uiState.tool === 'draw' && (
-              // Quick settings shown while drawing, like the bucket's inline settings.
-              <div className="flex items-center gap-2 px-2 h-8 rounded-md border border-input bg-background" data-testid="draw-inline-settings">
-                <input
-                  type="color"
-                  value={uiState.drawColor}
-                  onChange={(e) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawColor: e.target.value } })}
-                  className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer"
-                  title="Brush colour"
-                />
-                <span className="text-[10px] uppercase font-bold text-muted-foreground">Size</span>
-                <Slider
-                  value={[uiState.drawStrokeWidth]}
-                  min={MIN_BRUSH_SIZE}
-                  max={MAX_BRUSH_SIZE}
-                  step={BRUSH_SIZE_STEP}
-                  onValueChange={([v]) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawStrokeWidth: v } })}
-                  className="w-24"
-                  data-testid="draw-size-inline"
-                />
-                <Toggle
-                  pressed={uiState.drawStraight}
-                  onPressedChange={(p) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawStraight: p } })}
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  title="Straight horizontal / vertical lines (same as holding Shift)"
-                  data-testid="draw-straight"
-                >
-                  <MoveHorizontal className="w-3.5 h-3.5" />
-                </Toggle>
-                <span className="w-6 flex items-center justify-center" title={`${uiState.drawStrokeWidth}`}>
-                  <span
-                    className="rounded-full"
-                    style={{
-                      backgroundColor: uiState.drawColor,
-                      width: Math.max(2, Math.min(20, uiState.drawStrokeWidth * 1.5)),
-                      height: Math.max(2, Math.min(20, uiState.drawStrokeWidth * 1.5)),
-                    }}
-                  />
-                </span>
-              </div>
-            )}
-
             <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -252,12 +199,12 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                   >
                     <PaintBucket className="w-4 h-4" />
                     <span
-                      className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full"
+                      className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full ring-1 ring-white/70"
                       style={{ backgroundColor: uiState.fillColor, opacity: Math.max(uiState.fillOpacity, 0.3) }}
                     />
                   </Toggle>
                 </TooltipTrigger>
-                <TooltipContent>Fill area with colour (goes to layer "{FILL_LAYER_NAME}")</TooltipContent>
+                <TooltipContent>Fill area with colour (goes to layer "{FILL_LAYER_NAME}") <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">B</kbd></TooltipContent>
               </Tooltip>
               <Popover>
                 <PopoverTrigger asChild>
@@ -311,107 +258,22 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               </Popover>
             </div>
 
-            {uiState.tool === 'fill' && (
-              // Quick settings shown while the bucket is active, so opacity can be tuned without opening the popover.
-              <div className="flex items-center gap-2 px-2 h-8 rounded-md border border-input bg-background" data-testid="fill-inline-settings">
-                <input
-                  type="color"
-                  value={uiState.fillColor}
-                  onChange={(e) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillColor: e.target.value } })}
-                  className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer"
-                  title="Fill colour"
-                />
-                <span className="text-[10px] uppercase font-bold text-muted-foreground">Opacity</span>
-                <Slider
-                  value={[uiState.fillOpacity]}
-                  min={0.05}
-                  max={1}
-                  step={0.05}
-                  onValueChange={([v]) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillOpacity: v } })}
-                  className="w-24"
-                  data-testid="fill-opacity-inline"
-                />
-                <span className="text-[10px] font-mono w-8 text-right">{Math.round(uiState.fillOpacity * 100)}%</span>
-              </div>
-            )}
-
-            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Toggle
-                    pressed={uiState.tool === 'calibrate'}
-                    onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'calibrate' : 'select' })}
-                    size="sm"
-                    className="h-8 w-8 rounded-none border-none"
-                    data-testid="tool-calibrate"
-                  >
-                    <Crosshair className="w-4 h-4" />
-                  </Toggle>
-                </TooltipTrigger>
-                <TooltipContent>Scale probe: draw a line over a known dimension and enter its length in feet</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Toggle
-                    pressed={uiState.tool === 'measure'}
-                    onPressedChange={selectMeasure}
-                    size="sm"
-                    className="h-8 w-8 rounded-none border-none border-l border-input"
-                    data-testid="tool-measure"
-                  >
-                    <Ruler className="w-4 h-4" />
-                  </Toggle>
-                </TooltipTrigger>
-                <TooltipContent>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'}</TooltipContent>
-              </Tooltip>
-            </div>
-
-            {(uiState.tool === 'measure' || uiState.tool === 'calibrate') && (
-              <div className="flex items-center gap-2 px-2 h-8 rounded-md border border-input bg-background text-xs whitespace-nowrap" data-testid="measure-inline-settings">
-                {calibration ? (
-                  <span className="text-muted-foreground">
-                    Scale ref: <span className="font-mono font-medium text-foreground">{formatFeet(calibration.feet)}</span>
-                  </span>
-                ) : (
-                  <span className="text-amber-600 font-medium">
-                    {uiState.tool === 'calibrate' ? 'Draw a line over a known dimension' : 'No scale set'}
-                  </span>
-                )}
+            {/* One tape button; the scale probe lives in its options row (ContextBar), next to "Clear scale". */}
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Toggle
-                  pressed={uiState.drawStraight}
-                  onPressedChange={(p) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawStraight: p } })}
+                  pressed={uiState.tool === 'measure' || uiState.tool === 'calibrate'}
+                  onPressedChange={selectMeasure}
                   size="sm"
-                  className="h-6 w-6 p-0"
-                  title="Straight horizontal / vertical lines (same as holding Shift)"
+                  className="h-8 w-8 relative"
+                  data-testid="tool-measure"
                 >
-                  <MoveHorizontal className="w-3.5 h-3.5" />
+                  <Ruler className="w-4 h-4" />
+                  <StraightBadge show={uiState.drawStraight} />
                 </Toggle>
-                {uiState.measureTape && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-                    onClick={() => dispatch({ type: 'SET_MEASURE_TAPE', payload: null })}
-                    title="Remove the measuring tape from the blueprint (Esc)"
-                    data-testid="measure-clear-tape"
-                  >
-                    Clear tape
-                  </Button>
-                )}
-                {calibration && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-                    onClick={() => dispatch({ type: 'SET_MEASURE_CALIBRATION', payload: null })}
-                    title="Remove the measuring scale"
-                    data-testid="measure-clear-scale"
-                  >
-                    Clear scale
-                  </Button>
-                )}
-              </div>
-            )}
+              </TooltipTrigger>
+              <TooltipContent>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'} <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">M</kbd></TooltipContent>
+            </Tooltip>
 
             <Separator orientation="vertical" className="h-6 mx-1" />
 

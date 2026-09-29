@@ -61,7 +61,7 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (uiState.tool !== 'measure' && uiState.tool !== 'calibrate') return;
-    if (pointerRef.current || pendingCalibration || !canDrawWith(e, uiState.ipadMode)) return;
+    if (pointerRef.current || pendingCalibration || !canDrawWith(e, uiState.ipadMode, uiState.tool)) return;
     const start = toCanvasPoint(e.clientX, e.clientY);
     if (!start) return;
     e.preventDefault();

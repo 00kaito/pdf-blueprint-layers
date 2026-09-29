@@ -12,7 +12,10 @@ const Toolbar = lazy(() => import('@/components/editor/Toolbar').then(module => 
 
 const LayerPanel = lazy(() => import('@/components/editor/LayerPanel').then(module => ({ default: module.LayerPanel })));
 const PropertiesPanel = lazy(() => import('@/components/editor/PropertiesPanel').then(module => ({ default: module.PropertiesPanel })));
+const ToolHint = lazy(() => import('@/components/editor/Canvas/ToolHint').then(module => ({ default: module.ToolHint })));
 const MobileBottomBar = lazy(() => import('@/components/editor/MobileBottomBar').then(module => ({ default: module.MobileBottomBar })));
+
+const SHOW_LAYERS_STORAGE_KEY = 'editor.showLayers';
 
 const Home = () => {
   const { state: docState } = useDocument();
@@ -21,7 +24,18 @@ const Home = () => {
   const { isSaving } = useAutoSave();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
-  const [showLayers, setShowLayers] = useState(true);
+  // Remembered per device; the first time it is hidden in iPad mode (more room to work, layers are a desk thing).
+  const [showLayers, setShowLayersState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SHOW_LAYERS_STORAGE_KEY);
+      if (saved !== null) return saved === 'true';
+    } catch { /* storage unavailable */ }
+    return !uiState.ipadMode;
+  });
+  const setShowLayers = (value: boolean) => {
+    setShowLayersState(value);
+    try { localStorage.setItem(SHOW_LAYERS_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
+  };
 
   if (!docState.pdfFile) {
     return <PDFUploader />;
@@ -84,7 +98,10 @@ const Home = () => {
           )}
           
           {/* Main Canvas Area */}
-          <Canvas />
+          <div className="relative flex flex-1 min-w-0">
+            <Canvas />
+            {!isTech && <ToolHint />}
+          </div>
 
           {/* Right Sidebar - Properties Panel. In iPad mode it floats over the canvas instead of narrowing it. */}
           {hasSelectedObject && (

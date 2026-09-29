@@ -47,7 +47,7 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (uiState.tool !== 'draw' || !uiState.activeLayerId) return;
-    if (pointerIdRef.current !== null || !canDrawWith(e, uiState.ipadMode)) return;
+    if (pointerIdRef.current !== null || !canDrawWith(e, uiState.ipadMode, uiState.tool)) return;
     const start = toCanvasPoint(e.clientX, e.clientY);
     if (!start) return;
     e.preventDefault();
