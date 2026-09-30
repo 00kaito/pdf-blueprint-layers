@@ -30,7 +30,7 @@ interface ObjectRendererProps {
   selectedObjectIds: string[];
   showStatusColors: boolean;
   disableMovement?: boolean;
-  /** Snap to nearby objects while dragging (Alt disables it for one drag move). */
+  /** Snap to nearby objects while dragging (Ctrl / ⌘ / Alt disables it for one drag move). */
   snapEnabled?: boolean;
   /** Boxes the object can snap to (must be stable — read lazily at drag time). */
   getSnapTargets?: (excludeId: string) => Box[];
@@ -108,6 +108,8 @@ export const ObjectRenderer = memo(({
   const [dragPos, setDragPos] = useState<{ x: number; y: number; seq: number } | null>(null);
   const dragPosRef = useRef<{ x: number; y: number; seq: number } | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
+  /** Set when a drag really moved the object, so the click that ends it is not a Ctrl+click selection toggle. */
+  const draggedRef = useRef(false);
 
   const isSelected = selectedObjectIds.includes(obj.id);
   // Paint-bucket fills are traced from the blueprint, so they stay pinned to it.
@@ -310,10 +312,13 @@ export const ObjectRenderer = memo(({
         x = clamp(x, 0, CANVAS_BASE_WIDTH - obj.width);
         y = pageHeight ? clamp(y, 0, pageHeight - obj.height) : Math.max(0, y);
         let guides: Guide[] = [];
-        if (!stepping && snapEnabled && !e.altKey && getSnapTargets) {
+        // Ctrl / ⌘ / Alt held = drop the object exactly where it is, no snapping.
+        const free = e.ctrlKey || e.metaKey || e.altKey;
+        if (!stepping && snapEnabled && !free && getSnapTargets) {
           const snapped = snapBox({ x, y, width: obj.width, height: obj.height }, getSnapTargets(obj.id), SNAP_DISTANCE_PX / scale);
           ({ x, y, guides } = snapped);
         }
+        draggedRef.current = true;
         dragPosRef.current = { x, y, seq: (dragPosRef.current?.seq ?? 0) + 1 };
         setDragPos(dragPosRef.current);
         dragStore.set({ objectId: obj.id, box: { x, y, width: obj.width, height: obj.height }, guides });
@@ -345,7 +350,9 @@ export const ObjectRenderer = memo(({
       }}
       onClick={(e: any) => {
         e.stopPropagation();
-        if (e.ctrlKey || e.metaKey) {
+        const dragged = draggedRef.current;
+        draggedRef.current = false;
+        if ((e.ctrlKey || e.metaKey) && !dragged) {
           uiDispatch({ type: 'TOGGLE_OBJECT_SELECTION', payload: obj.id });
         } else {
           uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
@@ -364,6 +371,7 @@ export const ObjectRenderer = memo(({
       }}
       className={cn(
         "group z-20",
+        isFill && "is-fill", // a selection rectangle may start on a fill (see useMarquee)
         isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         // While the bucket is active, clicks go through a fill to the blueprint (re-fill = recolour).
         layer.locked || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"

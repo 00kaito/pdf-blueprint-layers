@@ -13,6 +13,7 @@ import {Textarea} from '@/components/ui/textarea';
 import {ObjectPhotoGallery} from './ObjectPhotoGallery';
 import {ObjectComments} from './ObjectComments';
 import {LabelPositionPicker} from './LabelPositionPicker';
+import {BulkLabelInput} from './BulkLabelInput';
 import {useCurrentUser} from '@/hooks/useAuth';
 
 export const PropertiesPanel = () => {
@@ -143,13 +144,7 @@ export const PropertiesPanel = () => {
               ) : (
                 <div className="space-y-1.5">
                   <Label htmlFor="obj-label" className="text-xs font-medium">Label {isMultiSelect ? '(Bulk)' : '(Visible)'}</Label>
-                  <Input
-                    id="obj-label"
-                    placeholder={isMultiSelect ? "Mixed values..." : "Main label"}
-                    value={isMultiSelect ? (getCommonValue('name')) : (firstObject.name || '')}
-                    onChange={(e) => handleUpdate({ name: e.target.value })}
-                    className="h-8 text-xs"
-                  />
+                  <BulkLabelInput id="obj-label" objects={selectedObjects} className="h-8 text-xs" showPreview />
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-[10px] text-muted-foreground">Label position</span>
                     <LabelPositionPicker objects={selectedObjects} onChange={(updates) => handleUpdate(updates)} />

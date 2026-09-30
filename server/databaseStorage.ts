@@ -1,5 +1,5 @@
 import { IStorage } from "./storage_interface";
-import { User, Project, ProjectState, FileMetadata, users, projects, projectShares, files } from "@shared/schema";
+import { User, Project, ProjectState, FileMetadata, LibraryIcon, users, projects, projectShares, files, iconLibrary } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, and, inArray, sql } from "drizzle-orm";
 import fs from "fs";
@@ -258,5 +258,32 @@ export class DatabaseStorage implements IStorage {
       }
       await db.delete(files).where(eq(files.id, fileId));
     }
+  }
+
+  async listIcons(): Promise<LibraryIcon[]> {
+    return db.select().from(iconLibrary).orderBy(iconLibrary.createdAt);
+  }
+
+  async getIcon(id: string): Promise<LibraryIcon | undefined> {
+    const [icon] = await db.select().from(iconLibrary).where(eq(iconLibrary.id, id));
+    return icon;
+  }
+
+  async addIcon(icon: { buffer: Buffer; name: string; mimeType: string; hash: string; createdBy: string }): Promise<LibraryIcon> {
+    const [existing] = await db.select().from(iconLibrary).where(eq(iconLibrary.hash, icon.hash));
+    if (existing) return existing;
+    // No project: saveFile puts it under storage/users/<id>/icons, outside any project folder.
+    const file = await this.saveFile(icon.buffer, icon.name, icon.mimeType, icon.createdBy);
+    const [created] = await db.insert(iconLibrary)
+      .values({ fileId: file.id, name: icon.name, hash: icon.hash, createdBy: icon.createdBy })
+      .returning();
+    return created;
+  }
+
+  async deleteIcon(id: string): Promise<void> {
+    const icon = await this.getIcon(id);
+    if (!icon) return;
+    await db.delete(iconLibrary).where(eq(iconLibrary.id, id));
+    await this.deleteFile(icon.fileId);
   }
 }

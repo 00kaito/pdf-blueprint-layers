@@ -24,7 +24,7 @@ const clampOverlayOffset = (offset: { x: number; y: number }) => ({
 
 const IPAD_MODE_STORAGE_KEY = 'editor.ipadMode';
 
-/** Saved choice, or on by default on touch-first devices (iPad, tablets). */
+/** Touch layout: saved choice, or on by default on touch-first devices (iPad, tablets). */
 const loadIpadMode = (): boolean => {
   try {
     const saved = localStorage.getItem(IPAD_MODE_STORAGE_KEY);
@@ -38,6 +38,17 @@ const loadIpadMode = (): boolean => {
 
 const saveIpadMode = (value: boolean) => {
   try { localStorage.setItem(IPAD_MODE_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
+};
+
+const STYLUS_ONLY_STORAGE_KEY = 'editor.stylusOnly';
+
+/** Off unless the user chose it — a tablet without a stylus must never end up with fingers that can't draw. */
+const loadStylusOnly = (): boolean => {
+  try { return localStorage.getItem(STYLUS_ONLY_STORAGE_KEY) === 'true'; } catch { return false; }
+};
+
+const saveStylusOnly = (value: boolean) => {
+  try { localStorage.setItem(STYLUS_ONLY_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
 };
 
 const SNAP_STORAGE_KEY = 'editor.snapEnabled';
@@ -91,6 +102,7 @@ const initialUIState: UIState = {
   drawStrokeWidth: 2,
   drawStraight: false,
   ipadMode: loadIpadMode(),
+  stylusOnly: loadStylusOnly(),
   measureTape: null,
   snapEnabled: loadSnapEnabled()
 };
@@ -132,8 +144,12 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return {
         ...state,
         overlayPdfFile: action.payload,
-        // Removing the overlay drops its manual alignment as well.
-        overlayOffset: action.payload === null ? { x: 0, y: 0 } : state.overlayOffset,
+        // A new or removed overlay is not the stored file any more — otherwise reopening the project
+        // loads the previous overlay. The new one is uploaded by useAutoSave, which sets its id.
+        // Loading a project sets the id (and alignment) right after this action.
+        overlayPdfFileId: null,
+        // The alignment belonged to the previous overlay.
+        overlayOffset: { x: 0, y: 0 },
         tool: action.payload === null && state.tool === 'pan-overlay' ? 'select' : state.tool,
       };
     case 'SET_OVERLAY_OPACITY':
@@ -206,6 +222,11 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         objects: state.objects.map((o) =>
           action.payload.ids.includes(o.id) ? { ...o, ...action.payload.updates } : o
         ),
+      };
+    case 'RENAME_OBJECTS':
+      return {
+        ...state,
+        objects: state.objects.map((o) => (o.id in action.payload ? { ...o, name: action.payload[o.id] } : o)),
       };
     case 'DELETE_OBJECT':
       return {
@@ -406,6 +427,11 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         ...state,
         customIcons: state.customIcons.filter(icon => icon.id !== action.payload)
       };
+    case 'CLEAR_CUSTOM_ICONS':
+      return {
+        ...state,
+        customIcons: []
+      };
     case 'ADD_OBJECT_PHOTO':
       return {
         ...state,
@@ -433,6 +459,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, ...action.payload };
     case 'SET_IPAD_MODE':
       return { ...state, ipadMode: action.payload };
+    case 'SET_STYLUS_ONLY':
+      return { ...state, stylusOnly: action.payload };
     case 'SET_MEASURE_TAPE':
       return { ...state, measureTape: action.payload };
     case 'SET_SNAP_ENABLED':
@@ -493,6 +521,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
   const state = historyState.editor;
 
   useEffect(() => saveIpadMode(state.ipadMode), [state.ipadMode]);
+  useEffect(() => saveStylusOnly(state.stylusOnly), [state.stylusOnly]);
   useEffect(() => saveSnapEnabled(state.snapEnabled), [state.snapEnabled]);
 
   const historyInfo = useMemo<HistoryInfo>(() => ({
@@ -536,9 +565,10 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     drawStrokeWidth: state.drawStrokeWidth,
     drawStraight: state.drawStraight,
     ipadMode: state.ipadMode,
+    stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

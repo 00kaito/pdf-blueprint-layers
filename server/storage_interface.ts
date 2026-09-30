@@ -1,4 +1,4 @@
-import { User, Project, ProjectState, FileMetadata } from "@shared/schema";
+import { User, Project, ProjectState, FileMetadata, LibraryIcon } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -22,4 +22,12 @@ export interface IStorage {
   getFileMeta(fileId: string): Promise<FileMetadata | undefined>;
   getFileBuffer(fileId: string): Promise<Buffer | undefined>;
   deleteFile(fileId: string): Promise<void>;
+
+  /** Shared icon library, oldest first. */
+  listIcons(): Promise<LibraryIcon[]>;
+  getIcon(id: string): Promise<LibraryIcon | undefined>;
+  /** Adds an icon — or returns the existing entry when the same image (by hash) is already there. */
+  addIcon(icon: { buffer: Buffer; name: string; mimeType: string; hash: string; createdBy: string }): Promise<LibraryIcon>;
+  /** Removes the icon and its image file. */
+  deleteIcon(id: string): Promise<void>;
 }

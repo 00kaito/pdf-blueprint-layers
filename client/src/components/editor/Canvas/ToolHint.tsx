@@ -1,34 +1,37 @@
 import React, {useEffect, useState} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {cn} from '@/lib/utils';
-import {hasSeenPen} from '@/core/pointer-input';
 
 /** How long the hint stays after the tool changes. */
 const HINT_VISIBLE_MS = 4000;
 
-/** In iPad mode the hints name gestures instead of keys. */
-const hintFor = (tool: string, hasScale: boolean, ipadMode: boolean): string | null => {
-  const pinch = '2 fingers = pan / zoom';
+/**
+ * The touch layout names gestures instead of keys; stylus-only says which tools need the stylus.
+ */
+const hintFor = (tool: string, hasScale: boolean, touch: boolean, stylusOnly: boolean): string | null => {
+  const pinch = stylusOnly ? 'fingers = pan / zoom' : '2 fingers = pan / zoom';
+  const pen = stylusOnly ? 'With the stylus: ' : '';
+  const tap = stylusOnly ? 'Tap with the stylus' : touch ? 'Tap' : 'Click';
   switch (tool) {
-    case 'select': return ipadMode
-      ? 'Drag objects · tap to select · long-press = details'
-      : 'Drag objects · Shift = 0.5 ft steps · Alt = no snapping · Space + drag = pan';
-    case 'draw': return ipadMode
-      ? `${hasSeenPen() ? 'Draw with the pencil' : 'Draw with a finger or the pencil'} · ${pinch}`
+    case 'select': return touch
+      ? 'Tap to select · stylus drag on empty space = select area · long-press = details'
+      : 'Drag on empty space = select area · Shift = 0.5 ft steps · Ctrl = no snapping · Space + drag = pan';
+    case 'draw': return touch
+      ? `${pen}Draw · ${pinch}`
       : 'Draw · Shift = straight line · Esc = done';
-    case 'fill': return `${ipadMode ? 'Tap' : 'Click'} inside an area enclosed by lines · ${ipadMode ? 'tap' : 'click'} a filled area again to recolour`;
-    case 'calibrate': return ipadMode
-      ? `Drag a line over a known dimension, then enter its length in feet · ${pinch}`
+    case 'fill': return `${tap} inside an area enclosed by lines · again on a filled area to recolour`;
+    case 'calibrate': return touch
+      ? `${pen}Drag a line over a known dimension, then enter its length in feet · ${pinch}`
       : 'Draw a line over a known dimension, then enter its length in feet';
     case 'measure': return !hasScale
       ? 'Set the scale with the probe (K) first'
-      : ipadMode
-        ? `Drag from A to B · ${pinch} · the tape stays until ✕`
+      : touch
+        ? `${pen}Drag from A to B · ${pinch} · the tape stays until ✕`
         : 'Drag from A to B · Shift = straight · the tape stays until ✕ or Esc';
-    case 'pan-overlay': return ipadMode
+    case 'pan-overlay': return touch
       ? 'Drag the overlay to align it · tap Done when finished'
       : 'Drag the overlay to align it · arrow keys nudge · Esc = done';
-    case 'stamp': return `${ipadMode ? 'Tap' : 'Click'} to place the next numbered object`;
+    case 'stamp': return `${tap} to place the next numbered object`;
     default: return null;
   }
 };
@@ -38,13 +41,13 @@ export const ToolHint = () => {
   const { state: uiState } = useUI();
   const { state: docState } = useDocument();
   const [visible, setVisible] = useState(true);
-  const hint = hintFor(uiState.tool, !!docState.measureCalibration, uiState.ipadMode);
+  const hint = hintFor(uiState.tool, !!docState.measureCalibration, uiState.ipadMode, uiState.stylusOnly);
 
   useEffect(() => {
     setVisible(true);
     const t = setTimeout(() => setVisible(false), HINT_VISIBLE_MS);
     return () => clearTimeout(t);
-  }, [uiState.tool]);
+  }, [uiState.tool, uiState.stylusOnly]);
 
   if (!hint) return null;
   return (

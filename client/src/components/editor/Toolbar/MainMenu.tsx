@@ -1,6 +1,6 @@
 import React, {useRef, useState} from 'react';
 import {
-  Archive, ChevronLeft, Copy, Download, FolderOpen, Loader2, LogOut, Menu, Save, Share2, Tablet, User,
+  Archive, ChevronLeft, Copy, Download, FolderOpen, Loader2, LogOut, Menu, PenTool, Save, Share2, Tablet, User,
 } from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {
@@ -154,8 +154,20 @@ export const MainMenu = () => {
           >
             <Tablet className="w-4 h-4 mr-2" />
             <div className="flex flex-col">
-              <span>iPad mode</span>
-              <span className="text-[10px] text-muted-foreground">Only the pencil draws, fingers scroll and zoom</span>
+              <span>Touch layout</span>
+              <span className="text-[10px] text-muted-foreground">Bigger buttons, gesture hints</span>
+            </div>
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={uiState.stylusOnly}
+            onCheckedChange={(checked) => dispatch({ type: 'SET_STYLUS_ONLY', payload: !!checked })}
+            className="cursor-pointer"
+            data-testid="menu-stylus-only"
+          >
+            <PenTool className="w-4 h-4 mr-2" />
+            <div className="flex flex-col">
+              <span>Stylus only</span>
+              <span className="text-[10px] text-muted-foreground">The stylus uses the tools; fingers pan, zoom and tap</span>
             </div>
           </DropdownMenuCheckboxItem>
 

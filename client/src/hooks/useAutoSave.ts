@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useDocument, useUI } from "@/lib/editor-context";
-import { useSaveProject } from "./useProjects";
+import { useSaveProject, useUploadFile } from "./useProjects";
 
 export function useAutoSave() {
-  const { state: docState } = useDocument();
+  const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const saveProject = useSaveProject();
+  const uploadFile = useUploadFile();
+  const [isUploadingOverlay, setIsUploadingOverlay] = useState(false);
+  /** Overlay whose upload failed — not retried in a loop (a manual save uploads it again). */
+  const failedOverlayRef = useRef<File | null>(null);
+  /** Current overlay / main file, to drop an upload result the user has replaced meanwhile. */
+  const filesRef = useRef({ overlay: docState.overlayPdfFile, pdfFileId: docState.pdfFileId, projectId: docState.projectId });
+  filesRef.current = { overlay: docState.overlayPdfFile, pdfFileId: docState.pdfFileId, projectId: docState.projectId };
   const [isSaving, setIsSaving] = useState(false);
   const timeoutRef = useRef<any>(null);
   const lastStateRef = useRef<string>("");
@@ -97,6 +104,28 @@ export function useAutoSave() {
     uiState.activeLayerId
   ]);
 
+  // An overlay added (or replaced) in an opened project is uploaded right away and its id stored,
+  // so the next autosave keeps it. Without this only a manual save uploaded it.
+  useEffect(() => {
+    const overlay = docState.overlayPdfFile;
+    const projectId = docState.projectId;
+    if (!projectId || !overlay || docState.overlayPdfFileId || isUploadingOverlay || failedOverlayRef.current === overlay) return;
+    setIsUploadingOverlay(true);
+    uploadFile.mutateAsync({ file: overlay, projectId })
+      .then(({ fileId }) => {
+        // Replaced, removed or another project opened meanwhile: this upload is stale (a replacement
+        // is uploaded by the next run of this effect, once this one has finished).
+        const current = filesRef.current;
+        if (current.overlay !== overlay || current.projectId !== projectId) return;
+        dispatch({ type: 'SET_PDF_FILE_IDS', payload: { pdfFileId: filesRef.current.pdfFileId, overlayPdfFileId: fileId } });
+      })
+      .catch((e) => {
+        failedOverlayRef.current = overlay;
+        console.error("[AutoSave] Overlay upload failed", e);
+      })
+      .finally(() => setIsUploadingOverlay(false));
+  }, [docState.overlayPdfFile, docState.overlayPdfFileId, docState.projectId, isUploadingOverlay]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && docState.projectId) {
@@ -109,5 +138,5 @@ export function useAutoSave() {
     return () => window.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [docState, uiState]);
 
-  return { isSaving: isSaving || saveProject.isPending };
+  return { isSaving: isSaving || saveProject.isPending || isUploadingOverlay };
 }

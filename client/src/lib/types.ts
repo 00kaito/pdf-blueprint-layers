@@ -87,6 +87,7 @@ export type DocumentState = {
   exportSettings: {
     labelFontSize: number;
   };
+  /** Legacy: icons older projects kept inline. Moved into the shared icon library on open (useLegacyIconMigration). */
   customIcons: { id: string; url: string; name: string }[];
   pdfCanvasHeight: number;
   measureCalibration: MeasureCalibration | null;
@@ -109,8 +110,10 @@ export type UIState = {
   drawStrokeWidth: number;
   /** Straight horizontal / vertical strokes (touch replacement for holding Shift). */
   drawStraight: boolean;
-  /** Tablet mode: only a stylus (or mouse) draws, fingers scroll / zoom — palm rejection. Remembered per device. */
+  /** Touch layout: bigger controls and gesture hints (on by default on tablets). Input is `stylusOnly`. Remembered per device. */
   ipadMode: boolean;
+  /** Stylus-only input: tools work only with a stylus (or mouse); fingers pan, zoom and tap. */
+  stylusOnly: boolean;
   /** Measuring tape left on the blueprint (unscaled canvas units, `a` = where it was pulled from). Session only. */
   measureTape: { a: { x: number; y: number }; b: { x: number; y: number } } | null;
   /** Snap dragged objects to the edges / centres of nearby objects. Remembered per device. */
@@ -138,6 +141,8 @@ export type EditorAction =
   | { type: 'ADD_OBJECT'; payload: EditorObject }
   | { type: 'UPDATE_OBJECT'; payload: { id: string; updates: Partial<EditorObject> } }
   | { type: 'UPDATE_OBJECTS'; payload: { ids: string[]; updates: Partial<EditorObject> } }
+  /** A different label per object (bulk rename with a numbering pattern) — one undo step. */
+  | { type: 'RENAME_OBJECTS'; payload: Record<string, string> }
   | { type: 'DELETE_OBJECT'; payload: string }
   | { type: 'DELETE_OBJECTS'; payload: string[] }
   | { type: 'SELECT_OBJECT'; payload: string | null }
@@ -159,6 +164,8 @@ export type EditorAction =
   | { type: 'SET_MEASURE_CALIBRATION'; payload: MeasureCalibration | null }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }
+  /** Drops the legacy inline icons once they are in the shared library. */
+  | { type: 'CLEAR_CUSTOM_ICONS' }
   | { type: 'SET_PDF_DIMENSIONS'; payload: { width: number; height: number } }
   | { type: 'ADD_OBJECT_PHOTO'; payload: { id: string; photoDataUrl: string } }
   | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } }
@@ -168,6 +175,7 @@ export type EditorAction =
   | { type: 'SET_FILL_SETTINGS'; payload: Partial<Pick<UIState, 'fillColor' | 'fillOpacity'>> }
   | { type: 'SET_DRAW_SETTINGS'; payload: Partial<Pick<UIState, 'drawColor' | 'drawStrokeWidth' | 'drawStraight'>> }
   | { type: 'SET_IPAD_MODE'; payload: boolean }
+  | { type: 'SET_STYLUS_ONLY'; payload: boolean }
   | { type: 'SET_MEASURE_TAPE'; payload: UIState['measureTape'] }
   | { type: 'SET_SNAP_ENABLED'; payload: boolean }
   /** Adds a paint-bucket fill to the Colors layer (created if missing). Re-filling the same area replaces it. */

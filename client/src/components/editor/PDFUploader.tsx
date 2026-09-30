@@ -14,6 +14,23 @@ import { useCurrentUser, useLogout } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
 import { Link } from 'wouter';
 
+
+/** Original upload name from the file response (`Content-Disposition: inline; filename*=UTF-8''…`). */
+const fileNameFromResponse = (res: Response, fallback: string) => {
+  const header = res.headers.get("Content-Disposition") ?? "";
+  const match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (!match) return fallback;
+  try { return decodeURIComponent(match[1]); } catch { return fallback; }
+};
+
+/** Downloads a stored project PDF under its original name. */
+const fetchProjectFile = async (fileId: string, fallbackName: string) => {
+  const res = await fetch(`/api/files/${fileId}`);
+  if (!res.ok) throw new Error(`Could not load file ${fallbackName} (${res.status})`);
+  const blob = await res.blob();
+  return new File([blob], fileNameFromResponse(res, fallbackName), { type: "application/pdf" });
+};
+
 export const PDFUploader = () => {
   const { handleFileImport } = useImport();
   const { dispatch } = useDocument();
@@ -105,19 +122,8 @@ export const PDFUploader = () => {
       const res = await apiRequest("GET", `/api/projects/${projectId}`);
       const state = await res.json();
       
-      let mainPdfFile = null;
-      if (state.pdfFileId) {
-        const pdfRes = await fetch(`/api/files/${state.pdfFileId}`);
-        const blob = await pdfRes.blob();
-        mainPdfFile = new File([blob], "blueprint.pdf", { type: "application/pdf" });
-      }
-      
-      let overlayPdfFile = null;
-      if (state.overlayPdfFileId) {
-        const overlayRes = await fetch(`/api/files/${state.overlayPdfFileId}`);
-        const blob = await overlayRes.blob();
-        overlayPdfFile = new File([blob], "overlay.pdf", { type: "application/pdf" });
-      }
+      const mainPdfFile = state.pdfFileId ? await fetchProjectFile(state.pdfFileId, "blueprint.pdf") : null;
+      const overlayPdfFile = state.overlayPdfFileId ? await fetchProjectFile(state.overlayPdfFileId, "overlay.pdf") : null;
 
       if (mainPdfFile) dispatch({ type: 'SET_PDF', payload: mainPdfFile });
       if (overlayPdfFile) dispatch({ type: 'SET_OVERLAY_PDF', payload: overlayPdfFile });

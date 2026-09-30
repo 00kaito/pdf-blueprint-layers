@@ -47,7 +47,7 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (uiState.tool !== 'draw' || !uiState.activeLayerId) return;
-    if (pointerIdRef.current !== null || !canDrawWith(e, uiState.ipadMode, uiState.tool)) return;
+    if (pointerIdRef.current !== null || !canDrawWith(e, uiState.stylusOnly)) return;
     const start = toCanvasPoint(e.clientX, e.clientY);
     if (!start) return;
     e.preventDefault();
@@ -56,7 +56,7 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     pointsRef.current = [start];
     setDrawingPath(toPathData(pointsRef.current));
     setIsDrawing(true);
-  }, [uiState.tool, uiState.activeLayerId, uiState.ipadMode, toCanvasPoint]);
+  }, [uiState.tool, uiState.activeLayerId, uiState.stylusOnly, toCanvasPoint]);
 
   // Track the stroke on window so it continues (and ends) when the pointer leaves the canvas.
   useEffect(() => {

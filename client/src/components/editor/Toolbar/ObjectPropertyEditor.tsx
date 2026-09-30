@@ -9,6 +9,7 @@ import {Slider} from '@/components/ui/slider';
 import {useDocumentDispatch, useUIDispatch} from '@/lib/editor-context';
 import {EditorObject, Layer} from '@/lib/types';
 import {LabelPositionPicker} from '../LabelPositionPicker';
+import {BulkLabelInput} from '../BulkLabelInput';
 
 interface ObjectPropertyEditorProps {
   selectedObjects: EditorObject[];
@@ -45,11 +46,9 @@ export const ObjectPropertyEditor = ({
       {/* Universal Label Editor for all objects */}
       <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md border border-input">
         <span className="text-[10px] uppercase font-bold text-muted-foreground mr-1">Label</span>
-        <Input 
-          className="w-[100px] h-7 text-xs border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0" 
-          value={selectedObjects.every(o => o.name === firstObject.name) ? (firstObject.name || '') : ''} 
-          onChange={(e) => dispatch({ type: 'UPDATE_OBJECTS', payload: { ids: selectedObjectIds, updates: { name: e.target.value } } })}
-          placeholder={selectedObjects.length > 1 ? "Mixed..." : "No label"}
+        <BulkLabelInput
+          objects={selectedObjects}
+          className="w-[140px] h-7 text-xs border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
         />
         <LabelPositionPicker
           className="ml-1 pl-1 border-l border-input"
@@ -128,9 +127,16 @@ export const ObjectPropertyEditor = ({
         </SelectTrigger>
         <SelectContent>{layers.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
       </Select>}
-      <Button variant="destructive" size="icon" onClick={handleDelete} className="h-8 w-8 ml-2">
-        <Trash2 className="w-4 h-4" />
-      </Button>
+      {selectedObjects.length > 1 ? (
+        <Button variant="destructive" size="sm" onClick={handleDelete} className="h-8 ml-2 gap-1 whitespace-nowrap" title="Delete the selected objects (Del) — Ctrl+Z restores them" data-testid="delete-selected">
+          <Trash2 className="w-4 h-4" />
+          Delete {selectedObjects.length}
+        </Button>
+      ) : (
+        <Button variant="destructive" size="icon" onClick={handleDelete} className="h-8 w-8 ml-2" title="Delete (Del)" data-testid="delete-selected">
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      )}
     </div>
   );
 };

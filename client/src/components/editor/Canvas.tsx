@@ -11,8 +11,10 @@ import {useDrawing} from '@/hooks/useDrawing';
 import {usePinchZoom} from '@/hooks/usePinchZoom';
 import {useMeasure} from '@/hooks/useMeasure';
 import {useSpacePan} from '@/hooks/useSpacePan';
+import {useStylusGuidance} from '@/hooks/useStylusGuidance';
+import {MARQUEE_IGNORE, useMarquee} from '@/hooks/useMarquee';
 import type {UIState} from '@/lib/types';
-import {fingerUsesTool, isStrokeTool} from '@/core/pointer-input';
+import {fingerUsesTool, isStrokeTool, isTapTool} from '@/core/pointer-input';
 import {feetPerUnit, formatFeet} from '@/core/measure';
 import type {Box} from '@/core/snapping';
 import {ObjectRenderer} from './Canvas/ObjectRenderer';
@@ -57,7 +59,9 @@ export const Canvas = () => {
   const { toast } = useToast();
   const { drawingPath, isDrawing, onPointerDown } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const measure = useMeasure(containerRef as React.RefObject<HTMLDivElement>);
+  const marquee = useMarquee(containerRef as React.RefObject<HTMLDivElement>);
   const spacePan = useSpacePan(scrollRef as React.RefObject<HTMLDivElement>);
+  const { lastPointerTypeRef } = useStylusGuidance(scrollRef as React.RefObject<HTMLDivElement>);
   const shortcutStateRef = useRef({ tool: uiState.tool, hasCalibration: !!docState.measureCalibration });
   shortcutStateRef.current = { tool: uiState.tool, hasCalibration: !!docState.measureCalibration };
 
@@ -91,7 +95,7 @@ export const Canvas = () => {
   // Safari scrolls with the Apple Pencil too, and a palm resting on the screen scrolls mid-stroke.
   // Both need a non-passive native listener to be cancelled (React's touch listeners are passive).
   const drawGuardRef = useRef({ tool: state.tool, isDrawing });
-  drawGuardRef.current = { tool: state.tool, isDrawing: isDrawing || measure.isMeasuring };
+  drawGuardRef.current = { tool: state.tool, isDrawing: isDrawing || measure.isMeasuring || marquee.isSelecting };
   usePinchZoom(
     scrollRef as React.RefObject<HTMLDivElement>,
     containerRef as React.RefObject<HTMLDivElement>,
@@ -104,7 +108,11 @@ export const Canvas = () => {
     const isStylus = (e: TouchEvent) =>
       Array.from(e.changedTouches).some(t => (t as Touch & { touchType?: string }).touchType === 'stylus');
     const onTouchStart = (e: TouchEvent) => {
-      if (isStrokeTool(drawGuardRef.current.tool) && isStylus(e)) e.preventDefault();
+      if (!isStylus(e)) return;
+      const { tool } = drawGuardRef.current;
+      // In the select tool only on empty canvas (a selection rectangle) — objects and buttons keep their taps.
+      const onEmptyCanvas = tool === 'select' && !(e.target as Element).closest(MARQUEE_IGNORE);
+      if (isStrokeTool(tool) || onEmptyCanvas) e.preventDefault();
     };
     const onTouchMove = (e: TouchEvent) => {
       if (drawGuardRef.current.isDrawing && e.cancelable) e.preventDefault();
@@ -203,7 +211,8 @@ export const Canvas = () => {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (isTech) return;
-    if (state.tool === 'draw') onPointerDown(e);
+    if (state.tool === 'select') marquee.onPointerDown(e);
+    else if (state.tool === 'draw') onPointerDown(e);
     else if (state.tool === 'measure' || state.tool === 'calibrate') measure.onPointerDown(e);
   };
 
@@ -214,6 +223,8 @@ export const Canvas = () => {
       return;
     }
     if (isStrokeTool(state.tool)) return;
+    // Stylus only: a finger tap does not fill or stamp (it may still deselect).
+    if (state.stylusOnly && isTapTool(state.tool) && lastPointerTypeRef.current === 'touch') return;
     if (state.tool === 'fill') { handleFill(e); }
     else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
        const rect = containerRef.current?.getBoundingClientRect();
@@ -332,8 +343,8 @@ export const Canvas = () => {
       spacePan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
     }`} 
       // When a finger operates the tool nothing scrolls natively — two fingers pan / zoom (usePinchZoom).
-      // Otherwise fingers scroll. No iOS long-press callout / magnifier over the blueprint.
-      style={{ touchAction: fingerUsesTool(state.tool, state.ipadMode) ? 'none' : 'pan-x pan-y', WebkitTouchCallout: 'none' }}
+      // Otherwise (stylus only, or a non-drawing tool) fingers scroll. No iOS long-press callout / magnifier.
+      style={{ touchAction: fingerUsesTool(state.tool, state.stylusOnly) ? 'none' : 'pan-x pan-y', WebkitTouchCallout: 'none' }}
       onPointerDown={handlePointerDown} onClick={handleClick} onScroll={handleScroll}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
     >
@@ -397,6 +408,19 @@ export const Canvas = () => {
               toast({ title: 'Scale set', description: `Reference line = ${formatFeet(calibration.feet)}${docState.projectId ? ', saved with the project' : ''}. Drag to measure any distance.` });
             }}
           />
+          {marquee.rect && (
+            <div
+              className="absolute pointer-events-none border border-primary bg-primary/10 rounded-[1px]"
+              style={{
+                left: marquee.rect.x * state.scale,
+                top: marquee.rect.y * state.scale,
+                width: marquee.rect.width * state.scale,
+                height: marquee.rect.height * state.scale,
+                zIndex: 45,
+              }}
+              data-testid="selection-rect"
+            />
+          )}
           <GuidesLayer scale={state.scale} tape={state.measureTape} ftPerUnit={feetPerUnit(state.measureCalibration)} />
 
           {state.objects.map((obj) => {

@@ -9,9 +9,11 @@ import {
     Heart,
     Hexagon,
     Image as ImageIcon,
+    Loader2,
     Magnet,
     MoveHorizontal,
     MousePointer2,
+    PenTool,
     PaintBucket,
     Pencil,
     Plus,
@@ -32,8 +34,12 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Slider} from "@/components/ui/slider";
 import {useObjectCreation} from '@/hooks/useObjectCreation';
+import {useIconLibrary} from '@/hooks/useIconLibrary';
 import {FILL_LAYER_NAME} from '@/lib/editor-context';
 import {useToast} from '@/hooks/use-toast';
+
+/** The stylus-only switch is only offered where there can be a stylus: touch screens (or the touch layout). */
+const HAS_TOUCH = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
 const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
@@ -61,7 +67,26 @@ interface ToolSelectorProps {
 export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
-  const { handleAddText, handleAddIcon, handleImageUpload, handleCustomIconUpload, getCenterPosition } = useObjectCreation();
+  const { handleAddText, handleAddIcon, handleImageUpload, getCenterPosition } = useObjectCreation();
+  const iconLibrary = useIconLibrary();
+
+  const handleLibraryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0) return;
+    iconLibrary.upload.mutate(files, {
+      onSuccess: () => toast({ title: files.length === 1 ? 'Icon added' : `${files.length} icons added`, description: 'Available in all projects until you delete it.' }),
+      onError: (err: any) => toast({ variant: 'destructive', title: 'Icon upload failed', description: err.message }),
+    });
+  };
+
+  const handleLibraryDelete = (icon: { id: string; name: string }) => {
+    // Shared by all projects and users — confirm. Objects already placed keep their image.
+    if (!window.confirm(`Delete "${icon.name}" from the icon library? It disappears from all projects' icon lists (icons already placed on plans stay).`)) return;
+    iconLibrary.remove.mutate(icon.id, {
+      onError: (err: any) => toast({ variant: 'destructive', title: 'Could not delete icon', description: err.message }),
+    });
+  };
   const { toast } = useToast();
   const calibration = docState.measureCalibration;
 
@@ -111,7 +136,27 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               </Toggle>
             </TooltipTrigger>
             <TooltipContent>
-              Snap to objects {uiState.snapEnabled ? 'on' : 'off'} — aligns edges and centres while dragging (hold Alt to move freely, Shift to move in 0.5 ft steps)
+              Snap to objects {uiState.snapEnabled ? 'on' : 'off'} — aligns edges and centres while dragging (hold Ctrl or Alt to drop it exactly where you want, Shift to move in 0.5 ft steps)
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {!isTech && (HAS_TOUCH || uiState.ipadMode || uiState.stylusOnly) && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Toggle
+                pressed={uiState.stylusOnly}
+                onPressedChange={(p) => dispatch({ type: 'SET_STYLUS_ONLY', payload: p })}
+                size="sm"
+                className="h-8 w-8"
+                aria-label="Stylus only"
+                data-testid="stylus-only-toggle"
+              >
+                <PenTool className="w-4 h-4" />
+              </Toggle>
+            </TooltipTrigger>
+            <TooltipContent>
+              Stylus only {uiState.stylusOnly ? 'on — the stylus uses the tools, fingers pan, zoom and tap' : 'off — fingers use the tools too'}
             </TooltipContent>
           </Tooltip>
         )}
@@ -328,17 +373,20 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                   <Separator />
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-muted-foreground">My Icons</h4>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                      <h4 className="text-sm font-medium text-muted-foreground" title="Shared by all projects and users; kept until deleted">My Icons</h4>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" asChild title="Add icons to the library (all projects)">
                         <label htmlFor="custom-icon-upload-toolbar" className="cursor-pointer">
-                          <Plus className="h-4 w-4" />
-                          <input type="file" accept="image/*" multiple className="hidden" id="custom-icon-upload-toolbar" onChange={handleCustomIconUpload} />
+                          {iconLibrary.upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                          <input type="file" accept="image/*" multiple className="hidden" id="custom-icon-upload-toolbar" onChange={handleLibraryUpload} />
                         </label>
                       </Button>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-1">
-                      {docState.customIcons.map((icon) => (
-                        <div key={icon.id} draggable onDragStart={(e) => handleDragStart(e, 'image', icon.url)} className="relative group cursor-grab">
+                    {!iconLibrary.isLoading && iconLibrary.icons.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground px-1">No icons yet — add images with +. They are available in every project.</p>
+                    )}
+                    <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-1" data-testid="icon-library">
+                      {iconLibrary.icons.map((icon) => (
+                        <div key={icon.id} draggable onDragStart={(e) => handleDragStart(e, 'image', icon.dataUrl)} className="relative group cursor-grab" title={icon.name}>
                           <Button variant="outline" size="icon" className="w-full h-10 p-1"
                             onClick={() => {
                               if (!uiState.activeLayerId) return;
@@ -346,14 +394,15 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                               const { x, y } = getCenterPosition(size, size);
                               dispatch({
                                 type: 'ADD_OBJECT',
-                                payload: { id: uuidv4(), type: 'image', name: '', x, y, width: size, height: size, layerId: uiState.activeLayerId, content: icon.url, rotation: 0 }
+                                payload: { id: uuidv4(), type: 'image', name: '', x, y, width: size, height: size, layerId: uiState.activeLayerId, content: icon.dataUrl, rotation: 0 }
                               });
                             }}
                           >
-                            <img src={icon.url} alt={icon.name} className="w-full h-full object-contain" />
+                            <img src={icon.dataUrl} alt={icon.name} className="w-full h-full object-contain" />
                           </Button>
                           <button className="absolute -top-1 -right-1 hidden group-hover:flex [@media(hover:none)]:flex bg-destructive text-destructive-foreground rounded-full w-4 h-4 items-center justify-center"
-                            onClick={(e) => { e.stopPropagation(); dispatch({ type: 'DELETE_CUSTOM_ICON', payload: icon.id }); }}>
+                            onClick={(e) => { e.stopPropagation(); handleLibraryDelete(icon); }}
+                            title="Delete from the library">
                             <X className="w-3 h-3" />
                           </button>
                         </div>

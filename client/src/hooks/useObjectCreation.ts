@@ -93,23 +93,5 @@ export const useObjectCreation = () => {
     e.target.value = '';
   }, [uiState.activeLayerId, uiState.scale, getCenterPosition, dispatch]);
 
-  const handleCustomIconUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        dispatch({
-          type: 'ADD_CUSTOM_ICON',
-          payload: { id: uuidv4(), url: event.target?.result as string, name: file.name }
-        });
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    e.target.value = '';
-  }, [dispatch]);
-
-  return { handleAddText, handleAddIcon, handleImageUpload, handleCustomIconUpload, getCenterPosition };
+  return { handleAddText, handleAddIcon, handleImageUpload, getCenterPosition };
 };

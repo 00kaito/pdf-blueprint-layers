@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { User, Project, ProjectState, FileMetadata } from '@shared/schema';
+import { User, Project, ProjectState, FileMetadata, LibraryIcon } from '@shared/schema';
 import { IStorage } from "./storage_interface";
 
 export class FileStorage implements IStorage {
@@ -12,6 +12,7 @@ export class FileStorage implements IStorage {
   private projectsFile = path.join(this.dataDir, 'projects.json');
   private statesDir = path.join(this.dataDir, 'project-states');
   private filesDir = path.join(this.dataDir, 'files');
+  private iconsFile = path.join(this.dataDir, 'icon-library.json');
 
   constructor() {
     this.ensureDirs();
@@ -243,5 +244,50 @@ export class FileStorage implements IStorage {
     const metaFile = path.join(this.filesDir, `${fileId}.meta.json`);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     if (fs.existsSync(metaFile)) fs.unlinkSync(metaFile);
+  }
+
+  private readIcons(): LibraryIcon[] {
+    if (!fs.existsSync(this.iconsFile)) return [];
+    try {
+      return JSON.parse(fs.readFileSync(this.iconsFile, 'utf-8'));
+    } catch (e) {
+      console.error('Error loading icon library:', e);
+      return [];
+    }
+  }
+
+  private writeIcons(icons: LibraryIcon[]) {
+    const tmpFile = `${this.iconsFile}.tmp`;
+    fs.writeFileSync(tmpFile, JSON.stringify(icons, null, 2));
+    fs.renameSync(tmpFile, this.iconsFile);
+  }
+
+  async listIcons(): Promise<LibraryIcon[]> {
+    return this.readIcons();
+  }
+
+  async getIcon(id: string): Promise<LibraryIcon | undefined> {
+    return this.readIcons().find(i => i.id === id);
+  }
+
+  async addIcon(icon: { buffer: Buffer; name: string; mimeType: string; hash: string; createdBy: string }): Promise<LibraryIcon> {
+    const icons = this.readIcons();
+    const existing = icons.find(i => i.hash === icon.hash);
+    if (existing) return existing;
+    const file = await this.saveFile(icon.buffer, icon.name, icon.mimeType, icon.createdBy);
+    const created: LibraryIcon = {
+      id: uuidv4(), fileId: file.id, name: icon.name, hash: icon.hash,
+      createdBy: icon.createdBy, createdAt: new Date().toISOString(),
+    };
+    this.writeIcons([...icons, created]);
+    return created;
+  }
+
+  async deleteIcon(id: string): Promise<void> {
+    const icons = this.readIcons();
+    const icon = icons.find(i => i.id === id);
+    if (!icon) return;
+    this.writeIcons(icons.filter(i => i.id !== id));
+    await this.deleteFile(icon.fileId);
   }
 }

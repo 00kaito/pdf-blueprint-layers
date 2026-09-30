@@ -61,14 +61,14 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (uiState.tool !== 'measure' && uiState.tool !== 'calibrate') return;
-    if (pointerRef.current || pendingCalibration || !canDrawWith(e, uiState.ipadMode, uiState.tool)) return;
+    if (pointerRef.current || pendingCalibration || !canDrawWith(e, uiState.stylusOnly)) return;
     const start = toCanvasPoint(e.clientX, e.clientY);
     if (!start) return;
     e.preventDefault();
     pointerRef.current = { id: e.pointerId, type: e.pointerType };
     updateLine({ a: start, b: start });
     setIsMeasuring(true);
-  }, [uiState.tool, uiState.ipadMode, pendingCalibration, toCanvasPoint]);
+  }, [uiState.tool, uiState.stylusOnly, pendingCalibration, toCanvasPoint]);
 
   useEffect(() => {
     if (!isMeasuring) return;

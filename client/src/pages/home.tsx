@@ -3,6 +3,7 @@ import {useDocument, useUI} from '@/lib/editor-context';
 import {PDFUploader} from '@/components/editor/PDFUploader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useLegacyIconMigration } from '@/hooks/useLegacyIconMigration';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { Loader2, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,9 +23,10 @@ const Home = () => {
   const { state: uiState } = useUI();
   const isMobile = useIsMobile();
   const { isSaving } = useAutoSave();
+  useLegacyIconMigration();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
-  // Remembered per device; the first time it is hidden in iPad mode (more room to work, layers are a desk thing).
+  // Remembered per device; the first time it is hidden in the touch layout (more room to work, layers are a desk thing).
   const [showLayers, setShowLayersState] = useState(() => {
     try {
       const saved = localStorage.getItem(SHOW_LAYERS_STORAGE_KEY);
@@ -103,7 +105,7 @@ const Home = () => {
             {!isTech && <ToolHint />}
           </div>
 
-          {/* Right Sidebar - Properties Panel. In iPad mode it floats over the canvas instead of narrowing it. */}
+          {/* Right Sidebar - Properties Panel. In the touch layout it floats over the canvas instead of narrowing it. */}
           {hasSelectedObject && (
             <div className={cn(
               "flex flex-col overflow-y-auto border-l border-border w-64 bg-card shrink-0",

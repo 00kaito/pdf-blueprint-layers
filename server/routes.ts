@@ -5,9 +5,17 @@ import { requireAuth, requireRole } from "./auth";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import multer from "multer";
+import { createHash } from "crypto";
 import { insertUserSchema, projectStateSchema, updateUserRoleSchema, updateUserPasswordSchema } from "@shared/schema";
 
 const upload = multer({ storage: multer.memoryStorage() });
+/** Icon library uploads: images only, small. */
+const MAX_ICON_BYTES = 5 * 1024 * 1024;
+const uploadIcon = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_ICON_BYTES },
+  fileFilter: (_req, file, cb) => cb(null, file.mimetype.startsWith("image/")),
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -191,7 +199,43 @@ export async function registerRoutes(
     }
     
     res.setHeader("Content-Type", meta.mimeType);
+    // The original name, so an opened project shows its real file names (not "overlay.pdf").
+    res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(meta.originalName)}`);
     res.send(buffer);
+  });
+
+  // Icon library — shared by all users and projects, kept until deleted by hand.
+  const iconDto = (icon: { id: string; name: string }) => ({ id: icon.id, name: icon.name, url: `/api/icons/${icon.id}/file` });
+
+  app.get("/api/icons", requireAuth, async (_req, res) => {
+    const icons = await storage.listIcons();
+    res.json(icons.map(iconDto));
+  });
+
+  app.get("/api/icons/:id/file", requireAuth, async (req, res) => {
+    const icon = await storage.getIcon(req.params.id);
+    const meta = icon && await storage.getFileMeta(icon.fileId);
+    const buffer = icon && await storage.getFileBuffer(icon.fileId);
+    if (!icon || !meta || !buffer) return res.status(404).json({ message: "Icon not found" });
+    res.setHeader("Content-Type", meta.mimeType);
+    // An icon id always has the same image.
+    res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+    res.send(buffer);
+  });
+
+  app.post("/api/icons", requireAuth, requireRole('PM', 'admin'), uploadIcon.single("file"), async (req, res) => {
+    if (!req.file) return res.status(400).json({ message: "No image uploaded (images only, max 5 MB)" });
+    const { originalname, mimetype, buffer } = req.file;
+    const hash = createHash("sha256").update(buffer).digest("hex");
+    const icon = await storage.addIcon({ buffer, name: originalname, mimeType: mimetype, hash, createdBy: req.user!.id });
+    console.log(`[Icons] ${originalname} → ${icon.id} by user ${req.user!.username}`);
+    res.status(201).json(iconDto(icon));
+  });
+
+  app.delete("/api/icons/:id", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
+    console.log(`[Icons] Deleting ${req.params.id} by user ${req.user!.username}`);
+    await storage.deleteIcon(req.params.id);
+    res.sendStatus(204);
   });
 
   // Admin Routes

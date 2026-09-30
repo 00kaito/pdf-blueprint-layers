@@ -41,6 +41,20 @@ export const files = pgTable("files", {
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 });
 
+/**
+ * Team-wide icon library ("My Icons"): available in every project, kept until deleted by hand.
+ * The image itself is a row in `files` (stored under storage/, a persistent volume).
+ * `hash` (sha256 of the image) makes uploading the same icon twice return the existing entry.
+ */
+export const iconLibrary = pgTable("icon_library", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  fileId: uuid("file_id").notNull().references(() => files.id),
+  name: text("name").notNull(),
+  hash: text("hash").notNull().unique(),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+});
+
 // Tabela sesji dla connect-pg-simple
 export const session = pgTable("session", {
   sid: text("sid").primaryKey(),
@@ -67,6 +81,7 @@ export const projectStateSchema = z.object({
 export type User = typeof users.$inferSelect;
 export type Project = typeof projects.$inferSelect & { sharedWith: string[] };
 export type FileMetadata = typeof files.$inferSelect;
+export type LibraryIcon = typeof iconLibrary.$inferSelect;
 
 export type ProjectState = z.infer<typeof projectStateSchema>;
 
