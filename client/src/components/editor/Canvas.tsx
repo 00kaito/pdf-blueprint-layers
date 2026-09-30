@@ -441,6 +441,7 @@ export const Canvas = () => {
                 getSnapTargets={getSnapTargets}
                 pageHeight={docState.pdfCanvasHeight}
                 dragStep={dragStep}
+                touchLayout={state.ipadMode}
               />
             );
           })}

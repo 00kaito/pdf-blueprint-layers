@@ -141,6 +141,8 @@ export type EditorAction =
   | { type: 'ADD_OBJECT'; payload: EditorObject }
   | { type: 'UPDATE_OBJECT'; payload: { id: string; updates: Partial<EditorObject> } }
   | { type: 'UPDATE_OBJECTS'; payload: { ids: string[]; updates: Partial<EditorObject> } }
+  /** Clone an object next to itself (tablet double tap); the clone gets `newId` and is selected. */
+  | { type: 'DUPLICATE_OBJECT'; payload: { id: string; newId: string } }
   /** A different label per object (bulk rename with a numbering pattern) — one undo step. */
   | { type: 'RENAME_OBJECTS'; payload: Record<string, string> }
   | { type: 'DELETE_OBJECT'; payload: string }

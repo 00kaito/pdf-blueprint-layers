@@ -17,6 +17,23 @@ const MAX_OVERLAY_OFFSET = CANVAS_BASE_WIDTH;
 const clampOverlayCoord = (v: number) =>
   Math.min(MAX_OVERLAY_OFFSET, Math.max(-MAX_OVERLAY_OFFSET, Math.round(v * 10) / 10 || 0));
 
+/** Gap (unscaled canvas units) between an object and its clone. */
+const DUPLICATE_GAP = 4;
+
+/** "CAM 7" → "CAM 8", "P-09" → "P-10"; unchanged without a trailing number. Skips labels already in use. */
+const nextFreeLabel = (name: string, taken: Set<string>) => {
+  const match = name.match(/^(.*?)(\d+)(\D*)$/);
+  if (!match) return name;
+  const [, prefix, digits, suffix] = match;
+  let n = parseInt(digits, 10);
+  let label: string;
+  do {
+    n += 1;
+    label = `${prefix}${String(n).padStart(digits.length, '0')}${suffix}`;
+  } while (taken.has(label));
+  return label;
+};
+
 const clampOverlayOffset = (offset: { x: number; y: number }) => ({
   x: clampOverlayCoord(offset.x),
   y: clampOverlayCoord(offset.y),
@@ -209,6 +226,30 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
     }
     case 'ADD_OBJECT':
       return { ...state, objects: [...state.objects, action.payload] };
+    case 'DUPLICATE_OBJECT': {
+      const source = state.objects.find(o => o.id === action.payload.id);
+      if (!source || source.isFill || source.type === 'path') return state;
+      // Same device settings as copy / paste: no photos, comments or notes of the original.
+      const { photos, comments, notes, issueDescription, statusUpdatedAt, statusUpdatedBy, ...rest } = source;
+      // Right of the original; to its left / below when that runs off the page.
+      let x = source.x + source.width + DUPLICATE_GAP;
+      let y = source.y;
+      if (x + source.width > CANVAS_BASE_WIDTH) {
+        x = source.x - source.width - DUPLICATE_GAP;
+        if (x < 0) { x = source.x; y = Math.min(source.y + source.height + DUPLICATE_GAP, state.pdfCanvasHeight - source.height); }
+      }
+      const taken = new Set(state.objects.map(o => o.name).filter((n): n is string => !!n));
+      const clone = {
+        ...rest,
+        id: action.payload.newId,
+        x,
+        y,
+        name: source.name ? nextFreeLabel(source.name, taken) : source.name,
+        metadata: source.metadata ? { ...source.metadata } : undefined,
+        labelOffset: source.labelOffset ? { ...source.labelOffset } : undefined,
+      };
+      return { ...state, objects: [...state.objects, clone], selectedObjectIds: [clone.id] };
+    }
     case 'UPDATE_OBJECT':
       return {
         ...state,

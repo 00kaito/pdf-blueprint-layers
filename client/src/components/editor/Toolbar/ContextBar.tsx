@@ -1,5 +1,5 @@
 import React from 'react';
-import {Crosshair, Hand, MoveHorizontal, Ruler, Spline} from 'lucide-react';
+import {Crosshair, Hand, MoveHorizontal, PenTool, Pointer, Ruler, Spline} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Slider} from '@/components/ui/slider';
 import {Toggle} from '@/components/ui/toggle';
@@ -56,6 +56,49 @@ const StrokeModeSwitch = ({ freeLabel, testId }: { freeLabel: string; testId?: s
   );
 };
 
+/** Input mode only matters where there can be a stylus: touch screens (or the touch layout). */
+const HAS_TOUCH = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+
+/**
+ * What operates the tools on a touch screen, as two labelled segments (the current one lit):
+ * "Finger + stylus" or "Stylus only" (fingers then pan / zoom). Lives next to the tool's options —
+ * not in the tool row, where a pen icon was mistaken for the pencil tool.
+ */
+const InputModeSwitch = () => {
+  const { state: uiState, dispatch } = useUI();
+  if (!HAS_TOUCH && !uiState.ipadMode && !uiState.stylusOnly) return null;
+  const set = (stylusOnly: boolean) => dispatch({ type: 'SET_STYLUS_ONLY', payload: stylusOnly });
+  return (
+    <div className="flex items-center rounded-md border border-input bg-background p-0.5 gap-0.5" role="radiogroup" aria-label="Draw with" data-testid="input-mode-switch">
+      <Toggle
+        pressed={!uiState.stylusOnly}
+        onPressedChange={() => set(false)}
+        size="sm"
+        className="h-6 min-w-0 px-2 gap-1 text-xs whitespace-nowrap"
+        title="Fingers and the stylus both use the tool (two fingers pan / zoom)"
+        role="radio"
+        aria-checked={!uiState.stylusOnly}
+      >
+        <Pointer className="w-3.5 h-3.5" />
+        Finger + stylus
+      </Toggle>
+      <Toggle
+        pressed={uiState.stylusOnly}
+        onPressedChange={() => set(true)}
+        size="sm"
+        className="h-6 min-w-0 px-2 gap-1 text-xs whitespace-nowrap"
+        title="Only the stylus uses the tool; fingers pan, zoom and tap (no stray marks from your palm)"
+        role="radio"
+        aria-checked={uiState.stylusOnly}
+        data-testid="stylus-only-toggle"
+      >
+        <PenTool className="w-3.5 h-3.5" />
+        Stylus only
+      </Toggle>
+    </div>
+  );
+};
+
 /**
  * Second toolbar row with the options of whatever is active: the selected object, else the current
  * tool. Keeps the main row fixed (it never grows or jumps), and hides itself when there is nothing to show.
@@ -101,6 +144,7 @@ export const ContextBar = () => {
             data-testid="draw-size-inline"
           />
           <StrokeModeSwitch freeLabel="Freehand" testId="draw-straight" />
+          <InputModeSwitch />
           <span className="w-6 flex items-center justify-center" title={`${uiState.drawStrokeWidth}`}>
             <span
               className="rounded-full"
@@ -134,6 +178,7 @@ export const ContextBar = () => {
             data-testid="fill-opacity-inline"
           />
           <span className="text-[10px] font-mono w-8 text-right">{Math.round(uiState.fillOpacity * 100)}%</span>
+          <InputModeSwitch />
         </div>
     );
   } else if (uiState.tool === 'measure' || uiState.tool === 'calibrate') {
@@ -149,6 +194,7 @@ export const ContextBar = () => {
             </span>
           )}
           <StrokeModeSwitch freeLabel="Any angle" />
+          <InputModeSwitch />
           <Toggle
             pressed={uiState.tool === 'calibrate'}
             // Leaving the probe goes back to the tape. Without a scale there is nothing to measure with

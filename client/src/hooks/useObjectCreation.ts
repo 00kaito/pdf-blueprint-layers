@@ -33,17 +33,20 @@ export const useObjectCreation = () => {
     const width = DEFAULT_TEXT_WIDTH / uiState.scale;
     const height = DEFAULT_TEXT_HEIGHT / uiState.scale;
     const { x, y } = getCenterPosition(width, height);
-    
+    const id = uuidv4();
+
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
-        id: uuidv4(), type: 'text', name: '', x, y, width, height,
+        id, type: 'text', name: '', x, y, width, height,
         layerId: uiState.activeLayerId, content: 'Double click to edit',
         fontSize: DEFAULT_TEXT_FONT_SIZE / uiState.scale, color: DEFAULT_TEXT_COLOR, rotation: 0,
         status: 'PLANNED'
       }
     });
+    // The new object is selected: you are now working with objects (and can move / edit it at once).
     dispatch({ type: 'SET_TOOL', payload: 'select' });
+    dispatch({ type: 'SELECT_OBJECT', payload: id });
   }, [uiState.activeLayerId, uiState.scale, getCenterPosition, dispatch]);
 
   const handleAddIcon = useCallback((iconType: string) => {
@@ -60,15 +63,17 @@ export const useObjectCreation = () => {
     }
 
     const { x, y } = getCenterPosition(size, size);
+    const id = uuidv4();
     dispatch({
       type: 'ADD_OBJECT',
       payload: {
-        id: uuidv4(), type: 'icon', name: '', x, y, width: size, height: size,
+        id, type: 'icon', name: '', x, y, width: size, height: size,
         layerId: uiState.activeLayerId, color: DEFAULT_ICON_COLOR, content: iconType, rotation: 0,
         status: 'PLANNED'
       }
     });
     dispatch({ type: 'SET_TOOL', payload: 'select' });
+    dispatch({ type: 'SELECT_OBJECT', payload: id });
   }, [uiState.activeLayerId, uiState.scale, docState.autoNumbering.enabled, getCenterPosition, dispatch]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,14 +85,17 @@ export const useObjectCreation = () => {
       const url = event.target?.result as string;
       const size = DEFAULT_IMAGE_SIZE / uiState.scale;
       const { x, y } = getCenterPosition(size, size);
+      const id = uuidv4();
       dispatch({
         type: 'ADD_OBJECT',
         payload: {
-          id: uuidv4(), type: 'image', name: '', x, y, width: size, height: size,
+          id, type: 'image', name: '', x, y, width: size, height: size,
           layerId: uiState.activeLayerId!, content: url, rotation: 0,
           status: 'PLANNED'
         }
       });
+      dispatch({ type: 'SET_TOOL', payload: 'select' });
+      dispatch({ type: 'SELECT_OBJECT', payload: id });
     };
     reader.readAsDataURL(file);
     e.target.value = '';

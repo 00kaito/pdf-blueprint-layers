@@ -95,6 +95,7 @@ const describe = (action: EditorAction, prev: EditorState): string => {
   switch (action.type) {
     case 'ADD_FILL': return 'Fill area';
     case 'ADD_OBJECT': return `Add ${action.payload.name || action.payload.type}`;
+    case 'DUPLICATE_OBJECT': return `Duplicate ${objName(action.payload.id)}`;
     case 'UPDATE_OBJECT': {
       const keys = Object.keys(action.payload.updates);
       const name = objName(action.payload.id);

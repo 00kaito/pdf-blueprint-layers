@@ -14,7 +14,7 @@ const hintFor = (tool: string, hasScale: boolean, touch: boolean, stylusOnly: bo
   const tap = stylusOnly ? 'Tap with the stylus' : touch ? 'Tap' : 'Click';
   switch (tool) {
     case 'select': return touch
-      ? 'Tap to select · stylus drag on empty space = select area · long-press = details'
+      ? 'Tap = select, then drag to move · double tap = clone · long press = settings · ⟳ tap = 45°'
       : 'Drag on empty space = select area · Shift = 0.5 ft steps · Ctrl = no snapping · Space + drag = pan';
     case 'draw': return touch
       ? `${pen}Draw · ${pinch}`

@@ -10,6 +10,7 @@ import {DEFAULT_LABEL_POSITION, getLeaderLine, LabelPosition} from '@/core/label
 import {Box, Guide, SNAP_DISTANCE_PX, snapBox, stepPoint} from '@/core/snapping';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {dragStore} from '@/lib/drag-store';
+import {v4 as uuidv4} from 'uuid';
 
 /** Label placement around the object box; the label never moves the object itself. */
 const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {
@@ -38,6 +39,11 @@ interface ObjectRendererProps {
   pageHeight?: number;
   /** Shift-drag steps (0.5 ft in canvas units) and the tape they follow; null without a measuring scale. */
   dragStep?: { step: number; tape: { a: { x: number; y: number }; b: { x: number; y: number } } | null } | null;
+  /**
+   * Touch layout (tablet): a finger drag on an unselected object pans the plan — only a selected
+   * object (tap / long press) moves. The rotate handle turns in 45° steps per tap.
+   */
+  touchLayout?: boolean;
 }
 
 /** Client coordinates of a mouse or touch event. */
@@ -98,6 +104,7 @@ export const ObjectRenderer = memo(({
   getSnapTargets,
   pageHeight,
   dragStep,
+  touchLayout = false,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -110,6 +117,8 @@ export const ObjectRenderer = memo(({
   const dragStartRef = useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
   /** Set when a drag really moved the object, so the click that ends it is not a Ctrl+click selection toggle. */
   const draggedRef = useRef(false);
+  /** After a double-tap clone, the browser's emulated click must not select the original again. */
+  const ignoreClickUntilRef = useRef(0);
 
   const isSelected = selectedObjectIds.includes(obj.id);
   // Paint-bucket fills are traced from the blueprint, so they stay pinned to it.
@@ -120,10 +129,16 @@ export const ObjectRenderer = memo(({
     onTap: () => {
       uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
     },
+    // Double tap = clone it next to itself (label number + 1), ready to place the next device.
     onDoubleTap: () => {
-      uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
-      uiDispatch({ type: 'OPEN_OBJECT_DETAILS' });
+      if (isTech || disableMovement || layer.locked || isFill || tool !== 'select') {
+        uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
+        return;
+      }
+      ignoreClickUntilRef.current = Date.now() + 600;
+      dispatch({ type: 'DUPLICATE_OBJECT', payload: { id: obj.id, newId: uuidv4() } });
     },
+    // Long press = select it (so it can be moved) and open its settings.
     onLongPress: () => {
       uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
       uiDispatch({ type: 'OPEN_OBJECT_DETAILS' });
@@ -207,71 +222,53 @@ export const ObjectRenderer = memo(({
       )
     : null;
 
-  const handleRotationMouseDown = (e: React.MouseEvent) => {
+  /** Next 45° step (from whatever angle the object has now). */
+  const rotateByStep = () => {
+    const next = ((Math.round((obj.rotation || 0) / 45) + 1) * 45) % 360;
+    dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { rotation: next } } });
+  };
+
+  /**
+   * Rotate handle. A tap / click turns the object by 45°. With a mouse it can also be dragged round
+   * (snapping to 45°); with a finger or stylus it is a push button only — dragging a small handle
+   * round with a finger is fiddly and fights with panning.
+   */
+  const handleRotationPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isTech || disableMovement) return;
     e.stopPropagation();
     e.preventDefault();
-    setIsRotating(true);
-
-    const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+    const handle = e.currentTarget;
+    const rect = handle.parentElement?.getBoundingClientRect();
     if (!rect) return;
-    
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    const handleMouseMove = (mE: MouseEvent) => {
-      const angle = Math.atan2(mE.clientY - centerY, mE.clientX - centerX);
-      let degree = (angle * (180 / Math.PI)) + 90;
-      const snappedDegree = Math.round(degree / 45) * 45;
-      dispatch({ 
-        type: 'UPDATE_OBJECT', 
-        payload: { id: obj.id, updates: { rotation: snappedDegree } } 
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsRotating(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  const handleRotationTouchStart = (e: React.TouchEvent) => {
-    if (isTech || disableMovement) return;
-    e.stopPropagation();
+    handle.setPointerCapture(e.pointerId);
     setIsRotating(true);
+    const pointerId = e.pointerId;
+    const canDrag = e.pointerType === 'mouse';
+    const start = { x: e.clientX, y: e.clientY };
+    const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    let dragged = false;
 
-    const touch = e.touches[0];
-    const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-    if (!rect) return;
-    
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    const handleTouchMove = (tE: TouchEvent) => {
-      if (tE.touches.length !== 1) return;
-      tE.preventDefault();
-      const moveTouch = tE.touches[0];
-      const angle = Math.atan2(moveTouch.clientY - centerY, moveTouch.clientX - centerX);
-      let degree = (angle * (180 / Math.PI)) + 90;
-      const snappedDegree = Math.round(degree / 45) * 45;
-      dispatch({ 
-        type: 'UPDATE_OBJECT', 
-        payload: { id: obj.id, updates: { rotation: snappedDegree } } 
-      });
+    const onMove = (m: PointerEvent) => {
+      if (m.pointerId !== pointerId || !canDrag) return;
+      if (!dragged && Math.hypot(m.clientX - start.x, m.clientY - start.y) < 4) return;
+      dragged = true;
+      const degree = Math.atan2(m.clientY - center.y, m.clientX - center.x) * (180 / Math.PI) + 90;
+      const snapped = ((Math.round(degree / 45) * 45) % 360 + 360) % 360;
+      dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { rotation: snapped } } });
     };
-
-    const handleTouchEnd = () => {
+    const onEnd = (u: PointerEvent, commit: boolean) => {
+      if (u.pointerId !== pointerId) return;
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onCancel);
       setIsRotating(false);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
+      if (commit && !dragged) rotateByStep();
     };
-
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd);
+    const onUp = (u: PointerEvent) => onEnd(u, true);
+    const onCancel = (u: PointerEvent) => onEnd(u, false);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onCancel);
   };
 
   return (
@@ -352,6 +349,7 @@ export const ObjectRenderer = memo(({
         e.stopPropagation();
         const dragged = draggedRef.current;
         draggedRef.current = false;
+        if (Date.now() < ignoreClickUntilRef.current) return;
         if ((e.ctrlKey || e.metaKey) && !dragged) {
           uiDispatch({ type: 'TOGGLE_OBJECT_SELECTION', payload: obj.id });
         } else {
@@ -361,7 +359,7 @@ export const ObjectRenderer = memo(({
       scale={1}
       cancel=".object-label"
       bounds="parent"
-      disableDragging={lockGeometry || isTech || layer.locked || tool !== 'select' || isRotating}
+      disableDragging={lockGeometry || isTech || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
       enableResizing={isTech || lockGeometry ? {} : (!layer.locked && isSelected)}
       resizeHandleClasses={{
         bottomRight: "bg-primary w-2 h-2 rounded-full",
@@ -372,6 +370,8 @@ export const ObjectRenderer = memo(({
       className={cn(
         "group z-20",
         isFill && "is-fill", // a selection rectangle may start on a fill (see useMarquee)
+        // Touch layout: a selected object takes the finger (moves); others let it pan the plan.
+        touchLayout && isSelected && !lockGeometry && "touch-none",
         isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         // While the bucket is active, clicks go through a fill to the blueprint (re-fill = recolour).
         layer.locked || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
@@ -381,9 +381,19 @@ export const ObjectRenderer = memo(({
     >
       {isSelected && !layer.locked && !lockGeometry && (
         <div 
-          className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 hover:scale-110 transition-transform"
-          onMouseDown={handleRotationMouseDown}
-          onTouchStart={handleRotationTouchStart}
+          className={cn(
+            "absolute left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 touch-none select-none active:scale-95 [@media(hover:hover)]:hover:scale-110 transition-transform",
+            touchLayout ? "-top-12 w-10 h-10" : "-top-10 w-8 h-8"
+          )}
+          onPointerDown={handleRotationPointerDown}
+          // Keep react-draggable (mouse / touch events on the object) from starting a move.
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          title="Rotate 45° (tap) — with a mouse you can also drag it round"
+          role="button"
+          aria-label="Rotate 45 degrees"
+          data-testid="rotate-handle"
         >
           <RotateCw className="w-4 h-4" />
         </div>

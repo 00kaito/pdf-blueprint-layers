@@ -13,7 +13,6 @@ import {
     Magnet,
     MoveHorizontal,
     MousePointer2,
-    PenTool,
     PaintBucket,
     Pencil,
     Plus,
@@ -37,9 +36,6 @@ import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
 import {FILL_LAYER_NAME} from '@/lib/editor-context';
 import {useToast} from '@/hooks/use-toast';
-
-/** The stylus-only switch is only offered where there can be a stylus: touch screens (or the touch layout). */
-const HAS_TOUCH = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
 const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
@@ -69,6 +65,7 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
   const { state: uiState } = useUI();
   const { handleAddText, handleAddIcon, handleImageUpload, getCenterPosition } = useObjectCreation();
   const iconLibrary = useIconLibrary();
+  const [objectsMenuOpen, setObjectsMenuOpen] = React.useState(false);
 
   const handleLibraryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -141,25 +138,6 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
           </Tooltip>
         )}
 
-        {!isTech && (HAS_TOUCH || uiState.ipadMode || uiState.stylusOnly) && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Toggle
-                pressed={uiState.stylusOnly}
-                onPressedChange={(p) => dispatch({ type: 'SET_STYLUS_ONLY', payload: p })}
-                size="sm"
-                className="h-8 w-8"
-                aria-label="Stylus only"
-                data-testid="stylus-only-toggle"
-              >
-                <PenTool className="w-4 h-4" />
-              </Toggle>
-            </TooltipTrigger>
-            <TooltipContent>
-              Stylus only {uiState.stylusOnly ? 'on — the stylus uses the tools, fingers pan, zoom and tap' : 'off — fingers use the tools too'}
-            </TooltipContent>
-          </Tooltip>
-        )}
 
         {!isTech && (
           <>
@@ -345,9 +323,25 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               <TooltipContent>Add Image</TooltipContent>
             </Tooltip>
 
-            <Popover>
+            {/* Objects: lit while the menu is open or objects are selected — that is the active way of working. */}
+            <Popover
+              open={objectsMenuOpen}
+              onOpenChange={(open) => {
+                setObjectsMenuOpen(open);
+                if (open && uiState.tool !== 'select') dispatch({ type: 'SET_TOOL', payload: 'select' });
+              }}
+            >
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8"><Square className="w-4 h-4" /></Button>
+                <Toggle
+                  pressed={objectsMenuOpen || (uiState.tool === 'select' && uiState.selectedObjectIds.length > 0)}
+                  size="sm"
+                  className="h-8 w-8"
+                  title="Objects — shapes and your icon library"
+                  aria-label="Objects"
+                  data-testid="objects-menu"
+                >
+                  <Square className="w-4 h-4" />
+                </Toggle>
               </PopoverTrigger>
               <PopoverContent className="w-64" side="bottom" align="center">
                 <div className="space-y-4">
@@ -392,10 +386,13 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                               if (!uiState.activeLayerId) return;
                               const size = 50 / uiState.scale;
                               const { x, y } = getCenterPosition(size, size);
+                              const id = uuidv4();
                               dispatch({
                                 type: 'ADD_OBJECT',
-                                payload: { id: uuidv4(), type: 'image', name: '', x, y, width: size, height: size, layerId: uiState.activeLayerId, content: icon.dataUrl, rotation: 0 }
+                                payload: { id, type: 'image', name: '', x, y, width: size, height: size, layerId: uiState.activeLayerId, content: icon.dataUrl, rotation: 0 }
                               });
+                              dispatch({ type: 'SET_TOOL', payload: 'select' });
+                              dispatch({ type: 'SELECT_OBJECT', payload: id });
                             }}
                           >
                             <img src={icon.dataUrl} alt={icon.name} className="w-full h-full object-contain" />
