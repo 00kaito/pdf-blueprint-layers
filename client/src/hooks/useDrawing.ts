@@ -51,6 +51,9 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     const start = toCanvasPoint(e.clientX, e.clientY);
     if (!start) return;
     e.preventDefault();
+    // Do not rely on Safari's implicit pointer capture. Apple Pencil events can otherwise be
+    // retargeted when the tip crosses a PDF/SVG overlay boundary.
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported / already released */ }
     pointerIdRef.current = e.pointerId;
     pointerTypeRef.current = e.pointerType;
     pointsRef.current = [start];
@@ -58,10 +61,9 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     setIsDrawing(true);
   }, [uiState.tool, uiState.activeLayerId, uiState.stylusOnly, toCanvasPoint]);
 
-  // Track the stroke on window so it continues (and ends) when the pointer leaves the canvas.
+  // Keep these listeners mounted for the lifetime of the hook. Registering them only after the
+  // state update leaves a race in which iPadOS can finish/cancel the pointer first.
   useEffect(() => {
-    if (!isDrawing) return;
-
     const addPoint = (clientX: number, clientY: number, straight: boolean) => {
       const points = pointsRef.current;
       let p = toCanvasPoint(clientX, clientY);
@@ -92,6 +94,7 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
       const points = pointsRef.current;
       const { activeLayerId, pdfCanvasHeight, color, strokeWidth, dispatch } = latest.current;
       pointerIdRef.current = null;
+      pointerTypeRef.current = '';
       pointsRef.current = [];
       setIsDrawing(false);
       setDrawingPath('');
@@ -109,22 +112,30 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     const handleUp = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(true); };
     // A second finger joining a finger stroke means a pinch, not drawing. (A palm next to a stylus stroke is ignored.)
     const handleOtherDown = (e: PointerEvent) => {
-      if (e.pointerId !== pointerIdRef.current && e.pointerType === 'touch' && pointerTypeRef.current === 'touch') finish(false);
+      const ownPointerId = pointerIdRef.current;
+      if (ownPointerId !== null && e.pointerId !== ownPointerId && e.pointerType === 'touch' && pointerTypeRef.current === 'touch') finish(false);
     };
     // The browser took over the pointer (e.g. started scrolling) — drop the unfinished stroke.
     const handleCancel = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(false); };
 
+    const handleLostCapture = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(false); };
+
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
     window.addEventListener('pointercancel', handleCancel);
+    window.addEventListener('lostpointercapture', handleLostCapture);
     window.addEventListener('pointerdown', handleOtherDown, true);
     return () => {
       window.removeEventListener('pointerdown', handleOtherDown, true);
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
       window.removeEventListener('pointercancel', handleCancel);
+      window.removeEventListener('lostpointercapture', handleLostCapture);
+      pointerIdRef.current = null;
+      pointerTypeRef.current = '';
+      pointsRef.current = [];
     };
-  }, [isDrawing, toCanvasPoint]);
+  }, [toCanvasPoint]);
 
   return { drawingPath, isDrawing, onPointerDown };
 };

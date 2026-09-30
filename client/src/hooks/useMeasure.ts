@@ -65,14 +65,13 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     const start = toCanvasPoint(e.clientX, e.clientY);
     if (!start) return;
     e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported / already released */ }
     pointerRef.current = { id: e.pointerId, type: e.pointerType };
     updateLine({ a: start, b: start });
     setIsMeasuring(true);
   }, [uiState.tool, uiState.stylusOnly, pendingCalibration, toCanvasPoint]);
 
   useEffect(() => {
-    if (!isMeasuring) return;
-
     const finish = (commit: boolean) => {
       const current = lineRef.current;
       pointerRef.current = null;
@@ -104,6 +103,7 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     };
     const handleUp = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(true); };
     const handleCancel = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(false); };
+    const handleLostCapture = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(false); };
     // A second finger joining a finger drag means a pinch, not a measurement.
     const handleOtherDown = (e: PointerEvent) => {
       const own = pointerRef.current;
@@ -113,14 +113,18 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
     window.addEventListener('pointercancel', handleCancel);
+    window.addEventListener('lostpointercapture', handleLostCapture);
     window.addEventListener('pointerdown', handleOtherDown, true);
     return () => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
       window.removeEventListener('pointercancel', handleCancel);
+      window.removeEventListener('lostpointercapture', handleLostCapture);
       window.removeEventListener('pointerdown', handleOtherDown, true);
+      pointerRef.current = null;
+      lineRef.current = null;
     };
-  }, [isMeasuring, toCanvasPoint]);
+  }, [toCanvasPoint]);
 
   const clearPendingCalibration = useCallback(() => {
     setPendingCalibration(null);

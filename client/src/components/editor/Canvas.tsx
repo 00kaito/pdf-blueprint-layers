@@ -11,10 +11,11 @@ import {useDrawing} from '@/hooks/useDrawing';
 import {usePinchZoom} from '@/hooks/usePinchZoom';
 import {useMeasure} from '@/hooks/useMeasure';
 import {useSpacePan} from '@/hooks/useSpacePan';
+import {useFingerPan} from '@/hooks/useFingerPan';
 import {useStylusGuidance} from '@/hooks/useStylusGuidance';
 import {MARQUEE_IGNORE, useMarquee} from '@/hooks/useMarquee';
 import type {UIState} from '@/lib/types';
-import {fingerUsesTool, isStrokeTool, isTapTool} from '@/core/pointer-input';
+import {isStrokeTool, isTapTool} from '@/core/pointer-input';
 import {feetPerUnit, formatFeet} from '@/core/measure';
 import type {Box} from '@/core/snapping';
 import {ObjectRenderer} from './Canvas/ObjectRenderer';
@@ -92,10 +93,14 @@ export const Canvas = () => {
 
   const state = { ...docState, ...uiState };
 
-  // Safari scrolls with the Apple Pencil too, and a palm resting on the screen scrolls mid-stroke.
-  // Both need a non-passive native listener to be cancelled (React's touch listeners are passive).
+  // Gesture guard shared by Pencil drawing, finger panning and two-finger zoom.
   const drawGuardRef = useRef({ tool: state.tool, isDrawing });
   drawGuardRef.current = { tool: state.tool, isDrawing: isDrawing || measure.isMeasuring || marquee.isSelecting };
+  const fingerPan = useFingerPan(
+    scrollRef as React.RefObject<HTMLDivElement>,
+    state.stylusOnly && isStrokeTool(state.tool),
+    () => drawGuardRef.current.isDrawing,
+  );
   usePinchZoom(
     scrollRef as React.RefObject<HTMLDivElement>,
     containerRef as React.RefObject<HTMLDivElement>,
@@ -108,20 +113,15 @@ export const Canvas = () => {
     const isStylus = (e: TouchEvent) =>
       Array.from(e.changedTouches).some(t => (t as Touch & { touchType?: string }).touchType === 'stylus');
     const onTouchStart = (e: TouchEvent) => {
-      if (!isStylus(e)) return;
+      if (!isStylus(e) || drawGuardRef.current.tool !== 'select') return;
       const { tool } = drawGuardRef.current;
       // In the select tool only on empty canvas (a selection rectangle) — objects and buttons keep their taps.
       const onEmptyCanvas = tool === 'select' && !(e.target as Element).closest(MARQUEE_IGNORE);
-      if (isStrokeTool(tool) || onEmptyCanvas) e.preventDefault();
-    };
-    const onTouchMove = (e: TouchEvent) => {
-      if (drawGuardRef.current.isDrawing && e.cancelable) e.preventDefault();
+      if (onEmptyCanvas) e.preventDefault();
     };
     scroller.addEventListener('touchstart', onTouchStart, { passive: false });
-    scroller.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => {
       scroller.removeEventListener('touchstart', onTouchStart);
-      scroller.removeEventListener('touchmove', onTouchMove);
     };
   }, []);
   const mousePosRef = useRef({ x: 0, y: 0 });
@@ -340,11 +340,11 @@ export const Canvas = () => {
 
   return (
     <div ref={scrollRef} data-canvas-scroller className={`flex-1 bg-muted/30 overflow-auto relative select-none${
-      spacePan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
+      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
     }`} 
-      // When a finger operates the tool nothing scrolls natively — two fingers pan / zoom (usePinchZoom).
-      // Otherwise (stylus only, or a non-drawing tool) fingers scroll. No iOS long-press callout / magnifier.
-      style={{ touchAction: fingerUsesTool(state.tool, state.stylusOnly) ? 'none' : 'pan-x pan-y', WebkitTouchCallout: 'none' }}
+      // Stroke tools suppress native Safari gestures for pen and touch. In stylus-only mode,
+      // useFingerPan restores one-finger panning and usePinchZoom handles two fingers.
+      style={{ touchAction: isStrokeTool(state.tool) ? 'none' : 'pan-x pan-y', WebkitTouchCallout: 'none' }}
       onPointerDown={handlePointerDown} onClick={handleClick} onScroll={handleScroll}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
     >
