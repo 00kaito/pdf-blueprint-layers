@@ -50,6 +50,13 @@ export const config = {
    */
   storageType: process.env.STORAGE_TYPE || (process.env.DATABASE_URL ? 'database' : 'file'),
   
+  /**
+   * Where uploaded files (PDFs, library icons) are kept. MUST be persistent storage (a Docker volume),
+   * otherwise every deployment loses them while the database still points at them.
+   * The database stores paths relative to this folder, so it can move between environments.
+   */
+  storageDir: process.env.STORAGE_DIR || 'storage',
+
   database: {
     url: process.env.DATABASE_URL,
     ssl: process.env.DB_SSL === 'true',

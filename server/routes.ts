@@ -21,6 +21,16 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Express 4 does not catch rejected async handlers: the request then hangs with no response (the
+  // client sees "nothing happens"). Pass those errors on to the error handler instead.
+  for (const method of ['get', 'post', 'put', 'patch', 'delete'] as const) {
+    const register = (app[method] as Function).bind(app);
+    (app as any)[method] = (route: unknown, ...handlers: unknown[]) =>
+      register(route, ...handlers.map(h => typeof h === 'function' && h.length < 4
+        ? (req: any, res: any, next: any) => Promise.resolve((h as Function)(req, res, next)).catch(next)
+        : h));
+  }
+
   
   // Auth Routes
   app.post("/api/auth/register", async (req, res) => {
@@ -115,16 +125,11 @@ export async function registerRoutes(
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
     if (project.ownerId !== req.user!.id) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "Only the owner of the project can delete it" });
     }
     
     console.log(`[Project] Deleting project ${req.params.id} by user ${req.user!.username}`);
-    const state = await storage.getProjectState(req.params.id);
-    if (state) {
-      if (state.pdfFileId) await storage.deleteFile(state.pdfFileId);
-      if (state.overlayPdfFileId) await storage.deleteFile(state.overlayPdfFileId);
-    }
-    
+    // Removes all of the project's files too (not only the current PDF / overlay).
     await storage.deleteProject(req.params.id);
     res.sendStatus(200);
   });

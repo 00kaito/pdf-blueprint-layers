@@ -33,6 +33,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Uploaded PDFs and library icons live here (the database only points at them). Must stay on a
+    # persistent host folder / volume — a fresh checkout or an unmounted container loses every file.
     volumes:
       - ./storage:/app/storage
       - ./data:/app/data

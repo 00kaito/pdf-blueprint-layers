@@ -8,6 +8,8 @@ export interface IStorage {
   updateUserRole(userId: string, role: string): Promise<void>;
   updateUserPassword(userId: string, passwordHash: string): Promise<void>;
   normalizeUsernames(): Promise<void>;
+  /** Startup check of the file storage (and migration of stored paths); logs missing files. */
+  prepareFileStorage(): Promise<void>;
   
   getProject(id: string): Promise<Project | undefined>;
   listProjectsForUser(userId: string): Promise<Project[]>;

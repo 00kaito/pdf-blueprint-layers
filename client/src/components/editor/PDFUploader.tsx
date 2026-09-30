@@ -26,7 +26,11 @@ const fileNameFromResponse = (res: Response, fallback: string) => {
 /** Downloads a stored project PDF under its original name. */
 const fetchProjectFile = async (fileId: string, fallbackName: string) => {
   const res = await fetch(`/api/files/${fileId}`);
-  if (!res.ok) throw new Error(`Could not load file ${fallbackName} (${res.status})`);
+  if (!res.ok) {
+    throw new Error(res.status === 404
+      ? `The ${fallbackName === 'overlay.pdf' ? 'overlay' : 'main'} PDF of this project is missing on the server (file ${fileId}).`
+      : `Could not load the ${fallbackName === 'overlay.pdf' ? 'overlay' : 'main'} PDF (HTTP ${res.status}).`);
+  }
   const blob = await res.blob();
   return new File([blob], fileNameFromResponse(res, fallbackName), { type: "application/pdf" });
 };
@@ -284,8 +288,23 @@ export const PDFUploader = () => {
                           <Button variant="ghost" size="icon" onClick={() => setSharingProjectId(project.id)}>
                             <Share2 className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteProject.mutate(project.id)}>
-                            <Trash2 className="h-4 w-4" />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive"
+                            disabled={deleteProject.isPending && deleteProject.variables === project.id}
+                            title="Delete project"
+                            onClick={() => {
+                              if (!window.confirm(`Delete project "${project.name}" with its PDFs? This cannot be undone.`)) return;
+                              deleteProject.mutate(project.id, {
+                                onSuccess: () => toast({ title: "Project deleted", description: project.name }),
+                                onError: (e: any) => toast({ variant: "destructive", title: "Could not delete project", description: e.message }),
+                              });
+                            }}
+                          >
+                            {deleteProject.isPending && deleteProject.variables === project.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Trash2 className="h-4 w-4" />}
                           </Button>
                         </>
                       )}

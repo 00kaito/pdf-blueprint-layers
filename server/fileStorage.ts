@@ -66,6 +66,11 @@ export class FileStorage implements IStorage {
     return Array.from(this.users.values()).find(u => u.username.toLowerCase() === username.toLowerCase());
   }
 
+  async prepareFileStorage(): Promise<void> {
+    // Files are looked up by id under data/files — nothing to migrate.
+    console.log(`[Storage] Files in ${this.filesDir}`);
+  }
+
   async normalizeUsernames(): Promise<void> {
     let changed = false;
     const userArray = Array.from(this.users.values());
@@ -178,6 +183,15 @@ export class FileStorage implements IStorage {
   }
 
   async deleteProject(id: string): Promise<void> {
+    // All of the project's files, not only the current PDF / overlay.
+    for (const name of fs.readdirSync(this.filesDir).filter(n => n.endsWith('.meta.json'))) {
+      try {
+        const meta: FileMetadata = JSON.parse(fs.readFileSync(path.join(this.filesDir, name), 'utf-8'));
+        if (meta.projectId === id) await this.deleteFile(meta.id);
+      } catch (e) {
+        console.error(`[FileStorage] Could not read ${name}`, e);
+      }
+    }
     this.projects.delete(id);
     this.flushProjects();
     const stateFile = path.join(this.statesDir, `${id}.json`);

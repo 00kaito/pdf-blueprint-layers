@@ -1,13 +1,58 @@
 import { IStorage } from "./storage_interface";
 import { User, Project, ProjectState, FileMetadata, LibraryIcon, users, projects, projectShares, files, iconLibrary } from "@shared/schema";
 import { db } from "./db";
+import { config } from "./config";
 import { eq, or, and, inArray, sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
 export class DatabaseStorage implements IStorage {
-  private storageRoot = path.resolve(process.cwd(), 'storage');
+  private storageRoot = path.resolve(process.cwd(), config.storageDir);
+
+  /**
+   * Stored path → path in this environment. New rows hold a path relative to the storage root.
+   * Older rows hold the absolute path of whichever environment wrote them (`/app/storage/…` in
+   * Docker, `C:\…\storage\…` in local dev) — map those onto this root via the part after "storage/".
+   */
+  private resolveStoragePath(stored: string): string {
+    const rel = this.toRelativeStoragePath(stored);
+    return rel === null ? stored : path.join(this.storageRoot, rel);
+  }
+
+  /** Path relative to the storage root ("projects/<project>/<file>"), or null if it cannot be mapped. */
+  private toRelativeStoragePath(stored: string): string | null {
+    const norm = stored.replace(/\\/g, '/');
+    const isAbsolute = norm.startsWith('/') || /^[a-zA-Z]:\//.test(norm);
+    if (!isAbsolute) return norm;
+    const root = this.storageRoot.replace(/\\/g, '/').replace(/\/$/, '') + '/';
+    if (norm.toLowerCase().startsWith(root.toLowerCase())) return norm.slice(root.length);
+    const marker = norm.lastIndexOf('/storage/');
+    return marker >= 0 ? norm.slice(marker + '/storage/'.length) : null;
+  }
+
+  /**
+   * Startup: rewrite absolute stored paths as relative ones (idempotent), and report files that are
+   * missing on disk — a sign that the storage folder is not on a persistent volume.
+   */
+  async prepareFileStorage(): Promise<void> {
+    fs.mkdirSync(this.storageRoot, { recursive: true });
+    const rows = await db.select({ id: files.id, storagePath: files.storagePath }).from(files);
+    let rewritten = 0;
+    const missing: string[] = [];
+    for (const row of rows) {
+      const rel = this.toRelativeStoragePath(row.storagePath);
+      if (rel !== null && rel !== row.storagePath) {
+        await db.update(files).set({ storagePath: rel }).where(eq(files.id, row.id));
+        rewritten++;
+      }
+      if (!fs.existsSync(this.resolveStoragePath(row.storagePath))) missing.push(row.id);
+    }
+    console.log(`[Storage] Files in ${this.storageRoot}: ${rows.length} (${rewritten} path(s) made relative)`);
+    if (missing.length > 0) {
+      console.warn(`[Storage] ${missing.length} file(s) are in the database but not on disk — is ${this.storageRoot} a persistent volume? e.g. ${missing.slice(0, 5).join(', ')}`);
+    }
+  }
 
   constructor() {}
 
@@ -194,10 +239,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: string): Promise<void> {
+    // Every file of the project, not only the current PDF / overlay: replaced overlays and repeated
+    // uploads keep rows pointing at the project, and the foreign key would refuse the delete.
+    const projectFiles = await db.select({ id: files.id, storagePath: files.storagePath }).from(files).where(eq(files.projectId, id));
     await db.transaction(async (tx) => {
+      await tx.delete(files).where(eq(files.projectId, id));
       await tx.delete(projectShares).where(eq(projectShares.projectId, id));
       await tx.delete(projects).where(eq(projects.id, id));
     });
+    // Disk last: the rows are gone even if a file cannot be removed.
+    for (const f of projectFiles) {
+      const filePath = this.resolveStoragePath(f.storagePath);
+      try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) { console.error(`[Storage] Could not remove ${filePath}`, e); }
+    }
+    try { fs.rmSync(path.join(this.storageRoot, 'projects', id), { recursive: true, force: true }); } catch { /* already gone */ }
   }
 
   async getProjectState(id: string): Promise<ProjectState | undefined> {
@@ -221,9 +276,11 @@ export class DatabaseStorage implements IStorage {
       : path.join(this.storageRoot, 'users', ownerId, 'icons');
       
     fs.mkdirSync(targetDir, { recursive: true });
-    const storagePath = path.join(targetDir, id);
-    fs.writeFileSync(storagePath, buffer);
-    
+    const absolutePath = path.join(targetDir, id);
+    fs.writeFileSync(absolutePath, buffer);
+    // Relative to the storage root, so the database stays valid in any environment / container path.
+    const storagePath = path.relative(this.storageRoot, absolutePath).split(path.sep).join('/');
+
     const [file] = await db.insert(files).values({
       id,
       ownerId,
@@ -244,18 +301,18 @@ export class DatabaseStorage implements IStorage {
 
   async getFileBuffer(fileId: string): Promise<Buffer | undefined> {
     const [file] = await db.select().from(files).where(eq(files.id, fileId));
-    if (file && fs.existsSync(file.storagePath)) {
-      return fs.readFileSync(file.storagePath);
-    }
+    if (!file) return undefined;
+    const filePath = this.resolveStoragePath(file.storagePath);
+    if (fs.existsSync(filePath)) return fs.readFileSync(filePath);
+    console.error(`[Storage] File ${fileId} (${file.originalName}) is missing on disk: ${filePath}`);
     return undefined;
   }
 
   async deleteFile(fileId: string): Promise<void> {
     const [file] = await db.select().from(files).where(eq(files.id, fileId));
     if (file) {
-      if (fs.existsSync(file.storagePath)) {
-        fs.unlinkSync(file.storagePath);
-      }
+      const filePath = this.resolveStoragePath(file.storagePath);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       await db.delete(files).where(eq(files.id, fileId));
     }
   }

@@ -78,6 +78,7 @@ app.use((req, res, next) => {
   try {
     await configureAuth(app);
     await storage.normalizeUsernames();
+    await storage.prepareFileStorage();
     await seedAdminUser();
     await registerRoutes(httpServer, app);
 
