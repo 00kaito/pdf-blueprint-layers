@@ -349,7 +349,7 @@ export const Canvas = () => {
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
     >
       <div className="min-w-full min-h-full flex p-8">
-        <div ref={containerRef} className="relative shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: docState.pdfCanvasHeight * state.scale }}>
+        <div ref={containerRef} data-canvas-page className="relative shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: docState.pdfCanvasHeight * state.scale }}>
           {state.pdfFile ? (
             <Document file={state.pdfFile} onLoadSuccess={({numPages}) => setNumPages(numPages)} className="border border-border bg-white">
               <Page 

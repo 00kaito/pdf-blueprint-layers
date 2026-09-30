@@ -65,7 +65,9 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     const start = toCanvasPoint(e.clientX, e.clientY);
     if (!start) return;
     e.preventDefault();
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported / already released */ }
+    if (e.pointerType !== 'mouse') {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported / already released */ }
+    }
     pointerRef.current = { id: e.pointerId, type: e.pointerType };
     updateLine({ a: start, b: start });
     setIsMeasuring(true);
@@ -104,6 +106,7 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     const handleUp = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(true); };
     const handleCancel = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(false); };
     const handleLostCapture = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(false); };
+    const handleBlur = () => { if (pointerRef.current) finish(false); };
     // A second finger joining a finger drag means a pinch, not a measurement.
     const handleOtherDown = (e: PointerEvent) => {
       const own = pointerRef.current;
@@ -115,12 +118,14 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     window.addEventListener('pointercancel', handleCancel);
     window.addEventListener('lostpointercapture', handleLostCapture);
     window.addEventListener('pointerdown', handleOtherDown, true);
+    window.addEventListener('blur', handleBlur);
     return () => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
       window.removeEventListener('pointercancel', handleCancel);
       window.removeEventListener('lostpointercapture', handleLostCapture);
       window.removeEventListener('pointerdown', handleOtherDown, true);
+      window.removeEventListener('blur', handleBlur);
       pointerRef.current = null;
       lineRef.current = null;
     };

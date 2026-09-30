@@ -15,8 +15,22 @@ import {
 export const useObjectCreation = () => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
+  const targetLayerId = uiState.activeLayerId ?? docState.layers[0]?.id ?? null;
 
   const getCenterPosition = useCallback((width: number, height: number) => {
+    const scroller = document.querySelector<HTMLElement>('[data-canvas-scroller]');
+    const page = document.querySelector<HTMLElement>('[data-canvas-page]');
+    if (scroller && page) {
+      const viewportRect = scroller.getBoundingClientRect();
+      const pageRect = page.getBoundingClientRect();
+      const x = (viewportRect.left + viewportRect.width / 2 - pageRect.left) / uiState.scale - width / 2;
+      const y = (viewportRect.top + viewportRect.height / 2 - pageRect.top) / uiState.scale - height / 2;
+      return {
+        x: Math.max(0, Math.min(CANVAS_BASE_WIDTH - width, x)),
+        y: Math.max(0, Math.min(docState.pdfCanvasHeight - height, y)),
+      };
+    }
+
     const scrollX = (uiState.scrollPos?.x || 0) / uiState.scale;
     const scrollY = (uiState.scrollPos?.y || 0) / uiState.scale;
     const viewportW = window.innerWidth / uiState.scale;
@@ -24,12 +38,12 @@ export const useObjectCreation = () => {
 
     return {
       x: Math.max(0, Math.min(CANVAS_BASE_WIDTH - width, scrollX + viewportW / 2 - width / 2)),
-      y: Math.max(0, scrollY + viewportH / 2 - height / 2)
+      y: Math.max(0, Math.min(docState.pdfCanvasHeight - height, scrollY + viewportH / 2 - height / 2))
     };
-  }, [uiState.scrollPos, uiState.scale]);
+  }, [docState.pdfCanvasHeight, uiState.scrollPos, uiState.scale]);
 
   const handleAddText = useCallback(() => {
-    if (!uiState.activeLayerId) return;
+    if (!targetLayerId) return;
     const width = DEFAULT_TEXT_WIDTH / uiState.scale;
     const height = DEFAULT_TEXT_HEIGHT / uiState.scale;
     const { x, y } = getCenterPosition(width, height);
@@ -39,7 +53,7 @@ export const useObjectCreation = () => {
       type: 'ADD_OBJECT',
       payload: {
         id, type: 'text', name: '', x, y, width, height,
-        layerId: uiState.activeLayerId, content: 'Double click to edit',
+        layerId: targetLayerId, content: 'Double click to edit',
         fontSize: DEFAULT_TEXT_FONT_SIZE / uiState.scale, color: DEFAULT_TEXT_COLOR, rotation: 0,
         status: 'PLANNED'
       }
@@ -47,10 +61,10 @@ export const useObjectCreation = () => {
     // The new object is selected: you are now working with objects (and can move / edit it at once).
     dispatch({ type: 'SET_TOOL', payload: 'select' });
     dispatch({ type: 'SELECT_OBJECT', payload: id });
-  }, [uiState.activeLayerId, uiState.scale, getCenterPosition, dispatch]);
+  }, [targetLayerId, uiState.scale, getCenterPosition, dispatch]);
 
   const handleAddIcon = useCallback((iconType: string) => {
-    if (!uiState.activeLayerId) return;
+    if (!targetLayerId) return;
     const size = DEFAULT_ICON_SIZE / uiState.scale;
 
     if (docState.autoNumbering.enabled) {
@@ -68,17 +82,17 @@ export const useObjectCreation = () => {
       type: 'ADD_OBJECT',
       payload: {
         id, type: 'icon', name: '', x, y, width: size, height: size,
-        layerId: uiState.activeLayerId, color: DEFAULT_ICON_COLOR, content: iconType, rotation: 0,
+        layerId: targetLayerId, color: DEFAULT_ICON_COLOR, content: iconType, rotation: 0,
         status: 'PLANNED'
       }
     });
     dispatch({ type: 'SET_TOOL', payload: 'select' });
     dispatch({ type: 'SELECT_OBJECT', payload: id });
-  }, [uiState.activeLayerId, uiState.scale, docState.autoNumbering.enabled, getCenterPosition, dispatch]);
+  }, [targetLayerId, uiState.scale, docState.autoNumbering.enabled, getCenterPosition, dispatch]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !uiState.activeLayerId) return;
+    if (!file || !targetLayerId) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -90,7 +104,7 @@ export const useObjectCreation = () => {
         type: 'ADD_OBJECT',
         payload: {
           id, type: 'image', name: '', x, y, width: size, height: size,
-          layerId: uiState.activeLayerId!, content: url, rotation: 0,
+          layerId: targetLayerId, content: url, rotation: 0,
           status: 'PLANNED'
         }
       });
@@ -99,7 +113,7 @@ export const useObjectCreation = () => {
     };
     reader.readAsDataURL(file);
     e.target.value = '';
-  }, [uiState.activeLayerId, uiState.scale, getCenterPosition, dispatch]);
+  }, [targetLayerId, uiState.scale, getCenterPosition, dispatch]);
 
   return { handleAddText, handleAddIcon, handleImageUpload, getCenterPosition };
 };

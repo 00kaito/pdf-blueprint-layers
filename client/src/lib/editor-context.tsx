@@ -308,9 +308,16 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, scale: action.payload };
     case 'SET_SCROLL':
       return { ...state, scrollPos: action.payload };
-    case 'IMPORT_PROJECT':
-      // Projects saved before the measuring tape have no calibration — don't keep the previous project's.
-      return { ...state, measureCalibration: null, measureTape: null, ...action.payload };
+    case 'IMPORT_PROJECT': {
+      // Older project states may not contain an active layer. Without normalising it, drawing and
+      // object creation silently return even though the project has valid layers.
+      const layers = action.payload.layers ?? state.layers;
+      const requestedLayerId = action.payload.activeLayerId ?? state.activeLayerId;
+      const activeLayerId = requestedLayerId && layers.some(layer => layer.id === requestedLayerId)
+        ? requestedLayerId
+        : layers[0]?.id ?? null;
+      return { ...state, measureCalibration: null, measureTape: null, ...action.payload, layers, activeLayerId };
+    }
     case 'SET_MEASURE_CALIBRATION':
       return { ...state, measureCalibration: action.payload };
     case 'REORDER_LAYERS': {
@@ -564,6 +571,10 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => saveIpadMode(state.ipadMode), [state.ipadMode]);
   useEffect(() => saveStylusOnly(state.stylusOnly), [state.stylusOnly]);
   useEffect(() => saveSnapEnabled(state.snapEnabled), [state.snapEnabled]);
+  useEffect(() => {
+    if (state.layers.length === 0 || state.layers.some(layer => layer.id === state.activeLayerId)) return;
+    dispatch({ type: 'SET_ACTIVE_LAYER', payload: state.layers[0].id });
+  }, [state.activeLayerId, state.layers, dispatch]);
 
   const historyInfo = useMemo<HistoryInfo>(() => ({
     past: historyState.past,

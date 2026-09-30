@@ -53,7 +53,9 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     e.preventDefault();
     // Do not rely on Safari's implicit pointer capture. Apple Pencil events can otherwise be
     // retargeted when the tip crosses a PDF/SVG overlay boundary.
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported / already released */ }
+    if (e.pointerType !== 'mouse') {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported / already released */ }
+    }
     pointerIdRef.current = e.pointerId;
     pointerTypeRef.current = e.pointerType;
     pointsRef.current = [start];
@@ -119,18 +121,21 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     const handleCancel = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(false); };
 
     const handleLostCapture = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(false); };
+    const handleBlur = () => { if (pointerIdRef.current !== null) finish(false); };
 
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
     window.addEventListener('pointercancel', handleCancel);
     window.addEventListener('lostpointercapture', handleLostCapture);
     window.addEventListener('pointerdown', handleOtherDown, true);
+    window.addEventListener('blur', handleBlur);
     return () => {
       window.removeEventListener('pointerdown', handleOtherDown, true);
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
       window.removeEventListener('pointercancel', handleCancel);
       window.removeEventListener('lostpointercapture', handleLostCapture);
+      window.removeEventListener('blur', handleBlur);
       pointerIdRef.current = null;
       pointerTypeRef.current = '';
       pointsRef.current = [];
