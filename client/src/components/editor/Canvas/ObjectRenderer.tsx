@@ -20,6 +20,9 @@ const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {
   right: 'left-full ml-1 top-1/2 -translate-y-1/2',
 };
 
+/** Corner resize handle: transparent 20 px grab area with an 8 px dot centred in it. */
+const RESIZE_HANDLE_CLASS = "after:absolute after:inset-[6px] after:rounded-full after:bg-primary after:ring-1 after:ring-white";
+
 /** Pointer travel (px) before a press on the label counts as a drag rather than a click. */
 const LABEL_DRAG_THRESHOLD = 3;
 
@@ -361,11 +364,13 @@ export const ObjectRenderer = memo(({
       bounds="parent"
       disableDragging={lockGeometry || isTech || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
       enableResizing={isTech || lockGeometry ? {} : (!layer.locked && isSelected)}
+      // re-resizable sizes the corner handles inline (20 px) — keep that as the grab area and draw a
+      // small 8 px dot in its middle.
       resizeHandleClasses={{
-        bottomRight: "bg-primary w-2 h-2 rounded-full",
-        bottomLeft:  "bg-primary w-2 h-2 rounded-full",
-        topRight:    "bg-primary w-2 h-2 rounded-full",
-        topLeft:     "bg-primary w-2 h-2 rounded-full",
+        bottomRight: RESIZE_HANDLE_CLASS,
+        bottomLeft:  RESIZE_HANDLE_CLASS,
+        topRight:    RESIZE_HANDLE_CLASS,
+        topLeft:     RESIZE_HANDLE_CLASS,
       }}
       className={cn(
         "group z-20",
