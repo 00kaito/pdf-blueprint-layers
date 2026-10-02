@@ -94,8 +94,8 @@ export const Canvas = () => {
   const state = { ...docState, ...uiState };
 
   // Gesture guard shared by Pencil drawing, finger panning and two-finger zoom.
-  const drawGuardRef = useRef({ tool: state.tool, isDrawing });
-  drawGuardRef.current = { tool: state.tool, isDrawing: isDrawing || measure.isMeasuring || marquee.isSelecting };
+  const drawGuardRef = useRef({ tool: state.tool, stylusOnly: state.stylusOnly, isDrawing });
+  drawGuardRef.current = { tool: state.tool, stylusOnly: state.stylusOnly, isDrawing: isDrawing || measure.isMeasuring || marquee.isSelecting };
   const fingerPan = useFingerPan(
     scrollRef as React.RefObject<HTMLDivElement>,
     state.stylusOnly && isStrokeTool(state.tool),
@@ -112,16 +112,30 @@ export const Canvas = () => {
     // `touchType` is Safari-only and missing from the DOM typings.
     const isStylus = (e: TouchEvent) =>
       Array.from(e.changedTouches).some(t => (t as Touch & { touchType?: string }).touchType === 'stylus');
+    // Safety net for iPadOS Safari, which may still scroll / zoom a scrolling container despite
+    // `touch-action: none` — and then cancels the pointer (pointercancel), dropping the stroke.
+    // Cancelling the touch events does not stop pointer events, so the tools keep working.
     const onTouchStart = (e: TouchEvent) => {
-      if (!isStylus(e) || drawGuardRef.current.tool !== 'select') return;
-      const { tool } = drawGuardRef.current;
-      // In the select tool only on empty canvas (a selection rectangle) — objects and buttons keep their taps.
-      const onEmptyCanvas = tool === 'select' && !(e.target as Element).closest(MARQUEE_IGNORE);
-      if (onEmptyCanvas) e.preventDefault();
+      const { tool, stylusOnly } = drawGuardRef.current;
+      // Controls on the plan (calibration length dialog, tape ✕) keep their taps and focus.
+      if ((e.target as Element).closest('button, input, textarea, select, a, [role="dialog"], [data-no-marquee]')) return;
+      if (isStrokeTool(tool)) {
+        // A stylus always draws; a single finger draws unless stylus-only (then useFingerPan pans).
+        // Two fingers are usePinchZoom's (it cancels its own touchmoves).
+        if (isStylus(e) || (!stylusOnly && e.touches.length === 1)) e.preventDefault();
+        return;
+      }
+      // Select tool: a stylus on empty canvas draws a selection rectangle — objects and buttons keep their taps.
+      if (tool === 'select' && isStylus(e) && !(e.target as Element).closest(MARQUEE_IGNORE)) e.preventDefault();
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (drawGuardRef.current.isDrawing && e.cancelable) e.preventDefault();
     };
     scroller.addEventListener('touchstart', onTouchStart, { passive: false });
+    scroller.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => {
       scroller.removeEventListener('touchstart', onTouchStart);
+      scroller.removeEventListener('touchmove', onTouchMove);
     };
   }, []);
   const mousePosRef = useRef({ x: 0, y: 0 });

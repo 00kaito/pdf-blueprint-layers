@@ -69,6 +69,11 @@ export const useFingerPan = (
       touches.delete(e.pointerId);
       if (pan?.id === e.pointerId) stopPan();
     };
+    // Only the scroller losing its capture ends the pan — Safari also fires this for the implicit
+    // capture on the element first touched when we take the capture over (that is not an end).
+    const onLostCapture = (e: PointerEvent) => {
+      if (e.target === scroller && pan?.id === e.pointerId) stopPan();
+    };
 
     // Capture phase runs before React's canvas handler, so a finger assigned to panning cannot also
     // start a tool. Pen events pass through unchanged.
@@ -76,13 +81,13 @@ export const useFingerPan = (
     window.addEventListener('pointermove', onPointerMove, {passive: false});
     window.addEventListener('pointerup', onPointerEnd);
     window.addEventListener('pointercancel', onPointerEnd);
-    window.addEventListener('lostpointercapture', onPointerEnd);
+    window.addEventListener('lostpointercapture', onLostCapture);
     return () => {
       scroller.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerEnd);
       window.removeEventListener('pointercancel', onPointerEnd);
-      window.removeEventListener('lostpointercapture', onPointerEnd);
+      window.removeEventListener('lostpointercapture', onLostCapture);
       pan = null;
       touches.clear();
     };

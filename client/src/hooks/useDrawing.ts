@@ -24,6 +24,8 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
   /** Pointer that owns the current stroke; other pointers (e.g. a resting palm) are ignored. */
   const pointerIdRef = useRef<number | null>(null);
   const pointerTypeRef = useRef<string>('');
+  /** Element we set pointer capture on — only losing *that* capture ends the stroke. */
+  const captureElRef = useRef<Element | null>(null);
 
   // Latest values for the window listeners, which live for the whole stroke.
   const snapshot = () => ({
@@ -54,7 +56,10 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     // Do not rely on Safari's implicit pointer capture. Apple Pencil events can otherwise be
     // retargeted when the tip crosses a PDF/SVG overlay boundary.
     if (e.pointerType !== 'mouse') {
-      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported / already released */ }
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        captureElRef.current = e.currentTarget;
+      } catch { /* unsupported / already released */ }
     }
     pointerIdRef.current = e.pointerId;
     pointerTypeRef.current = e.pointerType;
@@ -97,6 +102,7 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
       const { activeLayerId, pdfCanvasHeight, color, strokeWidth, dispatch } = latest.current;
       pointerIdRef.current = null;
       pointerTypeRef.current = '';
+      captureElRef.current = null;
       pointsRef.current = [];
       setIsDrawing(false);
       setDrawingPath('');
@@ -120,7 +126,12 @@ export const useDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
     // The browser took over the pointer (e.g. started scrolling) — drop the unfinished stroke.
     const handleCancel = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(false); };
 
-    const handleLostCapture = (e: PointerEvent) => { if (e.pointerId === pointerIdRef.current) finish(false); };
+    // iPadOS Safari gives a touch / Pencil an implicit capture on the element first touched (the PDF
+    // canvas, an SVG layer…). Taking the capture over to the scroller fires lostpointercapture on
+    // *that* element — it must not end the stroke, or nothing can ever be drawn on a real iPad.
+    const handleLostCapture = (e: PointerEvent) => {
+      if (e.pointerId === pointerIdRef.current && e.target === captureElRef.current) finish(false);
+    };
     const handleBlur = () => { if (pointerIdRef.current !== null) finish(false); };
 
     window.addEventListener('pointermove', handleMove);

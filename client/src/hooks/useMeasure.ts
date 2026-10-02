@@ -21,6 +21,8 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
   /** Calibration line waiting for the user to type its real length. */
   const [pendingCalibration, setPendingCalibration] = useState<MeasureLine | null>(null);
   const pointerRef = useRef<{ id: number; type: string } | null>(null);
+  /** Element we set pointer capture on — only losing *that* capture cancels the line. */
+  const captureElRef = useRef<Element | null>(null);
   const lineRef = useRef<MeasureLine | null>(null);
 
   const latest = useRef({ scale: uiState.scale, tool: uiState.tool, straight: uiState.drawStraight, hasTape: !!uiState.measureTape, dispatch });
@@ -66,7 +68,10 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     if (!start) return;
     e.preventDefault();
     if (e.pointerType !== 'mouse') {
-      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported / already released */ }
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        captureElRef.current = e.currentTarget;
+      } catch { /* unsupported / already released */ }
     }
     pointerRef.current = { id: e.pointerId, type: e.pointerType };
     updateLine({ a: start, b: start });
@@ -77,6 +82,7 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     const finish = (commit: boolean) => {
       const current = lineRef.current;
       pointerRef.current = null;
+      captureElRef.current = null;
       setIsMeasuring(false);
       const { scale, tool, dispatch } = latest.current;
       const tooShort = !current || segmentLength(current.a, current.b) * scale < MIN_SCREEN_LENGTH;
@@ -105,7 +111,11 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     };
     const handleUp = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(true); };
     const handleCancel = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(false); };
-    const handleLostCapture = (e: PointerEvent) => { if (e.pointerId === pointerRef.current?.id) finish(false); };
+    // Safari's implicit capture on the element first touched is lost when we capture on the scroller —
+    // that is not a cancel (see useDrawing).
+    const handleLostCapture = (e: PointerEvent) => {
+      if (e.pointerId === pointerRef.current?.id && e.target === captureElRef.current) finish(false);
+    };
     const handleBlur = () => { if (pointerRef.current) finish(false); };
     // A second finger joining a finger drag means a pinch, not a measurement.
     const handleOtherDown = (e: PointerEvent) => {
