@@ -14,7 +14,7 @@ const hintFor = (tool: string, hasScale: boolean, touch: boolean, stylusOnly: bo
   const tap = stylusOnly ? 'Tap with the stylus' : touch ? 'Tap' : 'Click';
   switch (tool) {
     case 'select': return touch
-      ? 'Tap = select, then drag to move · double tap = clone · long press = settings · ⟳ tap = 45°'
+      ? 'Tap = select, then drag to move · ⧉ next to it = duplicate · long press = settings · ⟳ tap = 45°'
       : 'Drag on empty space = select area · Shift = 0.5 ft steps · Ctrl = no snapping · Space + drag = pan';
     case 'draw': return touch
       ? `${pen}Draw · ${pinch}`
@@ -32,6 +32,9 @@ const hintFor = (tool: string, hasScale: boolean, touch: boolean, stylusOnly: bo
       ? 'Drag the overlay to align it · tap Done when finished'
       : 'Drag the overlay to align it · arrow keys nudge · Esc = done';
     case 'stamp': return `${tap} to place the next numbered object`;
+    case 'route': return touch
+      ? `${tap} the control points of the cable route · start / end on a rack or another route · tap the last point again = done`
+      : 'Click control points (runs are kept straight) · start / end on a rack or route · double click / Enter = done · Backspace = undo point';
     default: return null;
   }
 };

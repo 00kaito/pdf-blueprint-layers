@@ -4,6 +4,7 @@ import {saveAs} from 'file-saver';
 import JSZip from 'jszip';
 import {
     degrees,
+    LineCapStyle,
     PDFDocument,
     PDFName,
     PDFStream,
@@ -18,6 +19,7 @@ import {getPhysicalCoords, getVisualDimensions, hexToRgb} from '@/core/pdf-math'
 import {svgToPng} from '@/core/svg-utils';
 import {tintImage} from '@/core/flood-fill';
 import {buildIconPath} from '@/core/icon-shapes';
+import {LV_ICON_GRID, LV_ICONS} from '@/core/lv-icons';
 import {DEFAULT_LABEL_POSITION, getLabelAnchor, getLeaderLine} from '@/core/label-position';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {useProjectList} from '@/hooks/useProjects';
@@ -105,6 +107,8 @@ export const useExport = () => {
       overlayOpacity: docState.overlayOpacity,
       overlayOffset: docState.overlayOffset,
       measureCalibration: docState.measureCalibration,
+      lvSettings: docState.lvSettings,
+      cableRoutes: docState.cableRoutes,
     }, null, 2);
 
     zip.file('project.json', projectData);
@@ -292,7 +296,15 @@ export const useExport = () => {
           const offX = (scaledWidth - minSide) / 2;
           const offY = (scaledHeight - minSide) / 2;
 
-          if (obj.content === 'circle') {
+          const lvIcon = LV_ICONS[obj.content || ''];
+          if (lvIcon) {
+             // SVG grid (y down) scaled into the square box; pdf-lib flips y, so the origin is the box's top-left.
+             // Line width is in grid units, keeping the on-screen stroke proportion.
+             page.drawSvgPath(lvIcon.d, {
+                x: offX, y: offY + minSide, scale: minSide / LV_ICON_GRID,
+                borderColor: color, borderWidth: 2, borderLineCap: LineCapStyle.Round,
+             });
+          } else if (obj.content === 'circle') {
              page.drawEllipse({ x: scaledWidth / 2, y: scaledHeight / 2, xScale: minSide / 2, yScale: minSide / 2, borderColor: color, borderWidth: 2 });
           } else {
              const pathData = buildIconPath(obj.content || 'square', scaledWidth, scaledHeight, minSide, offX, offY);

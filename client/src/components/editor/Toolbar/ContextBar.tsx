@@ -7,6 +7,7 @@ import {useDocument, useUI} from '@/lib/editor-context';
 import {useCurrentUser} from '@/hooks/useAuth';
 import {feetPerUnit, formatFeet, formatFeetInches, segmentLength} from '@/core/measure';
 import {cn} from '@/lib/utils';
+import {effectiveRouteRack, getRacks, rackColorMap, rackLabel, SHARED_ROUTE_COLOR} from '@/core/cable-routing';
 import {ObjectPropertyEditor} from './ObjectPropertyEditor';
 import {BRUSH_SIZE_STEP, MAX_BRUSH_SIZE, MIN_BRUSH_SIZE} from './ToolSelector';
 
@@ -16,6 +17,7 @@ const TOOL_NAMES: Record<string, string> = {
   measure: 'Measuring tape',
   calibrate: 'Scale probe',
   'pan-overlay': 'Overlay alignment',
+  route: 'Cable route',
 };
 
 /**
@@ -241,6 +243,42 @@ export const ContextBar = () => {
             </Button>
           )}
         </div>
+    );
+  } else if (uiState.tool === 'route') {
+    const racks = getRacks(docState.objects);
+    const colors = rackColorMap(docState.objects);
+    const current = effectiveRouteRack(uiState.routeRackId, racks);
+    const options = [
+      ...racks.map(r => ({ id: r.id as string, label: rackLabel(racks, r.id), color: colors.get(r.id)! })),
+      { id: 'shared', label: 'Shared (all IDFs)', color: SHARED_ROUTE_COLOR },
+    ];
+    content = (
+      <div className="flex items-center gap-2 text-xs" data-testid="route-inline-settings">
+        <span className="text-muted-foreground whitespace-nowrap">Route for</span>
+        {racks.length === 0 && (
+          <span className="text-amber-600 font-medium whitespace-nowrap">no Rack / IDF on the plan yet —</span>
+        )}
+        <div className="flex items-center gap-1">
+          {options.map(o => {
+            const active = (current ?? 'shared') === o.id;
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => dispatch({ type: 'SET_ROUTE_RACK', payload: o.id })}
+                className={cn("h-6 rounded-full border px-2 font-semibold whitespace-nowrap flex items-center gap-1", !active && "bg-background")}
+                style={active ? { backgroundColor: o.color, borderColor: o.color, color: 'white' } : { borderColor: o.color, color: o.color }}
+                data-testid={`route-for-${o.id}`}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: active ? 'white' : o.color }} />
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+        <span className="text-muted-foreground whitespace-nowrap">· cables of this IDF follow only its routes (and shared ones)</span>
+        <InputModeSwitch />
+      </div>
     );
   } else if (uiState.tool === 'pan-overlay') {
     content = (

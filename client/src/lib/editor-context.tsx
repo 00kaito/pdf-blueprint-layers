@@ -3,6 +3,7 @@ import {DocumentState, EditorAction, EditorObject, EditorState, UIState} from '.
 import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 import {createInitialHistory, HistoryAction, HistoryEntry, withHistory} from './history';
+import {DEFAULT_LV_SETTINGS, deviceKey, normalizeLvSettings} from '@/core/lv-icons';
 
 /** Every paint-bucket fill lands in this layer. */
 export const FILL_LAYER_NAME = 'Colors';
@@ -32,6 +33,18 @@ const nextFreeLabel = (name: string, taken: Set<string>) => {
     label = `${prefix}${String(n).padStart(digits.length, '0')}${suffix}`;
   } while (taken.has(label));
   return label;
+};
+
+/** Marking an object RELOCATE remembers where it stands (once); any other change value forgets it. */
+const applyObjectUpdates = (o: EditorObject, updates: Partial<EditorObject>): EditorObject => {
+  const next = { ...o, ...updates };
+  if (!('change' in updates) || 'changeOrigin' in updates) return next;
+  if (updates.change === 'RELOCATE') {
+    if (!o.changeOrigin) next.changeOrigin = { x: o.x, y: o.y };
+  } else {
+    delete next.changeOrigin;
+  }
+  return next;
 };
 
 const clampOverlayOffset = (offset: { x: number; y: number }) => ({
@@ -100,7 +113,9 @@ const initialDocumentState: DocumentState = {
   },
   customIcons: [],
   pdfCanvasHeight: CANVAS_BASE_HEIGHT,
-  measureCalibration: null
+  measureCalibration: null,
+  lvSettings: DEFAULT_LV_SETTINGS,
+  cableRoutes: []
 };
 
 const initialUIState: UIState = {
@@ -111,6 +126,10 @@ const initialUIState: UIState = {
   scrollPos: { x: 0, y: 0 },
   tool: 'select',
   showStatusColors: false,
+  showCableRoutes: true,
+  selectedRouteId: null,
+  routeRackId: null,
+  cableSummaryOpen: false,
   objectDetailsOpen: false,
   isImporting: false,
   fillColor: '#3b82f6',
@@ -147,10 +166,20 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         layers: [{ id: defaultLayerId, name: 'Layer 1', visible: true, locked: false, order: 0, opacity: 1 }],
         activeLayerId: defaultLayerId,
         objects: [],
+        cableRoutes: [],
+        selectedRouteId: null,
         currentPage: 1,
         pdfCanvasHeight: CANVAS_BASE_HEIGHT,
         measureCalibration: null,
         measureTape: null,
+      };
+    case 'REPLACE_PDF':
+      return {
+        ...state,
+        pdfFile: action.payload.file,
+        pdfFileId: action.payload.fileId,
+        // The new file may have fewer pages.
+        currentPage: 1,
       };
     case 'SET_PDF_DIMENSIONS':
       return {
@@ -224,13 +253,21 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         selectedObjectIds: newSelectedObjectIds
       };
     }
-    case 'ADD_OBJECT':
-      return { ...state, objects: [...state.objects, action.payload] };
+    case 'ADD_OBJECT': {
+      // Every way of placing a device (icon button, stamp, library) gets its type's cables.
+      const key = action.payload.cables ? null : deviceKey(action.payload);
+      const defaults = key ? state.lvSettings.cableDefaults[key] : undefined;
+      const object = defaults ? { ...action.payload, cables: defaults.map(c => ({ ...c })) } : action.payload;
+      return { ...state, objects: [...state.objects, object] };
+    }
     case 'DUPLICATE_OBJECT': {
       const source = state.objects.find(o => o.id === action.payload.id);
       if (!source || source.isFill || source.type === 'path') return state;
       // Same device settings as copy / paste: no photos, comments or notes of the original.
-      const { photos, comments, notes, issueDescription, statusUpdatedAt, statusUpdatedBy, ...rest } = source;
+      const {
+        photos, comments, notes, issueDescription, statusUpdatedAt, statusUpdatedBy,
+        change, changeOrigin, changeNote, changeUpdatedAt, changeUpdatedBy, ...rest
+      } = source;
       // Right of the original; to its left / below when that runs off the page.
       let x = source.x + source.width + DUPLICATE_GAP;
       let y = source.y;
@@ -254,14 +291,14 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return {
         ...state,
         objects: state.objects.map((o) =>
-          o.id === action.payload.id ? { ...o, ...action.payload.updates } : o
+          o.id === action.payload.id ? applyObjectUpdates(o, action.payload.updates) : o
         ),
       };
     case 'UPDATE_OBJECTS':
       return {
         ...state,
         objects: state.objects.map((o) =>
-          action.payload.ids.includes(o.id) ? { ...o, ...action.payload.updates } : o
+          action.payload.ids.includes(o.id) ? applyObjectUpdates(o, action.payload.updates) : o
         ),
       };
     case 'RENAME_OBJECTS':
@@ -285,7 +322,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { 
         ...state, 
         selectedObjectIds: action.payload ? [action.payload] : [],
-        objectDetailsOpen: action.payload ? state.objectDetailsOpen : false 
+        selectedRouteId: null,
+        objectDetailsOpen: action.payload ? state.objectDetailsOpen : false
       };
     case 'TOGGLE_OBJECT_SELECTION':
       return {
@@ -297,7 +335,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
     case 'SET_SELECTION':
       return { ...state, selectedObjectIds: action.payload };
     case 'SET_TOOL':
-      return { ...state, tool: action.payload, selectedObjectIds: [] };
+      return { ...state, tool: action.payload, selectedObjectIds: [], selectedRouteId: null };
     case 'OPEN_OBJECT_DETAILS':
       return { ...state, objectDetailsOpen: true };
     case 'CLOSE_OBJECT_DETAILS':
@@ -316,10 +354,49 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       const activeLayerId = requestedLayerId && layers.some(layer => layer.id === requestedLayerId)
         ? requestedLayerId
         : layers[0]?.id ?? null;
-      return { ...state, measureCalibration: null, measureTape: null, ...action.payload, layers, activeLayerId };
+      return {
+        ...state, measureCalibration: null, measureTape: null, ...action.payload, layers, activeLayerId,
+        lvSettings: normalizeLvSettings(action.payload.lvSettings),
+        cableRoutes: action.payload.cableRoutes ?? [],
+        selectedRouteId: null,
+      };
     }
+    case 'ADD_CABLE_ROUTE':
+      return { ...state, cableRoutes: [...state.cableRoutes, action.payload] };
+    case 'DELETE_CABLE_ROUTE':
+      return {
+        ...state,
+        cableRoutes: state.cableRoutes.filter(r => r.id !== action.payload),
+        selectedRouteId: state.selectedRouteId === action.payload ? null : state.selectedRouteId,
+      };
+    case 'SET_CABLE_ROUTE_RACK':
+      return {
+        ...state,
+        cableRoutes: state.cableRoutes.map(r => r.id === action.payload.id ? { ...r, rackId: action.payload.rackId } : r),
+      };
+    case 'SET_ROUTE_RACK':
+      return { ...state, routeRackId: action.payload };
+    case 'SELECT_CABLE_ROUTE':
+      return { ...state, selectedRouteId: action.payload, selectedObjectIds: action.payload ? [] : state.selectedObjectIds };
+    case 'TOGGLE_CABLE_ROUTES':
+      return { ...state, showCableRoutes: !state.showCableRoutes };
+    case 'SET_CABLE_SUMMARY_OPEN':
+      return { ...state, cableSummaryOpen: action.payload };
     case 'SET_MEASURE_CALIBRATION':
       return { ...state, measureCalibration: action.payload };
+    case 'SET_OBJECT_CABLES': {
+      const { ids, cables } = action.payload;
+      const cableDefaults = { ...state.lvSettings.cableDefaults };
+      const objects = state.objects.map(o => {
+        if (!ids.includes(o.id)) return o;
+        const key = deviceKey(o);
+        if (key) cableDefaults[key] = cables;
+        return { ...o, cables };
+      });
+      return { ...state, objects, lvSettings: { ...state.lvSettings, cableDefaults } };
+    }
+    case 'SET_LV_SETTINGS':
+      return { ...state, lvSettings: { ...state.lvSettings, ...action.payload } };
     case 'REORDER_LAYERS': {
       const { sourceIndex, destinationIndex } = action.payload;
       const result = Array.from(state.layers);
@@ -349,6 +426,7 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         color: o.color,
         status: o.status,
         metadata: o.metadata ? { ...o.metadata } : undefined,
+        cables: o.cables,
         strokeWidth: o.strokeWidth,
         fontSize: o.fontSize,
         fontWeight: o.fontWeight,
@@ -599,7 +677,9 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     customIcons: state.customIcons,
     pdfCanvasHeight: state.pdfCanvasHeight,
     measureCalibration: state.measureCalibration,
-  }), [state.measureCalibration, state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.overlayOffset, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight]);
+    lvSettings: state.lvSettings,
+    cableRoutes: state.cableRoutes,
+  }), [state.measureCalibration, state.lvSettings, state.cableRoutes, state.projectId, state.pdfFileId, state.overlayPdfFileId, state.pdfFile, state.overlayPdfFile, state.overlayOpacity, state.overlayOffset, state.layers, state.objects, state.clipboardObjects, state.autoNumbering, state.exportSettings, state.customIcons, state.pdfCanvasHeight]);
 
   const uiState = useMemo(() => ({
     selectedObjectIds: state.selectedObjectIds,
@@ -609,6 +689,10 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     scrollPos: state.scrollPos,
     tool: state.tool,
     showStatusColors: state.showStatusColors,
+    showCableRoutes: state.showCableRoutes,
+    selectedRouteId: state.selectedRouteId,
+    routeRackId: state.routeRackId,
+    cableSummaryOpen: state.cableSummaryOpen,
     objectDetailsOpen: state.objectDetailsOpen,
     isImporting: state.isImporting,
     fillColor: state.fillColor,
@@ -620,7 +704,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.objectDetailsOpen, state.isImporting]);
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

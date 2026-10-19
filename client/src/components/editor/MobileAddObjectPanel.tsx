@@ -14,6 +14,8 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LV_ICON_TYPES, LV_ICONS } from '@/core/lv-icons';
+import { LvIcon } from '@/components/editor/LvIcon';
 import {
   Select,
   SelectContent,
@@ -101,6 +103,11 @@ export const MobileAddObjectPanel: React.FC<MobileAddObjectPanelProps> = ({ onCl
           <Button variant="outline" className="h-11 w-11 p-0" onClick={() => handleIconClick('arrow-right')}>
             <ArrowRight className="h-5 w-5" />
           </Button>
+          {LV_ICON_TYPES.map(icon => (
+            <Button key={icon} variant="outline" className="h-11 w-11 p-0" onClick={() => handleIconClick(icon)} title={LV_ICONS[icon].label} aria-label={LV_ICONS[icon].label}>
+              <LvIcon type={icon} className="h-5 w-5" />
+            </Button>
+          ))}
           <Button variant="outline" className="h-11 w-11 p-0" onClick={handleTextClick}>
             <Type className="h-5 w-5" />
           </Button>

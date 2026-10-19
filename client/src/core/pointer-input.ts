@@ -4,7 +4,7 @@ export const STROKE_TOOLS = ['draw', 'calibrate', 'measure'] as const;
 export const isStrokeTool = (tool: string) => (STROKE_TOOLS as readonly string[]).includes(tool);
 
 /** Tools that act on a tap / click on the blueprint (in stylus-only mode a finger tap does not). */
-export const TAP_TOOLS = ['fill', 'stamp'] as const;
+export const TAP_TOOLS = ['fill', 'stamp', 'route'] as const;
 
 export const isTapTool = (tool: string) => (TAP_TOOLS as readonly string[]).includes(tool);
 

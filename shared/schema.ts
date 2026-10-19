@@ -73,6 +73,10 @@ export const projectStateSchema = z.object({
   measureCalibration: z.object({
     x1: z.number(), y1: z.number(), x2: z.number(), y2: z.number(), feet: z.number().positive(),
   }).nullable().optional(),
+  lvSettings: z.any().optional(),
+  cableRoutes: z.array(z.object({
+    id: z.string(), points: z.array(z.object({ x: z.number(), y: z.number() })), rackId: z.string().optional(),
+  })).optional(),
   pdfFileId: z.string().optional().nullable(),
   overlayPdfFileId: z.string().optional().nullable(),
   activeLayerId: z.string().optional().nullable(),

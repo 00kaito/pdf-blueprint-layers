@@ -7,6 +7,36 @@ export type Layer = {
   opacity: number; // 0–1
 };
 
+export type PlanChange = 'RELOCATE' | 'REMOVE' | 'NEW' | 'ON_HOLD';
+
+export type CableType = 'CAT6' | 'SPEAKER' | 'POWER' | 'COAX' | 'FIBER' | 'OTHER';
+
+export type CableSpec = { type: CableType; count: number };
+
+/** Project-wide low-voltage settings used by the cable summary. */
+export type LvSettings = {
+  /** Cables a newly placed device gets, by icon type (`EditorObject.content`); updated whenever a device's cables are edited. */
+  cableDefaults: Record<string, CableSpec[]>;
+  portsPerPanel: 24 | 48;
+  /** Service loop left in the rack, per cable (ft). */
+  serviceLoopFt: number;
+  /** Slack at the device incl. the drop from the ceiling, per cable (ft). */
+  deviceSlackFt: number;
+  /** Cable sold per box / reel (ft). */
+  boxLengthFt: number;
+};
+
+/**
+ * Cable route (tray / J-hook path) drawn on the plan: control points in unscaled canvas units, joined
+ * by straight horizontal / vertical runs. Cables follow routes to their rack.
+ */
+export type CableRoute = {
+  id: string;
+  points: { x: number; y: number }[];
+  /** Rack / IDF whose cables use this route; unset = shared by all racks. */
+  rackId?: string;
+};
+
 export type EditorObject = {
   id: string;
   type: 'text' | 'image' | 'icon' | 'path';
@@ -28,9 +58,10 @@ export type EditorObject = {
   metadata?: {
     socketId?: string;
     patchPanelPort?: string;
-    purpose?: 'Data' | 'Mic' | 'CAM' | 'TV' | 'Other';
     switchId?: string;
     cableId?: string;
+    /** Rack the cables home-run to; unset = the rack with the shortest run. */
+    rackId?: string;
   };
   color?: string;
   strokeWidth?: number;
@@ -43,6 +74,15 @@ export type EditorObject = {
   statusUpdatedAt?: string;
   statusUpdatedBy?: string;
   issueDescription?: string;
+  /** Design change, independent of the install progress in `status`. */
+  change?: PlanChange;
+  /** Where the object stood when it was marked RELOCATE — drawn as a ghost with an arrow to the new spot. */
+  changeOrigin?: { x: number; y: number };
+  changeNote?: string;
+  changeUpdatedAt?: string;
+  changeUpdatedBy?: string;
+  /** Cables home-run from this point to its rack. */
+  cables?: CableSpec[];
   comments?: string[];
   notes?: string;
   /** Area filled with the paint-bucket tool (content = colour PNG mask); lives in the Colors layer. */
@@ -91,6 +131,8 @@ export type DocumentState = {
   customIcons: { id: string; url: string; name: string }[];
   pdfCanvasHeight: number;
   measureCalibration: MeasureCalibration | null;
+  lvSettings: LvSettings;
+  cableRoutes: CableRoute[];
 };
 
 export type UIState = {
@@ -101,7 +143,8 @@ export type UIState = {
   scrollPos: { x: number; y: number };
   /** 'pan-overlay' = hand tool dragging the overlay blueprint to align it with the main one. */
   /** 'calibrate' = set the measuring scale from a known dimension; 'measure' = measuring tape. */
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure';
+  /** 'route' = draw cable routes (click control points). */
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'route';
   /** Paint-bucket settings (hex colour, 0–1 opacity). */
   fillColor: string;
   fillOpacity: number;
@@ -119,6 +162,13 @@ export type UIState = {
   /** Snap dragged objects to the edges / centres of nearby objects. Remembered per device. */
   snapEnabled: boolean;
   showStatusColors: boolean;
+  /** Cable routes drawn on the plan (always shown while the route tool is active). */
+  showCableRoutes: boolean;
+  /** Cable route selected for deleting / extending. */
+  selectedRouteId: string | null;
+  /** IDF the route tool draws for: a rack id, 'shared', or null = the first rack. */
+  routeRackId: string | 'shared' | null;
+  cableSummaryOpen: boolean;
   objectDetailsOpen: boolean;
   isImporting: boolean;
 };
@@ -129,6 +179,8 @@ export type EditorAction =
   | { type: 'SET_PROJECT_ID'; payload: string | null }
   | { type: 'SET_PDF_FILE_IDS'; payload: { pdfFileId: string | null; overlayPdfFileId: string | null } }
   | { type: 'SET_PDF'; payload: File }
+  /** New revision of the blueprint: swaps the PDF, keeps layers, objects and the measuring scale. */
+  | { type: 'REPLACE_PDF'; payload: { file: File; fileId: string | null } }
   | { type: 'SET_OVERLAY_PDF'; payload: File | null }
   | { type: 'SET_OVERLAY_OPACITY'; payload: number }
   | { type: 'SET_OVERLAY_OFFSET'; payload: { x: number; y: number } }
@@ -164,6 +216,16 @@ export type EditorAction =
   | { type: 'INCREMENT_COUNTER' }
   | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<DocumentState['exportSettings']> }
   | { type: 'SET_MEASURE_CALIBRATION'; payload: MeasureCalibration | null }
+  /** Sets the cables of objects and makes them the default for each object's device type. */
+  | { type: 'SET_OBJECT_CABLES'; payload: { ids: string[]; cables: CableSpec[] } }
+  | { type: 'SET_LV_SETTINGS'; payload: Partial<Omit<LvSettings, 'cableDefaults'>> }
+  | { type: 'ADD_CABLE_ROUTE'; payload: CableRoute }
+  | { type: 'DELETE_CABLE_ROUTE'; payload: string }
+  | { type: 'SET_CABLE_ROUTE_RACK'; payload: { id: string; rackId: string | undefined } }
+  | { type: 'SET_ROUTE_RACK'; payload: UIState['routeRackId'] }
+  | { type: 'SELECT_CABLE_ROUTE'; payload: string | null }
+  | { type: 'TOGGLE_CABLE_ROUTES' }
+  | { type: 'SET_CABLE_SUMMARY_OPEN'; payload: boolean }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }
   /** Drops the legacy inline icons once they are in the shared library. */

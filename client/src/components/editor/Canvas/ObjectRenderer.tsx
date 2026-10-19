@@ -1,6 +1,6 @@
-import React, {useLayoutEffect, useRef, useState, memo} from 'react';
+import React, {useEffect, useLayoutEffect, useRef, useState, memo} from 'react';
 import {Rnd} from 'react-rnd';
-import {ArrowRight, Camera, Circle, Heart, Hexagon, RotateCw, Square, Star, Triangle} from 'lucide-react';
+import {ArrowRight, Camera, Circle, CopyPlus, Heart, Hexagon, RotateCw, Square, Star, Triangle} from 'lucide-react';
 import {useDocumentDispatch, useUIDispatch} from '@/lib/editor-context';
 import {useTouchGestures} from '@/hooks/useTouchGestures';
 import {cn} from '@/lib/utils';
@@ -10,6 +10,9 @@ import {DEFAULT_LABEL_POSITION, getLeaderLine, LabelPosition} from '@/core/label
 import {Box, Guide, SNAP_DISTANCE_PX, snapBox, stepPoint} from '@/core/snapping';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {dragStore} from '@/lib/drag-store';
+import {LV_ICONS} from '@/core/lv-icons';
+import {LvIcon} from '@/components/editor/LvIcon';
+import {PLAN_CHANGE_BY_ID} from '@/core/plan-change';
 import {v4 as uuidv4} from 'uuid';
 
 /** Label placement around the object box; the label never moves the object itself. */
@@ -22,6 +25,9 @@ const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {
 
 /** Corner resize handle: transparent 20 px grab area with an 8 px dot centred in it. */
 const RESIZE_HANDLE_CLASS = "after:absolute after:inset-[6px] after:rounded-full after:bg-primary after:ring-1 after:ring-white";
+
+/** Touch: the rotate button ignores taps this long after the object was selected. */
+const ROTATE_GUARD_MS = 500;
 
 /** Pointer travel (px) before a press on the label counts as a drag rather than a click. */
 const LABEL_DRAG_THRESHOLD = 3;
@@ -47,6 +53,8 @@ interface ObjectRendererProps {
    * object (tap / long press) moves. The rotate handle turns in 45° steps per tap.
    */
   touchLayout?: boolean;
+  /** Colour of the IDF this device home-runs to (or of the rack itself); shown when there are several IDFs. */
+  idfColor?: string;
 }
 
 /** Client coordinates of a mouse or touch event. */
@@ -59,6 +67,7 @@ const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min)
 
 const IconRenderer = ({ iconType, color }: { iconType: string, color?: string }) => {
   const props = { className: "w-full h-full", style: { color } };
+  if (LV_ICONS[iconType]) return <LvIcon type={iconType} {...props} />;
   switch (iconType) {
     case 'circle': return <Circle {...props} />;
     case 'triangle': return <Triangle {...props} />;
@@ -108,6 +117,7 @@ export const ObjectRenderer = memo(({
   pageHeight,
   dragStep,
   touchLayout = false,
+  idfColor,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -127,6 +137,19 @@ export const ObjectRenderer = memo(({
   // Paint-bucket fills are traced from the blueprint, so they stay pinned to it.
   const isFill = !!obj.isFill;
   const lockGeometry = isFill || !!disableMovement;
+  const canDuplicate = !isTech && !disableMovement && !layer.locked && !isFill && obj.type !== 'path' && tool === 'select';
+
+  /**
+   * When the object was selected. The rotate button appears under the finger's next tap, so on touch
+   * it ignores taps right after selecting (the second tap of a double tap used to rotate the object).
+   */
+  const selectedAtRef = useRef(0);
+  useEffect(() => { if (isSelected) selectedAtRef.current = Date.now(); }, [isSelected]);
+
+  const duplicate = () => {
+    ignoreClickUntilRef.current = Date.now() + 600;
+    dispatch({ type: 'DUPLICATE_OBJECT', payload: { id: obj.id, newId: uuidv4() } });
+  };
 
   const touchGestures = useTouchGestures({
     onTap: () => {
@@ -134,12 +157,11 @@ export const ObjectRenderer = memo(({
     },
     // Double tap = clone it next to itself (label number + 1), ready to place the next device.
     onDoubleTap: () => {
-      if (isTech || disableMovement || layer.locked || isFill || tool !== 'select') {
+      if (!canDuplicate) {
         uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
         return;
       }
-      ignoreClickUntilRef.current = Date.now() + 600;
-      dispatch({ type: 'DUPLICATE_OBJECT', payload: { id: obj.id, newId: uuidv4() } });
+      duplicate();
     },
     // Long press = select it (so it can be moved) and open its settings.
     onLongPress: () => {
@@ -225,6 +247,19 @@ export const ObjectRenderer = memo(({
       )
     : null;
 
+  const planChange = obj.change && !isFill ? PLAN_CHANGE_BY_ID[obj.change] : null;
+  /** Relocation ghost: the original spot, relative to this box, and where the arrow meets the box edge. */
+  const ghost = (() => {
+    if (obj.change !== 'RELOCATE' || !obj.changeOrigin) return null;
+    const pos = dragPos ?? obj;
+    const gx = (obj.changeOrigin.x - pos.x) * scale, gy = (obj.changeOrigin.y - pos.y) * scale;
+    const dist = Math.hypot(gx, gy);
+    if (dist < Math.max(boxW, boxH)) return null;
+    // Stop the arrow at the box edge (ray from the centre towards the ghost).
+    const t = Math.min(boxW / 2 / Math.abs(gx || 1e-9), boxH / 2 / Math.abs(gy || 1e-9));
+    return { x: gx, y: gy, arrowEnd: { x: boxW / 2 + gx * t, y: boxH / 2 + gy * t } };
+  })();
+
   /** Next 45° step (from whatever angle the object has now). */
   const rotateByStep = () => {
     const next = ((Math.round((obj.rotation || 0) / 45) + 1) * 45) % 360;
@@ -240,6 +275,7 @@ export const ObjectRenderer = memo(({
     if (isTech || disableMovement) return;
     e.stopPropagation();
     e.preventDefault();
+    if (e.pointerType !== 'mouse' && Date.now() - selectedAtRef.current < ROTATE_GUARD_MS) return;
     const handle = e.currentTarget;
     const rect = handle.parentElement?.getBoundingClientRect();
     if (!rect) return;
@@ -360,7 +396,8 @@ export const ObjectRenderer = memo(({
         }
       }}
       scale={1}
-      cancel=".object-label"
+      // Not drag handles: react-draggable cancels their touchstart, which would swallow the button's click.
+      cancel=".object-label, .object-action"
       bounds="parent"
       disableDragging={lockGeometry || isTech || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
       enableResizing={isTech || lockGeometry ? {} : (!layer.locked && isSelected)}
@@ -379,10 +416,11 @@ export const ObjectRenderer = memo(({
         touchLayout && isSelected && !lockGeometry && "touch-none",
         isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         // While the bucket is active, clicks go through a fill to the blueprint (re-fill = recolour).
-        layer.locked || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
+        // Route tool: clicks reach the plan, so a route can end on a device or rack.
+        layer.locked || tool === 'route' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
       )}
       // Fills sit below regular objects and drawn paths.
-      style={{ opacity: obj.opacity ?? 1, zIndex: isSelected ? 30 : isFill ? 8 : 20 }}
+      style={{ opacity: (obj.opacity ?? 1) * (obj.change === 'REMOVE' ? 0.45 : 1), zIndex: isSelected ? 30 : isFill ? 8 : 20 }}
     >
       {isSelected && !layer.locked && !lockGeometry && (
         <div 
@@ -402,6 +440,22 @@ export const ObjectRenderer = memo(({
         >
           <RotateCw className="w-4 h-4" />
         </div>
+      )}
+      {/* Touch layout: explicit duplicate button, away from the rotate one (double tap still works). */}
+      {isSelected && touchLayout && canDuplicate && (
+        <button
+          type="button"
+          className="object-action absolute top-1/2 -translate-y-1/2 -right-14 w-10 h-10 bg-background text-foreground border border-border rounded-full flex items-center justify-center shadow-lg z-50 touch-none select-none active:scale-95"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); duplicate(); }}
+          title="Duplicate (next number)"
+          aria-label="Duplicate"
+          data-testid="duplicate-button"
+        >
+          <CopyPlus className="w-4 h-4" />
+        </button>
       )}
       
       <div 
@@ -468,6 +522,44 @@ export const ObjectRenderer = memo(({
             </div>
           )}
       </div>
+
+      {idfColor && !isFill && (
+        <div
+          className="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm z-50 pointer-events-none"
+          style={{ backgroundColor: idfColor }}
+          data-testid="idf-dot"
+        />
+      )}
+      {planChange && (
+        <div
+          className="absolute -top-2 -right-2 min-w-4 h-4 px-0.5 rounded-full border border-white shadow-sm z-50 flex items-center justify-center pointer-events-none text-[8px] font-black text-white leading-none"
+          style={{ backgroundColor: planChange.color }}
+          title={planChange.label + (obj.changeNote ? ` — ${obj.changeNote}` : '')}
+          data-testid="plan-change-badge"
+        >
+          {planChange.badge}
+        </div>
+      )}
+      {obj.change === 'REMOVE' && (
+        <svg className="absolute inset-0 overflow-visible pointer-events-none" width={boxW} height={boxH}>
+          <line x1={0} y1={0} x2={boxW} y2={boxH} stroke={planChange!.color} strokeWidth={1.5} />
+          <line x1={boxW} y1={0} x2={0} y2={boxH} stroke={planChange!.color} strokeWidth={1.5} />
+        </svg>
+      )}
+      {ghost && (
+        <svg className="absolute left-0 top-0 overflow-visible pointer-events-none" width={boxW} height={boxH}>
+          <defs>
+            <marker id={`reloc-${obj.id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M0 0L10 5L0 10z" fill={planChange!.color} />
+            </marker>
+          </defs>
+          <rect x={ghost.x} y={ghost.y} width={boxW} height={boxH} fill="none" stroke="#9ca3af" strokeWidth={1} strokeDasharray="3 2" />
+          <line
+            x1={ghost.x + boxW / 2} y1={ghost.y + boxH / 2} x2={ghost.arrowEnd.x} y2={ghost.arrowEnd.y}
+            stroke={planChange!.color} strokeWidth={1.5} strokeDasharray="4 3" markerEnd={`url(#reloc-${obj.id})`}
+          />
+        </svg>
+      )}
 
       {!isFill && leader && (
         <svg className="absolute left-0 top-0 overflow-visible pointer-events-none" width={boxW} height={boxH}>

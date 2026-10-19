@@ -164,7 +164,7 @@ SESSION_SECRET=dev-secret
 - Zoom up to 1000%, pan, and touch gestures (pinch zoom) on mobile.
 
 ### Network documentation
-- Per-object metadata: socket ID, patch-panel port, switch ID, cable ID, purpose (`Data`, `Mic`, `CAM`, `TV`, `Other`), notes and comments.
+- Per-object metadata: socket ID, patch-panel port, switch ID, cable ID, cables (type × count), IDF, notes and comments. The device type is the icon itself.
 - Object names shown as labels on the plan.
 
 ### Installation progress

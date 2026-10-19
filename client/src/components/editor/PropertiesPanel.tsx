@@ -6,7 +6,6 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Slider} from '@/components/ui/slider';
 import {Separator} from '@/components/ui/separator';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {AlertCircle, Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
@@ -14,6 +13,10 @@ import {ObjectPhotoGallery} from './ObjectPhotoGallery';
 import {ObjectComments} from './ObjectComments';
 import {LabelPositionPicker} from './LabelPositionPicker';
 import {BulkLabelInput} from './BulkLabelInput';
+import {PlanChangeSection} from './PlanChangeSection';
+import {CableEditor} from './CableEditor';
+import {RackSelect} from './RackSelect';
+import {isCableDevice} from '@/core/cable-routing';
 import {useCurrentUser} from '@/hooks/useAuth';
 
 export const PropertiesPanel = () => {
@@ -25,6 +28,7 @@ export const PropertiesPanel = () => {
   const selectedObjects = docState.objects.filter((o) => uiState.selectedObjectIds.includes(o.id));
   const isMultiSelect = selectedObjects.length > 1;
   const firstObject = selectedObjects[0];
+  const isDeviceSelection = selectedObjects.length > 0 && selectedObjects.every(isCableDevice);
 
   if (selectedObjects.length === 0) {
     return (
@@ -152,28 +156,6 @@ export const PropertiesPanel = () => {
                 </div>
               )}
 
-              {isTech ? (
-                <ReadOnlyField label="Device Type (Purpose)" value={selectedObjects.every(o => o.metadata?.purpose === firstObject.metadata?.purpose) ? (firstObject.metadata?.purpose || 'Other') : 'Mixed'} />
-              ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor="obj-purpose" className="text-xs font-medium">Device Type (Purpose)</Label>
-                  <Select 
-                    value={selectedObjects.every(o => o.metadata?.purpose === firstObject.metadata?.purpose) ? (firstObject.metadata?.purpose || 'Other') : ''} 
-                    onValueChange={(v) => handleMetadataChange('purpose', v)}
-                  >
-                    <SelectTrigger id="obj-purpose" className="h-8 text-xs">
-                      <SelectValue placeholder={isMultiSelect ? "Mixed types" : "Select type"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Data">Data</SelectItem>
-                      <SelectItem value="Mic">Mic</SelectItem>
-                      <SelectItem value="CAM">CAM</SelectItem>
-                      <SelectItem value="TV">TV</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
 
               {selectedObjects.every(o => o.type !== 'text') && (
                 <>
@@ -226,6 +208,8 @@ export const PropertiesPanel = () => {
                       Last updated: {new Date(firstObject.statusUpdatedAt).toLocaleString()} by {firstObject.statusUpdatedBy}
                     </div>
                   )}
+
+                  <PlanChangeSection objects={selectedObjects} />
                 </>
               )}
 
@@ -263,6 +247,13 @@ export const PropertiesPanel = () => {
                       />
                     </div>
                   </div>
+                </>
+              )}
+
+              {isDeviceSelection && (
+                <>
+                  <CableEditor objects={selectedObjects} readOnly={isTech} />
+                  <RackSelect objects={selectedObjects} readOnly={isTech} />
                 </>
               )}
             </div>

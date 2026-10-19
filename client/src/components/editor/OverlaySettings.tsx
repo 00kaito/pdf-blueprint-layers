@@ -1,6 +1,6 @@
 import React from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
-import {ArrowDown, ArrowLeft, ArrowRight, ArrowUp, FileText, Hand, Plus, RotateCcw, X} from 'lucide-react';
+import {ArrowDown, ArrowLeft, ArrowRight, ArrowUp, FileText, Hand, Plus, RefreshCw, RotateCcw, X} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Slider} from '@/components/ui/slider';
@@ -69,14 +69,33 @@ export const OverlaySettings = ({ onStartDrag }: {
               <span className="text-xs truncate font-medium">{state.overlayPdfFile.name}</span>
             </div>
             {!isTech && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-5 w-5 hover:text-destructive"
-                onClick={() => dispatch({ type: 'SET_OVERLAY_PDF', payload: null })}
-              >
-                <X className="w-3 h-3" />
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="ghost" size="sm" className="h-5 px-1 text-[10px]" asChild title="Replace with another PDF (new revision)">
+                  <label className="cursor-pointer" data-testid="overlay-replace">
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Replace
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = '';
+                        if (file) dispatch({ type: 'SET_OVERLAY_PDF', payload: file });
+                      }}
+                    />
+                  </label>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 hover:text-destructive"
+                  title="Remove overlay"
+                  onClick={() => dispatch({ type: 'SET_OVERLAY_PDF', payload: null })}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
             )}
           </div>
           

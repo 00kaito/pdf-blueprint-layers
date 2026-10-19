@@ -23,6 +23,11 @@ import {DrawingLayer} from './Canvas/DrawingLayer';
 import {MeasureLayer} from './Canvas/MeasureLayer';
 import {GuidesLayer} from './Canvas/GuidesLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
+import {RouteLayer} from './Canvas/RouteLayer';
+import {useRouteDrawing} from '@/hooks/useRouteDrawing';
+import {
+  computeCableRuns, getRacks, isCableDevice, rackColorMap, rackLabel, runFeet, SHARED_ROUTE_COLOR,
+} from '@/core/cable-routing';
 import {useCurrentUser} from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {useToast} from '@/hooks/use-toast';
@@ -38,6 +43,7 @@ export const TOOL_SHORTCUTS: Record<string, UIState['tool']> = {
   b: 'fill',
   m: 'measure',
   k: 'calibrate',
+  r: 'route',
 };
 
 /** Shift-drag moves objects in steps of this many feet. */
@@ -61,6 +67,7 @@ export const Canvas = () => {
   const { drawingPath, isDrawing, onPointerDown } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const measure = useMeasure(containerRef as React.RefObject<HTMLDivElement>);
   const marquee = useMarquee(containerRef as React.RefObject<HTMLDivElement>);
+  const route = useRouteDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const spacePan = useSpacePan(scrollRef as React.RefObject<HTMLDivElement>);
   const { lastPointerTypeRef } = useStylusGuidance(scrollRef as React.RefObject<HTMLDivElement>);
   const shortcutStateRef = useRef({ tool: uiState.tool, hasCalibration: !!docState.measureCalibration });
@@ -84,6 +91,39 @@ export const Canvas = () => {
       .map(o => ({ x: o.x, y: o.y, width: o.width, height: o.height }));
   }, []);
   const [, setNumPages] = useState<number>(0);
+
+  /** Cable run of the one selected device, drawn on the plan with its length. */
+  const selectedDevice = uiState.selectedObjectIds.length === 1
+    ? docState.objects.find(o => o.id === uiState.selectedObjectIds[0] && isCableDevice(o))
+    : undefined;
+  const racks = useMemo(() => getRacks(docState.objects), [docState.objects]);
+  const rackColors = useMemo(() => rackColorMap(docState.objects), [docState.objects]);
+  const rackOptions = useMemo(
+    () => racks.map(r => ({ id: r.id, label: rackLabel(racks, r.id), color: rackColors.get(r.id)! })),
+    [racks, rackColors],
+  );
+  const cableRuns = useMemo(
+    () => computeCableRuns(docState.objects, docState.cableRoutes),
+    [docState.objects, docState.cableRoutes],
+  );
+  /** With several IDFs every device shows the colour of the IDF its cables go to. */
+  const idfColorOf = (objId: string) => {
+    if (racks.length < 2) return undefined;
+    const rackId = rackColors.has(objId) ? objId : cableRuns.get(objId)?.rackId;
+    return rackId ? rackColors.get(rackId) : undefined;
+  };
+  const selectedRun = useMemo(() => {
+    if (!selectedDevice) return null;
+    const run = cableRuns.get(selectedDevice.id);
+    if (!run) return null;
+    const feet = runFeet(run, docState.measureCalibration, docState.lvSettings);
+    return {
+      path: run.path,
+      estimated: !run.routed,
+      color: rackColors.get(run.rackId) ?? '#2563eb',
+      label: `${racks.length > 1 ? `${rackLabel(racks, run.rackId)} · ` : ''}${feet !== null ? formatFeet(Math.round(feet)) : 'no scale'}${run.routed ? '' : ' (est.)'}`,
+    };
+  }, [selectedDevice, cableRuns, racks, rackColors, docState.measureCalibration, docState.lvSettings]);
 
   useEffect(() => {
     if (isTech && uiState.tool !== 'select') {
@@ -199,6 +239,8 @@ export const Canvas = () => {
 
       if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedObjectIds.length > 0) {
         dispatch({ type: 'DELETE_OBJECTS', payload: state.selectedObjectIds });
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedRouteId) {
+        dispatch({ type: 'DELETE_CABLE_ROUTE', payload: state.selectedRouteId });
       }
 
       if (e.ctrlKey || e.metaKey) {
@@ -221,7 +263,7 @@ export const Canvas = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.selectedObjectIds, dispatch, isTech]);
+  }, [state.selectedObjectIds, state.selectedRouteId, dispatch, isTech]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (isTech) return;
@@ -239,7 +281,8 @@ export const Canvas = () => {
     if (isStrokeTool(state.tool)) return;
     // Stylus only: a finger tap does not fill or stamp (it may still deselect).
     if (state.stylusOnly && isTapTool(state.tool) && lastPointerTypeRef.current === 'touch') return;
-    if (state.tool === 'fill') { handleFill(e); }
+    if (state.tool === 'route') { route.onClick(e); }
+    else if (state.tool === 'fill') { handleFill(e); }
     else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
        const rect = containerRef.current?.getBoundingClientRect();
        if (rect) {
@@ -435,6 +478,22 @@ export const Canvas = () => {
               data-testid="selection-rect"
             />
           )}
+          <RouteLayer
+            routes={state.cableRoutes}
+            scale={state.scale}
+            colors={rackColors}
+            racks={rackOptions}
+            onSetRouteRack={(id, rackId) => dispatch({ type: 'SET_CABLE_ROUTE_RACK', payload: { id, rackId } })}
+            drawingColor={(route.rackId && rackColors.get(route.rackId)) || SHARED_ROUTE_COLOR}
+            visible={state.showCableRoutes || state.tool === 'route'}
+            selectable={state.tool === 'select' && !isTech}
+            selectedRouteId={state.selectedRouteId}
+            onSelectRoute={(id) => dispatch({ type: 'SELECT_CABLE_ROUTE', payload: id })}
+            onDeleteRoute={(id) => dispatch({ type: 'DELETE_CABLE_ROUTE', payload: id })}
+            drawing={route.points}
+            hover={route.hover}
+            run={selectedRun}
+          />
           <GuidesLayer scale={state.scale} tape={state.measureTape} ftPerUnit={feetPerUnit(state.measureCalibration)} />
 
           {state.objects.map((obj) => {
@@ -456,6 +515,7 @@ export const Canvas = () => {
                 pageHeight={docState.pdfCanvasHeight}
                 dragStep={dragStep}
                 touchLayout={state.ipadMode}
+                idfColor={idfColorOf(obj.id)}
               />
             );
           })}

@@ -73,6 +73,8 @@ export function useManualSave() {
           overlayOpacity: docState.overlayOpacity,
           overlayOffset: docState.overlayOffset,
           measureCalibration: docState.measureCalibration,
+          lvSettings: docState.lvSettings,
+          cableRoutes: docState.cableRoutes,
           pdfFileId: currentPdfFileId,
           overlayPdfFileId: currentOverlayPdfFileId,
           activeLayerId: uiState.activeLayerId

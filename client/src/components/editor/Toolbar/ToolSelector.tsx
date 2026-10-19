@@ -18,6 +18,7 @@ import {
     Plus,
     Ruler,
     Settings2,
+    Spline,
     Square,
     Star,
     Triangle,
@@ -36,6 +37,8 @@ import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
 import {FILL_LAYER_NAME} from '@/lib/editor-context';
 import {useToast} from '@/hooks/use-toast';
+import {LV_ICON_TYPES, LV_ICONS} from '@/core/lv-icons';
+import {LvIcon} from '@/components/editor/LvIcon';
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
 const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
@@ -298,6 +301,21 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               <TooltipContent>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'} <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">M</kbd></TooltipContent>
             </Tooltip>
 
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Toggle
+                  pressed={uiState.tool === 'route'}
+                  onPressedChange={(pressed) => dispatch({ type: 'SET_TOOL', payload: pressed ? 'route' : 'select' })}
+                  size="sm"
+                  className="h-8 w-8"
+                  data-testid="tool-route"
+                >
+                  <Spline className="w-4 h-4" />
+                </Toggle>
+              </TooltipTrigger>
+              <TooltipContent>Cable route — control points the cables follow to the rack <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">R</kbd></TooltipContent>
+            </Tooltip>
+
             <Separator orientation="vertical" className="h-6 mx-1" />
 
             <Tooltip>
@@ -359,6 +377,18 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                             {icon === 'hexagon' && <Hexagon className="w-4 h-4" />}
                             {icon === 'arrow-right' && <ArrowRight className="w-4 h-4" />}
                             {icon === 'camera' && <Camera className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Low Voltage</h4>
+                    <div className="grid grid-cols-4 gap-2">
+                      {LV_ICON_TYPES.map(icon => (
+                        <div key={icon} draggable onDragStart={(e) => handleDragStart(e, 'icon', icon)} className="cursor-grab">
+                          <Button variant="outline" size="icon" onClick={() => handleAddIcon(icon)} title={LV_ICONS[icon].label} aria-label={LV_ICONS[icon].label}>
+                            <LvIcon type={icon} className="w-4 h-4" />
                           </Button>
                         </div>
                       ))}

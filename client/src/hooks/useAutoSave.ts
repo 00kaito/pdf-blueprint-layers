@@ -37,6 +37,8 @@ export function useAutoSave() {
       overlayOpacity: docState.overlayOpacity,
       overlayOffset: docState.overlayOffset,
       measureCalibration: docState.measureCalibration,
+      lvSettings: docState.lvSettings,
+      cableRoutes: docState.cableRoutes,
       pdfFileId: docState.pdfFileId,
       overlayPdfFileId: docState.overlayPdfFileId,
       activeLayerId: uiState.activeLayerId
@@ -98,6 +100,8 @@ export function useAutoSave() {
     docState.overlayOpacity,
     docState.overlayOffset,
     docState.measureCalibration,
+    docState.lvSettings,
+    docState.cableRoutes,
     docState.projectId,
     docState.pdfFileId,
     docState.overlayPdfFileId,

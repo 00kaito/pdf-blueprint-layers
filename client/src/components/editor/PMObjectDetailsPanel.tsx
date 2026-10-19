@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
+import { PlanChangeSection } from './PlanChangeSection';
+import { CableEditor } from './CableEditor';
+import { isCableDevice } from '@/core/cable-routing';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { useManualSave } from '@/hooks/useManualSave';
@@ -107,6 +110,11 @@ export const PMObjectDetailsPanel: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {selectedObject.type !== 'text' && <PlanChangeSection objects={[selectedObject]} large />}
+        {isCableDevice(selectedObject) && (
+          <CableEditor objects={[selectedObject]} readOnly={user?.role === 'TECH'} large />
+        )}
 
         <div>
           <h4 className="text-md font-semibold mb-2">Photos</h4>

@@ -1,7 +1,8 @@
 import React, {useRef, useState} from 'react';
 import {
-  Archive, ChevronLeft, Copy, Download, FolderOpen, Loader2, LogOut, Menu, PenTool, Save, Share2, Tablet, User,
+  Archive, Cable, ChevronLeft, Copy, Download, FileUp, FolderOpen, Loader2, LogOut, Menu, PenTool, Save, Share2, Spline, Tablet, User,
 } from 'lucide-react';
+import {CableSummaryPanel} from '../CableSummaryPanel';
 import {Button} from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +21,8 @@ import {useCurrentUser, useLogout} from '@/hooks/useAuth';
 import {useExport} from '@/hooks/useExport';
 import {useImport} from '@/hooks/useImport';
 import {useManualSave} from '@/hooks/useManualSave';
+import {useUploadFile} from '@/hooks/useProjects';
+import {useToast} from '@/hooks/use-toast';
 import {ShareProjectDialog} from '../ShareProjectDialog';
 import {OverlaySettings} from '../OverlaySettings';
 import {cn} from '@/lib/utils';
@@ -40,10 +43,44 @@ export const MainMenu = () => {
   const dirInputRef = useRef<HTMLInputElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
+  const replacePdfInputRef = useRef<HTMLInputElement>(null);
+  const [replacingPdf, setReplacingPdf] = useState(false);
+  const uploadFile = useUploadFile();
+  const { toast } = useToast();
+  const projectIdRef = useRef(docState.projectId);
+  projectIdRef.current = docState.projectId;
 
   const onProjectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     await handleFileImport(e.target.files);
     e.target.value = '';
+  };
+
+  /**
+   * New revision of the blueprint: the file is uploaded first and swapped only once it is stored,
+   * so a failed upload leaves the project as it was. Objects keep their positions.
+   */
+  const onReplacePdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!window.confirm(`Replace the blueprint with "${file.name}"? Layers and objects stay where they are; check that the new sheet lines up (and re-probe the measuring scale if its scale changed).`)) return;
+    const projectId = docState.projectId;
+    if (!projectId) {
+      // Not saved yet: the next save uploads it.
+      dispatch({ type: 'REPLACE_PDF', payload: { file, fileId: null } });
+      return;
+    }
+    setReplacingPdf(true);
+    try {
+      const { fileId } = await uploadFile.mutateAsync({ file, projectId });
+      if (projectIdRef.current !== projectId) return; // another project opened meanwhile
+      dispatch({ type: 'REPLACE_PDF', payload: { file, fileId } });
+      toast({ title: 'Blueprint replaced', description: file.name });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Blueprint upload failed', description: err.message });
+    } finally {
+      setReplacingPdf(false);
+    }
   };
 
   const onLogout = () => {
@@ -111,11 +148,47 @@ export const MainMenu = () => {
           )}
 
           <DropdownMenuSeparator />
+          {!isTech && docState.pdfFile && (
+            <DropdownMenuItem
+              onClick={() => replacePdfInputRef.current?.click()}
+              disabled={replacingPdf}
+              className="gap-2 cursor-pointer"
+              data-testid="menu-replace-pdf"
+            >
+              {replacingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+              <div className="flex flex-col">
+                <span>Replace blueprint PDF…</span>
+                <span className="text-[10px] text-muted-foreground">New revision — objects stay in place</span>
+              </div>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setOverlayOpen(true)} className="gap-2 cursor-pointer" data-testid="menu-overlay">
             <Copy className="w-4 h-4" />
             Overlay blueprint…
             {docState.overlayPdfFile && <span className="ml-auto text-[10px] text-muted-foreground">on</span>}
           </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => dispatch({ type: 'SET_CABLE_SUMMARY_OPEN', payload: true })}
+            className="gap-2 cursor-pointer"
+            data-testid="menu-cable-summary"
+          >
+            <Cable className="w-4 h-4 text-blue-600" />
+            <div className="flex flex-col">
+              <span>Cable summary…</span>
+              <span className="text-[10px] text-muted-foreground">Drops, patch panels, lengths per rack</span>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuCheckboxItem
+            checked={uiState.showCableRoutes}
+            onCheckedChange={() => dispatch({ type: 'TOGGLE_CABLE_ROUTES' })}
+            className="cursor-pointer"
+            data-testid="menu-show-routes"
+          >
+            <Spline className="w-4 h-4 mr-2" />
+            Show cable routes
+          </DropdownMenuCheckboxItem>
 
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleFlattenAndDownload} className="gap-2 cursor-pointer">
@@ -191,8 +264,17 @@ export const MainMenu = () => {
         onChange={onProjectUpload}
         className="hidden"
       />
+      <input
+        type="file"
+        ref={replacePdfInputRef}
+        accept="application/pdf"
+        onChange={onReplacePdf}
+        className="hidden"
+        data-testid="replace-pdf-input"
+      />
 
       <ShareProjectDialog projectId={docState.projectId} open={shareOpen} onOpenChange={setShareOpen} />
+      <CableSummaryPanel />
 
       <Dialog open={overlayOpen} onOpenChange={setOverlayOpen}>
         <DialogContent className="sm:max-w-[380px]">

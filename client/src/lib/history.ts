@@ -9,7 +9,7 @@ const COALESCE_WINDOW_MS = 1000;
 /** Document fields restored by undo/redo. File handles and ids are deliberately excluded. */
 type Snapshot = Pick<
   DocumentState,
-  'layers' | 'objects' | 'overlayOpacity' | 'overlayOffset' | 'autoNumbering' | 'exportSettings' | 'measureCalibration'
+  'layers' | 'objects' | 'overlayOpacity' | 'overlayOffset' | 'autoNumbering' | 'exportSettings' | 'measureCalibration' | 'lvSettings' | 'cableRoutes'
 >;
 
 export type HistoryEntry = {
@@ -57,6 +57,8 @@ const takeSnapshot = (s: EditorState): Snapshot => ({
   autoNumbering: s.autoNumbering,
   exportSettings: s.exportSettings,
   measureCalibration: s.measureCalibration,
+  lvSettings: s.lvSettings,
+  cableRoutes: s.cableRoutes,
 });
 
 const snapshotChanged = (a: EditorState, b: EditorState) =>
@@ -66,7 +68,9 @@ const snapshotChanged = (a: EditorState, b: EditorState) =>
   a.overlayOffset !== b.overlayOffset ||
   a.autoNumbering !== b.autoNumbering ||
   a.exportSettings !== b.exportSettings ||
-  a.measureCalibration !== b.measureCalibration;
+  a.measureCalibration !== b.measureCalibration ||
+  a.lvSettings !== b.lvSettings ||
+  a.cableRoutes !== b.cableRoutes;
 
 /** Applies a snapshot, keeping selection / active layer consistent with the restored document. */
 const applySnapshot = (s: EditorState, snap: Snapshot, selection: string[]): EditorState => {
@@ -128,6 +132,13 @@ const describe = (action: EditorAction, prev: EditorState): string => {
     case 'SET_MEASURE_CALIBRATION': return action.payload ? `Set measuring scale (${action.payload.feet} ft)` : 'Clear measuring scale';
     case 'ADD_CUSTOM_ICON': return `Add icon ${action.payload.name}`;
     case 'DELETE_CUSTOM_ICON': return 'Delete custom icon';
+    case 'SET_OBJECT_CABLES': return action.payload.ids.length === 1
+      ? `Set cables of ${objName(action.payload.ids[0])}`
+      : `Set cables of ${plural(action.payload.ids.length, 'object')}`;
+    case 'SET_LV_SETTINGS': return 'Change cable settings';
+    case 'ADD_CABLE_ROUTE': return `Draw cable route (${action.payload.points.length} points)`;
+    case 'DELETE_CABLE_ROUTE': return 'Delete cable route';
+    case 'SET_CABLE_ROUTE_RACK': return 'Change IDF of cable route';
     case 'ADD_OBJECT_PHOTO': return `Add photo to ${objName(action.payload.id)}`;
     case 'REMOVE_OBJECT_PHOTO': return `Remove photo from ${objName(action.payload.id)}`;
     default: return action.type;
@@ -151,6 +162,9 @@ const coalesceKey = (action: EditorAction): string | null => {
       return `objs:${[...action.payload.ids].sort().join(',')}:${Object.keys(action.payload.updates).sort().join(',')}`;
     case 'UPDATE_LAYER':
       return `layer:${action.payload.id}:${Object.keys(action.payload.updates).sort().join(',')}`;
+    case 'SET_OBJECT_CABLES':
+      return `cables:${[...action.payload.ids].sort().join(',')}`;
+    case 'SET_LV_SETTINGS':
     case 'SET_OVERLAY_OPACITY':
     case 'SET_OVERLAY_OFFSET':
     case 'SET_EXPORT_SETTINGS':
