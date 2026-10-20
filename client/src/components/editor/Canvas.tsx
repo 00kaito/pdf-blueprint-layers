@@ -26,7 +26,7 @@ import {OverlayDocument} from './Canvas/OverlayDocument';
 import {RouteLayer} from './Canvas/RouteLayer';
 import {useRouteDrawing} from '@/hooks/useRouteDrawing';
 import {
-  computeCableRuns, getRacks, isCableDevice, rackColorMap, rackLabel, runFeet, SHARED_ROUTE_COLOR,
+  computeCableRuns, getRacks, hasCables, isCableDevice, rackColorMap, rackLabel, runFeet, SHARED_ROUTE_COLOR,
 } from '@/core/cable-routing';
 import {useCurrentUser} from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -113,7 +113,7 @@ export const Canvas = () => {
     return rackId ? rackColors.get(rackId) : undefined;
   };
   const selectedRun = useMemo(() => {
-    if (!selectedDevice) return null;
+    if (!selectedDevice || !hasCables(selectedDevice)) return null;
     const run = cableRuns.get(selectedDevice.id);
     if (!run) return null;
     const feet = runFeet(run, docState.measureCalibration, docState.lvSettings);
@@ -516,6 +516,7 @@ export const Canvas = () => {
                 dragStep={dragStep}
                 touchLayout={state.ipadMode}
                 idfColor={idfColorOf(obj.id)}
+                noCables={uiState.showCableRoutes && isCableDevice(obj) && obj.change !== 'REMOVE' && !hasCables(obj)}
               />
             );
           })}

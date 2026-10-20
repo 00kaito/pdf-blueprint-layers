@@ -2,7 +2,7 @@ import React, {useMemo} from 'react';
 import {Server} from 'lucide-react';
 import {useDocument} from '@/lib/editor-context';
 import {EditorObject} from '@/lib/types';
-import {computeCableRuns, getRacks, rackColorMap, rackLabel, runFeet} from '@/core/cable-routing';
+import {computeCableRuns, getRacks, hasCables, rackColorMap, rackLabel, runFeet} from '@/core/cable-routing';
 import {formatFeet} from '@/core/measure';
 import {Label} from '@/components/ui/label';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
@@ -28,7 +28,7 @@ export const RackSelect = ({ objects, readOnly = false }: { objects: EditorObjec
 
   const first = objects[0];
   const picked = objects.every(o => o.metadata?.rackId === first.metadata?.rackId) ? (first.metadata?.rackId || AUTO) : '';
-  const single = objects.length === 1 ? runs.get(first.id) : undefined;
+  const single = objects.length === 1 && hasCables(first) ? runs.get(first.id) : undefined;
   const feet = single ? runFeet(single, docState.measureCalibration, docState.lvSettings) : null;
 
   return (
@@ -63,6 +63,9 @@ export const RackSelect = ({ objects, readOnly = false }: { objects: EditorObjec
           ))}
         </SelectContent>
       </Select>
+      {objects.length === 1 && !hasCables(first) && (
+        <div className="text-[10px] text-muted-foreground px-1" data-testid="cable-run-length">No cables — add one to see its run.</div>
+      )}
       {single && (
         <div className="text-[10px] text-muted-foreground px-1" data-testid="cable-run-length">
           {feet !== null

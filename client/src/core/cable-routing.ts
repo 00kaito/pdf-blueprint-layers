@@ -18,6 +18,9 @@ export const isRack = (o: EditorObject) => o.type === 'icon' && o.content === RA
 export const isCableDevice = (o: EditorObject) =>
   !o.isFill && (o.type === 'icon' || o.type === 'image') && !isRack(o);
 
+/** True when at least one cable is assigned — devices without cables have no run to show. */
+export const hasCables = (o: EditorObject) => (o.cables ?? []).some(c => c.count > 0);
+
 /** IDF colours in rack order: IDF 1 red, IDF 2 blue, … — used for its routes, cable runs and devices. */
 export const RACK_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#d97706', '#0891b2'];
 /** Routes shared by all IDFs (or of a deleted rack). */
@@ -233,6 +236,8 @@ export type CableSummary = {
   progress: Record<CableType, Record<ProgressBucket, number>>;
   /** Object ids per design change. */
   changes: Record<PlanChange, string[]>;
+  /** Devices (not to be removed) with no cable assigned. */
+  noCables: string[];
   /** Cables on points marked to be removed — not part of the totals. */
   removed: CableTotals;
   hasScale: boolean;
@@ -274,6 +279,7 @@ export const buildCableSummary = (
     t.id, { planned: 0, pulled: 0, terminated: 0, tested: 0, issue: 0 },
   ])) as CableSummary['progress'];
   const changes: CableSummary['changes'] = { RELOCATE: [], REMOVE: [], NEW: [], ON_HOLD: [] };
+  const noCables: string[] = [];
 
   for (const o of objects) {
     if (o.change && !o.isFill) changes[o.change].push(o.id);
@@ -283,6 +289,7 @@ export const buildCableSummary = (
       for (const c of cables) removed[c.type].count += c.count;
       continue;
     }
+    if (!hasCables(o)) noCables.push(o.id);
     const run = runs.get(o.id);
     let rack = byRack.get(run?.rackId ?? null);
     if (!rack) {
@@ -306,5 +313,5 @@ export const buildCableSummary = (
   // The project needs every rack's panels — not one count over the summed ports.
   total.patchPanels = list.reduce((n, r) => n + r.patchPanels, 0);
 
-  return { racks: list, total, progress, changes, removed, hasScale: fpu !== null, runs };
+  return { racks: list, total, progress, changes, noCables, removed, hasScale: fpu !== null, runs };
 };

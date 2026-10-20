@@ -55,6 +55,8 @@ interface ObjectRendererProps {
   touchLayout?: boolean;
   /** Colour of the IDF this device home-runs to (or of the rack itself); shown when there are several IDFs. */
   idfColor?: string;
+  /** Device with no cable assigned — flagged while cable routes are shown. */
+  noCables?: boolean;
 }
 
 /** Client coordinates of a mouse or touch event. */
@@ -118,6 +120,7 @@ export const ObjectRenderer = memo(({
   dragStep,
   touchLayout = false,
   idfColor,
+  noCables = false,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -522,6 +525,14 @@ export const ObjectRenderer = memo(({
             </div>
           )}
       </div>
+
+      {noCables && (
+        <div
+          className="absolute -bottom-1.5 -left-1.5 min-w-4 h-4 px-1 rounded-full border-2 border-white bg-amber-500 text-white text-[9px] font-bold leading-3 text-center shadow-sm z-50 pointer-events-none"
+          title="No cables assigned"
+          data-testid="no-cables-badge"
+        >0</div>
+      )}
 
       {idfColor && !isFill && (
         <div

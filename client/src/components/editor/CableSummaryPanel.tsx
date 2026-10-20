@@ -212,6 +212,21 @@ export const CableSummaryPanel = () => {
             )}
 
             <section className="space-y-1">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Devices without cables</h4>
+              {summary.noCables.length > 0 ? (
+                <Button
+                  variant="outline" size="sm" data-testid="no-cables"
+                  className="h-8 gap-1.5 text-xs border-amber-400 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                  onClick={() => select(summary.noCables)} title="Select them to set their cables in one go"
+                >
+                  ⚠ No cables: <span className="font-semibold">{summary.noCables.length}</span>
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground" data-testid="no-cables">All devices have cables ✓</p>
+              )}
+            </section>
+
+            <section className="space-y-1">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Plan changes</h4>
               <div className="flex flex-wrap gap-2">
                 {PLAN_CHANGES.map(c => {
