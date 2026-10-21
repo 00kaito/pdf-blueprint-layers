@@ -2,7 +2,7 @@ import React from 'react';
 import {Cable, Minus, Plus, X} from 'lucide-react';
 import {useDocumentDispatch} from '@/lib/editor-context';
 import {CableSpec, CableType, EditorObject} from '@/lib/types';
-import {CABLE_TYPES, deviceKey, formatCables, LV_ICONS} from '@/core/lv-icons';
+import {CABLE_TYPES, deviceKey, formatCables, objectTypeName} from '@/core/lv-icons';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
@@ -32,7 +32,7 @@ export const CableEditor = ({ objects, readOnly = false, large = false }: {
     set(cables.map((c, j) => (j === i ? { ...c, ...patch } : c)));
 
   const keys = Array.from(new Set(objects.map(deviceKey).filter((k): k is string => !!k)));
-  const typeLabel = keys.length === 1 ? (LV_ICONS[keys[0]]?.label ?? (first.type === 'icon' ? keys[0] : 'this icon')) : null;
+  const typeLabel = keys.length === 1 ? (first.type === 'icon' ? objectTypeName(first) : 'this icon') : null;
 
   if (readOnly) {
     return (
@@ -100,9 +100,12 @@ export const CableEditor = ({ objects, readOnly = false, large = false }: {
         size="sm"
         className={cn("w-full gap-1.5 text-xs", rowH)}
         onClick={() => {
-          // Next type not used yet, so "+" on a Cat6 point offers Power, then Speaker …
+          // Next type not used yet. Only access control (24 V) gets a power cable offered.
           const used = new Set(cables.map(c => c.type));
-          const type = (['CAT6', 'POWER', 'SPEAKER'] as CableType[]).find(t => !used.has(t)) ?? 'OTHER';
+          const order: CableType[] = keys.length > 0 && keys.every(k => k === 'access-control')
+            ? ['CAT6', 'POWER', 'SPEAKER']
+            : ['CAT6', 'SPEAKER'];
+          const type = order.find(t => !used.has(t)) ?? 'OTHER';
           set([...cables, { type, count: 1 }]);
         }}
         data-testid="cable-add"

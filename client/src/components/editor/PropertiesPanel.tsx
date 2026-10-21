@@ -6,7 +6,7 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Slider} from '@/components/ui/slider';
 import {Separator} from '@/components/ui/separator';
-import {AlertCircle, Maximize2, Network, Palette, Settings2, Tag, Trash2, Zap} from 'lucide-react';
+import {AlertCircle, Maximize2, Network, Palette, Settings2, Tag, Trash2, X, Zap} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
 import {ObjectPhotoGallery} from './ObjectPhotoGallery';
@@ -23,7 +23,7 @@ export const PropertiesPanel = () => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
-  const { state: uiState } = useUI();
+  const { state: uiState, dispatch: uiDispatch } = useUI();
 
   const selectedObjects = docState.objects.filter((o) => uiState.selectedObjectIds.includes(o.id));
   const isMultiSelect = selectedObjects.length > 1;
@@ -128,6 +128,20 @@ export const PropertiesPanel = () => {
               data-testid="properties-delete"
             >
               <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+          {/* Touch layout: the panel is opened from the object (Props), so it closes here too. */}
+          {uiState.ipadMode && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-muted-foreground"
+              onClick={() => uiDispatch({ type: 'CLOSE_OBJECT_DETAILS' })}
+              title="Close properties"
+              aria-label="Close properties"
+              data-testid="properties-close"
+            >
+              <X className="w-4 h-4" />
             </Button>
           )}
         </div>

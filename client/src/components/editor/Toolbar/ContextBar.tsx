@@ -315,7 +315,16 @@ export const ContextBar = () => {
     );
   }
 
-  if (!content) return null;
+  if (isTech) return null;
+  // The bar always keeps its height: appearing on the first tap would shift the plan, and the second
+  // tap of a double tap would then miss the object.
+  if (!content) {
+    content = (
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
+        {uiState.ipadMode ? 'Tap an object to edit it' : 'Select an object to edit it'}
+      </span>
+    );
+  }
   const toolName = selectedObjects.length > 0
     ? (selectedObjects.length === 1 ? 'Selected' : `${selectedObjects.length} selected`)
     : TOOL_NAMES[uiState.tool];

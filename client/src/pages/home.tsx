@@ -44,6 +44,10 @@ const Home = () => {
   }
 
   const hasSelectedObject = uiState.selectedObjectIds.length > 0;
+  // Touch layout: selecting does not cover the plan with the panel — it opens from the object's Props
+  // action (or long press). A multi-selection has no action bar, so it opens the panel for bulk edits.
+  const showProperties = hasSelectedObject
+    && (!uiState.ipadMode || uiState.objectDetailsOpen || uiState.selectedObjectIds.length > 1);
 
   if (isMobile) {
     return (
@@ -106,12 +110,16 @@ const Home = () => {
           </div>
 
           {/* Right Sidebar - Properties Panel. In the touch layout it floats over the canvas instead of narrowing it. */}
-          {hasSelectedObject && (
+          {showProperties && (
             <div className={cn(
               "flex flex-col overflow-y-auto border-l border-border w-64 bg-card shrink-0",
               uiState.ipadMode && "absolute right-0 top-0 bottom-0 z-40 shadow-xl"
-            )}>
-              <PropertiesPanel />
+            )} data-floating-panel={uiState.ipadMode ? '' : undefined}>
+              {/* Own boundary: loading the panel on the first selection must not remount the canvas
+                  (that dropped the gesture in progress, e.g. the second tap of a double tap). */}
+              <Suspense fallback={null}>
+                <PropertiesPanel />
+              </Suspense>
             </div>
           )}
         </div>

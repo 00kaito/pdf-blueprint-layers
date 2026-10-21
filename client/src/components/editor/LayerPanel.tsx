@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {
     ArrowRight,
@@ -20,7 +20,8 @@ import {
     Star,
     Trash2,
     Triangle,
-    Type
+    Type,
+    X
 } from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {ScrollArea} from '@/components/ui/scroll-area';
@@ -29,6 +30,7 @@ import {Progress} from "@/components/ui/progress";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Label} from "@/components/ui/label";
 import {cn} from '@/lib/utils';
+import {defaultObjectNames} from '@/core/lv-icons';
 import {useCurrentUser} from '@/hooks/useAuth';
 
 const PROGRESS_OPEN_STORAGE_KEY = 'editor.progressOpen';
@@ -58,6 +60,10 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const state = { ...docState, ...uiState };
+  const defaultNames = useMemo(
+    () => defaultObjectNames(docState.objects, docState.customIcons),
+    [docState.objects, docState.customIcons],
+  );
   const [expandedLayers, setExpandedLayers] = useState<Record<string, boolean>>({});
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -80,13 +86,10 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
     setEditingObjectId(null); // Clear object editing
   };
   
-  const startObjectEditing = (obj: { id: string, name?: string, type: string, content?: string }, index: number) => {
+  const startObjectEditing = (obj: { id: string, name?: string }) => {
     if (isTech) return;
     setEditingObjectId(obj.id);
-    const defaultName = obj.name || (obj.type === 'text' 
-        ? (obj.content || 'Text Object') 
-        : `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} ${index + 1}`);
-    setEditingObjectName(defaultName);
+    setEditingObjectName(obj.name || defaultNames.get(obj.id) || '');
     setEditingLayerId(null); // Clear layer editing
   };
 
@@ -164,6 +167,26 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      {/* Close at the top, like the properties panel, so it is always in reach. */}
+      {onCollapse && (
+        <div className={cn("flex items-center justify-between border-b border-border px-4 shrink-0 sticky top-0 z-10 bg-card", uiState.ipadMode ? "h-12" : "h-10")}>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <PanelLeftClose className="w-4 h-4 text-muted-foreground" />
+            Layers & progress
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCollapse}
+            className={cn("text-muted-foreground", uiState.ipadMode ? "h-10 w-10" : "h-7 w-7")}
+            title="Hide panel"
+            aria-label="Hide panel"
+            data-testid="hide-layer-panel"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
       {state.layers.length > 0 && (
         <div className="p-4 border-b border-border bg-muted/10">
           <button
@@ -231,18 +254,6 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
           {!isTech && (
             <Button variant="ghost" size="icon" onClick={handleAddLayer} className={uiState.ipadMode ? "h-10 w-10" : "h-7 w-7"} title="Add layer">
               <Plus className="w-4 h-4" />
-            </Button>
-          )}
-          {onCollapse && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onCollapse}
-              className={cn("text-muted-foreground", uiState.ipadMode ? "h-10 w-10" : "h-7 w-7")}
-              title="Hide panel"
-              data-testid="hide-layer-panel"
-            >
-              <PanelLeftClose className="w-4 h-4" />
             </Button>
           )}
         </div>
@@ -341,7 +352,7 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
 
                 {isExpanded && (
                   <div className="pl-6 space-y-0.5">
-                    {layerObjects.map((obj, index) => (
+                    {layerObjects.map((obj) => (
                       <div
                         key={obj.id}
                         draggable={!isTech}
@@ -401,12 +412,10 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
                                   className="truncate select-none w-full"
                                   onDoubleClick={(e) => {
                                       e.stopPropagation();
-                                      startObjectEditing(obj, index);
+                                      startObjectEditing(obj);
                                   }}
                               >
-                                {obj.name || (obj.type === 'text' 
-                                  ? (obj.content || 'Text Object') 
-                                  : `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} ${index + 1}`)}
+                                {obj.name || defaultNames.get(obj.id)}
                               </span>
                           )}
                         </div>

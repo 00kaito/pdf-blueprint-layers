@@ -1,6 +1,6 @@
 import React, {useEffect, useLayoutEffect, useRef, useState, memo} from 'react';
 import {Rnd} from 'react-rnd';
-import {ArrowRight, Camera, Circle, CopyPlus, Heart, Hexagon, RotateCw, Square, Star, Triangle} from 'lucide-react';
+import {ArrowRight, Camera, Circle, CopyPlus, Heart, Hexagon, RotateCw, Settings2, Square, Star, Trash2, Triangle} from 'lucide-react';
 import {useDocumentDispatch, useUIDispatch} from '@/lib/editor-context';
 import {useTouchGestures} from '@/hooks/useTouchGestures';
 import {cn} from '@/lib/utils';
@@ -26,8 +26,18 @@ const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {
 /** Corner resize handle: transparent 20 px grab area with an 8 px dot centred in it. */
 const RESIZE_HANDLE_CLASS = "after:absolute after:inset-[6px] after:rounded-full after:bg-primary after:ring-1 after:ring-white";
 
-/** Touch: the rotate button ignores taps this long after the object was selected. */
-const ROTATE_GUARD_MS = 500;
+/**
+ * Touch: the action bar (and a stylus on the rotate handle) ignores taps this long after the object
+ * was selected — the second tap of a double tap must not hit an action that just appeared.
+ */
+const ACTION_GUARD_MS = 400;
+
+/** Touch: finger travel (px) before a press on a selected object moves it, so a tap never nudges it. */
+const TOUCH_DRAG_THRESHOLD_PX = 8;
+
+/** Touch: gap (px) between an object and its action bar, and the bar's margin to the visible edges. */
+const ACTION_BAR_GAP_PX = 40;
+const ACTION_BAR_MARGIN_PX = 8;
 
 /** Pointer travel (px) before a press on the label counts as a drag rather than a click. */
 const LABEL_DRAG_THRESHOLD = 3;
@@ -154,6 +164,48 @@ export const ObjectRenderer = memo(({
     dispatch({ type: 'DUPLICATE_OBJECT', payload: { id: obj.id, newId: uuidv4() } });
   };
 
+  const canEdit = !isTech && !disableMovement && !layer.locked;
+  /** Touch actions for the one selected object. */
+  const actions = [
+    canDuplicate && { id: 'duplicate', label: 'Duplicate (next number)', short: 'Copy', icon: CopyPlus, run: duplicate },
+    canEdit && !lockGeometry && { id: 'rotate', label: 'Rotate 45°', short: '45°', icon: RotateCw, run: () => rotateByStep() },
+    {
+      id: 'properties', label: 'Properties', short: 'Props', icon: Settings2,
+      run: () => { uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id }); uiDispatch({ type: 'OPEN_OBJECT_DETAILS' }); },
+    },
+    canEdit && { id: 'delete', label: 'Delete', short: 'Delete', icon: Trash2, run: () => dispatch({ type: 'DELETE_OBJECT', payload: obj.id }) },
+  ].filter(Boolean) as { id: string; label: string; short: string; icon: typeof CopyPlus; run: () => void }[];
+  const showActionBar = touchLayout && isSelected && tool === 'select' && selectedObjectIds.length === 1;
+  /**
+   * Where the bar fits in the visible part of the plan (scrolled area, minus the floating properties
+   * panel): above the object unless there is no room, and slid sideways off the edges.
+   */
+  const actionBarRef = useRef<HTMLDivElement>(null);
+  const [actionBarPlace, setActionBarPlace] = useState({ below: false, shift: 0 });
+  useLayoutEffect(() => {
+    const bar = actionBarRef.current;
+    const box = bar?.parentElement;
+    const scroller = box?.closest<HTMLElement>('[data-canvas-scroller]');
+    if (!showActionBar || !bar || !box || !scroller) return;
+    const place = () => {
+      const o = box.getBoundingClientRect();
+      const s = scroller.getBoundingClientRect();
+      const panel = document.querySelector<HTMLElement>('[data-floating-panel]')?.getBoundingClientRect();
+      const right = panel && panel.left > s.left ? Math.min(s.right, panel.left) : s.right;
+      const need = bar.offsetHeight + ACTION_BAR_GAP_PX + ACTION_BAR_MARGIN_PX;
+      const above = o.top - s.top, under = s.bottom - o.bottom;
+      const below = above < need && under > above;
+      const left = o.left + o.width / 2 - bar.offsetWidth / 2;
+      const min = s.left + ACTION_BAR_MARGIN_PX, max = right - ACTION_BAR_MARGIN_PX - bar.offsetWidth;
+      const shift = Math.round(Math.max(min, Math.min(left, max)) - left);
+      setActionBarPlace(p => (p.below === below && p.shift === shift ? p : { below, shift }));
+    };
+    place();
+    scroller.addEventListener('scroll', place, { passive: true });
+    window.addEventListener('resize', place);
+    return () => { scroller.removeEventListener('scroll', place); window.removeEventListener('resize', place); };
+  }, [showActionBar, obj.x, obj.y, obj.width, obj.height, scale, dragPos]);
+
   const touchGestures = useTouchGestures({
     onTap: () => {
       uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
@@ -278,7 +330,7 @@ export const ObjectRenderer = memo(({
     if (isTech || disableMovement) return;
     e.stopPropagation();
     e.preventDefault();
-    if (e.pointerType !== 'mouse' && Date.now() - selectedAtRef.current < ROTATE_GUARD_MS) return;
+    if (e.pointerType !== 'mouse' && Date.now() - selectedAtRef.current < ACTION_GUARD_MS) return;
     const handle = e.currentTarget;
     const rect = handle.parentElement?.getBoundingClientRect();
     if (!rect) return;
@@ -332,6 +384,12 @@ export const ObjectRenderer = memo(({
         const start = dragStartRef.current;
         if (!start) return;
         const p = clientPoint(e);
+        if (touchLayout && !draggedRef.current && Math.hypot(p.x - start.clientX, p.y - start.clientY) < TOUCH_DRAG_THRESHOLD_PX) {
+          // Not a move yet: keep the object where it is.
+          dragPosRef.current = { x: start.x, y: start.y, seq: (dragPosRef.current?.seq ?? 0) + 1 };
+          setDragPos(dragPosRef.current);
+          return;
+        }
         // Raw position from the cursor (not react-draggable's own, which already contains the last snap).
         let x = start.x + (p.x - start.clientX) / scale;
         let y = start.y + (p.y - start.clientY) / scale;
@@ -364,12 +422,13 @@ export const ObjectRenderer = memo(({
       }}
       onDragStop={() => {
         const pos = dragPosRef.current;
+        const start = dragStartRef.current;
         dragStartRef.current = null;
         dragPosRef.current = null;
         setDragPos(null);
         dragStore.set(null);
         // No movement (a plain click) or movement not allowed: nothing to save.
-        if (!pos || isTech || disableMovement) return;
+        if (!pos || isTech || disableMovement || (start && pos.x === start.x && pos.y === start.y)) return;
         dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: pos.x, y: pos.y } } });
       }}
       onResizeStop={(e: any, dir, ref, delta, pos) => {
@@ -403,7 +462,8 @@ export const ObjectRenderer = memo(({
       cancel=".object-label, .object-action"
       bounds="parent"
       disableDragging={lockGeometry || isTech || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
-      enableResizing={isTech || lockGeometry ? {} : (!layer.locked && isSelected)}
+      // Touch: no resize handles — they took most of a small icon and turned moves into resizes.
+      enableResizing={isTech || lockGeometry || touchLayout ? {} : (!layer.locked && isSelected)}
       // re-resizable sizes the corner handles inline (20 px) — keep that as the grab area and draw a
       // small 8 px dot in its middle.
       resizeHandleClasses={{
@@ -422,14 +482,15 @@ export const ObjectRenderer = memo(({
         // Route tool: clicks reach the plan, so a route can end on a device or rack.
         layer.locked || tool === 'route' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
       )}
-      // Fills sit below regular objects and drawn paths.
-      style={{ opacity: (obj.opacity ?? 1) * (obj.change === 'REMOVE' ? 0.45 : 1), zIndex: isSelected ? 30 : isFill ? 8 : 20 }}
+      // Fills sit below regular objects and drawn paths. With its action bar, the object goes above the
+      // cable-run preview and its length label (z 45–46) so they never cover the bar.
+      style={{ opacity: (obj.opacity ?? 1) * (obj.change === 'REMOVE' ? 0.45 : 1), zIndex: showActionBar ? 47 : isSelected ? 30 : isFill ? 8 : 20 }}
     >
-      {isSelected && !layer.locked && !lockGeometry && (
+      {isSelected && !layer.locked && !lockGeometry && !touchLayout && (
         <div 
           className={cn(
             "absolute left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-alias shadow-lg z-50 touch-none select-none active:scale-95 [@media(hover:hover)]:hover:scale-110 transition-transform",
-            touchLayout ? "-top-12 w-10 h-10" : "-top-10 w-8 h-8"
+            "-top-10 w-8 h-8"
           )}
           onPointerDown={handleRotationPointerDown}
           // Keep react-draggable (mouse / touch events on the object) from starting a move.
@@ -444,21 +505,45 @@ export const ObjectRenderer = memo(({
           <RotateCw className="w-4 h-4" />
         </div>
       )}
-      {/* Touch layout: explicit duplicate button, away from the rotate one (double tap still works). */}
-      {isSelected && touchLayout && canDuplicate && (
-        <button
-          type="button"
-          className="object-action absolute top-1/2 -translate-y-1/2 -right-14 w-10 h-10 bg-background text-foreground border border-border rounded-full flex items-center justify-center shadow-lg z-50 touch-none select-none active:scale-95"
+      {/* Touch layout: one bar of large actions, away from the object, instead of small handles on it. */}
+      {showActionBar && (
+        <div
+          ref={actionBarRef}
+          className="object-action absolute left-1/2 z-50 flex gap-1 rounded-xl border border-border bg-background p-1 shadow-lg touch-none select-none whitespace-nowrap"
+          style={{
+            transform: `translateX(calc(-50% + ${actionBarPlace.shift}px))`,
+            ...(actionBarPlace.below
+              ? { top: `calc(100% + ${ACTION_BAR_GAP_PX}px)` }
+              : { bottom: `calc(100% + ${ACTION_BAR_GAP_PX}px)` }),
+          }}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); duplicate(); }}
-          title="Duplicate (next number)"
-          aria-label="Duplicate"
-          data-testid="duplicate-button"
+          onClick={(e) => e.stopPropagation()}
+          data-testid="object-action-bar"
         >
-          <CopyPlus className="w-4 h-4" />
-        </button>
+          {actions.map(a => (
+            <button
+              key={a.id}
+              type="button"
+              className={cn(
+                "object-action flex h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-[10px] font-medium active:bg-muted",
+                a.id === 'delete' ? "text-destructive" : "text-foreground"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (Date.now() - selectedAtRef.current < ACTION_GUARD_MS) return;
+                a.run();
+              }}
+              aria-label={a.label}
+              title={a.label}
+              data-testid={`action-${a.id}`}
+            >
+              <a.icon className="w-4 h-4" />
+              {a.short}
+            </button>
+          ))}
+        </div>
       )}
       
       <div 

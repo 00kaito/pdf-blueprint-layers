@@ -1,4 +1,5 @@
 import {DocumentState, EditorAction, EditorState} from './types';
+import {objectTypeName} from '@/core/lv-icons';
 
 /** Maximum number of undo steps kept in memory. */
 export const HISTORY_LIMIT = 100;
@@ -92,13 +93,14 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const describe = (action: EditorAction, prev: EditorState): string => {
   const objName = (id: string) => {
     const o = prev.objects.find(obj => obj.id === id);
-    return o?.name || o?.content?.slice(0, 20) || o?.type || 'object';
+    if (!o) return 'object';
+    return o.name || (o.type === 'text' ? o.content?.slice(0, 20) : objectTypeName(o, prev.customIcons)) || o.type;
   };
   const layerName = (id: string) => prev.layers.find(l => l.id === id)?.name ?? 'layer';
 
   switch (action.type) {
     case 'ADD_FILL': return 'Fill area';
-    case 'ADD_OBJECT': return `Add ${action.payload.name || action.payload.type}`;
+    case 'ADD_OBJECT': return `Add ${action.payload.name || objectTypeName(action.payload, prev.customIcons)}`;
     case 'DUPLICATE_OBJECT': return `Duplicate ${objName(action.payload.id)}`;
     case 'UPDATE_OBJECT': {
       const keys = Object.keys(action.payload.updates);

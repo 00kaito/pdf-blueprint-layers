@@ -23,6 +23,9 @@ import {LV_ICON_GRID, LV_ICONS} from '@/core/lv-icons';
 import {DEFAULT_LABEL_POSITION, getLabelAnchor, getLeaderLine} from '@/core/label-position';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {useProjectList} from '@/hooks/useProjects';
+import {
+  appendLvPages, drawCableRoutes, drawObjectLvMarks, idfColorResolver, lvIconOpacity, makePlanPainter, pdfSafeText,
+} from '@/core/pdf-lv-export';
 
 const toSafeFileName = (name: string) =>
   name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\.(pdf|zip)$/i, '').trim();
@@ -220,6 +223,11 @@ export const useExport = () => {
        }
     }
 
+    // Cable routes under the devices, as on screen.
+    const planPainter = makePlanPainter(page, vW / CANVAS_BASE_WIDTH, pW, pH, pageRotation);
+    if (uiState.showCableRoutes) drawCableRoutes(planPainter, docState.cableRoutes, docState.objects);
+    const idfColorOf = idfColorResolver(docState.objects, docState.cableRoutes);
+
     // Pass 1: Draw non-text objects (images, icons, paths)
     for (const obj of sortedObjects) {
        const layer = docState.layers.find(l => l.id === obj.layerId);
@@ -287,7 +295,7 @@ export const useExport = () => {
               y: (scaledHeight - finalH) / 2,
               width: finalW,
               height: finalH,
-              opacity: (obj.opacity ?? 1) * (layer.opacity ?? 1),
+              opacity: (obj.opacity ?? 1) * (layer.opacity ?? 1) * lvIconOpacity(obj),
             });
           } catch (e) { console.error("Embed fail", e); }
        } else if (obj.type === 'icon') {
@@ -303,6 +311,7 @@ export const useExport = () => {
              page.drawSvgPath(lvIcon.d, {
                 x: offX, y: offY + minSide, scale: minSide / LV_ICON_GRID,
                 borderColor: color, borderWidth: 2, borderLineCap: LineCapStyle.Round,
+                borderOpacity: (obj.opacity ?? 1) * (layer.opacity ?? 1) * lvIconOpacity(obj),
              });
           } else if (obj.content === 'circle') {
              page.drawEllipse({ x: scaledWidth / 2, y: scaledHeight / 2, xScale: minSide / 2, yScale: minSide / 2, borderColor: color, borderWidth: 2 });
@@ -315,10 +324,14 @@ export const useExport = () => {
           }
        }
        page.pushOperators(popGraphicsState());
+       if (obj.type === 'icon' || obj.type === 'image') {
+          drawObjectLvMarks(planPainter, obj, helveticaBoldFont, idfColorOf(obj), pageRotation);
+       }
 
-       if (obj.name) {
+       const labelText = obj.name ? pdfSafeText(helveticaFont, obj.name) : '';
+       if (labelText) {
           const labelFontSize = docState.exportSettings.labelFontSize * scaleFactor;
-          const textWidth = helveticaFont.widthOfTextAtSize(obj.name, labelFontSize);
+          const textWidth = helveticaFont.widthOfTextAtSize(labelText, labelFontSize);
           const boxWidth = textWidth + labelFontSize;
           const { centerX, baselineY } = getLabelAnchor(
             obj.labelPosition ?? DEFAULT_LABEL_POSITION,
@@ -356,7 +369,7 @@ export const useExport = () => {
              width: boxWidth, height: labelFontSize * 1.5,
              color: hexToRgb('#ffffff'), opacity: 0.6, rotate: degrees(pageRotation),
           });
-          page.drawText(obj.name, {
+          page.drawText(labelText, {
              x: textStart.x, y: textStart.y, size: labelFontSize, font: helveticaFont, color: hexToRgb('#000000'), rotate: degrees(pageRotation),
           });
        }
@@ -419,9 +432,15 @@ export const useExport = () => {
        });
     }
 
+    const projectName = projects?.find(p => p.id === docState.projectId)?.name || docState.pdfFile.name || '';
+    appendLvPages(pdfDoc, { regular: helveticaFont, bold: helveticaBoldFont }, {
+      projectName: toSafeFileName(projectName), objects: docState.objects, routes: docState.cableRoutes,
+      calibration: docState.measureCalibration, settings: docState.lvSettings, customIcons: docState.customIcons,
+    });
+
     const pdfBytes = await pdfDoc.save();
-    saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), 'edited-document.pdf');
-  }, [docState, uiState.currentPage]);
+    saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), `${toSafeFileName(projectName) || 'edited-document'}.pdf`);
+  }, [docState, uiState.currentPage, uiState.showCableRoutes, projects]);
 
   return { handleExportProject, handleFlattenAndDownload };
 };

@@ -257,7 +257,17 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       // Every way of placing a device (icon button, stamp, library) gets its type's cables.
       const key = action.payload.cables ? null : deviceKey(action.payload);
       const defaults = key ? state.lvSettings.cableDefaults[key] : undefined;
-      const object = defaults ? { ...action.payload, cables: defaults.map(c => ({ ...c })) } : action.payload;
+      let object = defaults ? { ...action.payload, cables: defaults.map(c => ({ ...c })) } : action.payload;
+      // … and the size of that device type already on the plan (latest placed), centred where it was put.
+      const sizeKey = deviceKey(action.payload);
+      const same = sizeKey ? [...state.objects].reverse().find(o => !o.isFill && deviceKey(o) === sizeKey) : undefined;
+      if (same && (same.width !== object.width || same.height !== object.height)) {
+        object = {
+          ...object,
+          x: object.x + (object.width - same.width) / 2, y: object.y + (object.height - same.height) / 2,
+          width: same.width, height: same.height,
+        };
+      }
       return { ...state, objects: [...state.objects, object] };
     }
     case 'DUPLICATE_OBJECT': {

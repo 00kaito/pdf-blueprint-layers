@@ -23,10 +23,6 @@ export const LV_ICONS: Record<string, { label: string; d: string }> = {
     label: 'TV',
     d: 'M2 4h20v13H2z M8 21h8 M12 17v4',
   },
-  antenna: {
-    label: 'Antenna',
-    d: 'M10 8a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M12 10v12 M8 22h8 M8 4a5.66 5.66 0 0 0 0 8 M16 4a5.66 5.66 0 0 1 0 8 M5 1.5a9 9 0 0 0 0 13 M19 1.5a9 9 0 0 1 0 13',
-  },
   'access-control': {
     label: 'Face Panel / Access Control',
     d: 'M5 2h14v20H5z M9.5 9a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0 M8 17a4 4 0 0 1 8 0 M10 19.5h4',
@@ -34,6 +30,18 @@ export const LV_ICONS: Record<string, { label: string; d: string }> = {
   speaker: {
     label: 'Speaker',
     d: 'M3 9h4l5-5v16l-5-5H3z M16 9a4 4 0 0 1 0 6 M19 6a8 8 0 0 1 0 12',
+  },
+  'ceiling-speaker': {
+    label: 'Ceiling Speaker',
+    d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M7 12a5 5 0 1 0 10 0a5 5 0 1 0 -10 0 M11 12h2',
+  },
+  wap: {
+    label: 'Wireless Access Point',
+    d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M7 11a7 7 0 0 1 10 0 M9.5 14a3.5 3.5 0 0 1 5 0 M11.5 17h1',
+  },
+  cctv: {
+    label: 'CCTV Camera',
+    d: 'M2 8h13v8H2z M15 10l6-3v10l-6-3',
   },
   scheduler: {
     label: 'Scheduler',
@@ -50,6 +58,45 @@ export const LV_ICONS: Record<string, { label: string; d: string }> = {
 };
 
 export const LV_ICON_TYPES = Object.keys(LV_ICONS);
+
+/** Names of the plain shape icons. */
+const SHAPE_LABELS: Record<string, string> = {
+  square: 'Square', circle: 'Circle', triangle: 'Triangle', star: 'Star', heart: 'Heart',
+  hexagon: 'Hexagon', 'arrow-right': 'Arrow', camera: 'Camera',
+};
+
+/**
+ * What an object is, for lists and history: the device type ("TV", "Ceiling Speaker") or library
+ * icon name rather than the object kind ("Icon", "Image").
+ */
+export const objectTypeName = (
+  o: { type: string; content?: string },
+  customIcons: { url: string; name: string }[] = [],
+): string => {
+  if (o.type === 'icon' && o.content) return LV_ICONS[o.content]?.label ?? SHAPE_LABELS[o.content] ?? 'Icon';
+  if (o.type === 'image') return customIcons.find(i => i.url === o.content)?.name || 'Image';
+  return o.type.charAt(0).toUpperCase() + o.type.slice(1);
+};
+
+/**
+ * Default name of every object: its type numbered within that type, in placing order across the
+ * whole plan ("Floor Box 1", "Floor Box 2", "TV 1"). Text shows its own content.
+ */
+export const defaultObjectNames = (
+  objects: { id: string; type: string; content?: string; isFill?: boolean }[],
+  customIcons: { url: string; name: string }[] = [],
+): Map<string, string> => {
+  const counts = new Map<string, number>();
+  const names = new Map<string, string>();
+  for (const o of objects) {
+    if (o.type === 'text') { names.set(o.id, o.content || 'Text Object'); continue; }
+    const type = o.isFill ? 'Fill' : objectTypeName(o, customIcons);
+    const n = (counts.get(type) ?? 0) + 1;
+    counts.set(type, n);
+    names.set(o.id, `${type} ${n}`);
+  }
+  return names;
+};
 
 export const CABLE_TYPES: { id: CableType; label: string }[] = [
   { id: 'CAT6', label: 'Cat6' },
@@ -69,15 +116,19 @@ export const formatCables = (cables: CableSpec[] | undefined) =>
 export const DEFAULT_LV_SETTINGS: LvSettings = {
   // Starting point per device type; editing a device's cables replaces its type's default.
   cableDefaults: {
-    data: [{ type: 'CAT6', count: 2 }],
-    'floor-box': [{ type: 'CAT6', count: 4 }, { type: 'POWER', count: 1 }],
-    tv: [{ type: 'CAT6', count: 2 }, { type: 'POWER', count: 1 }],
+    tv: [{ type: 'CAT6', count: 3 }],
     speaker: [{ type: 'SPEAKER', count: 1 }],
+    'ceiling-speaker': [{ type: 'SPEAKER', count: 1 }],
+    cctv: [{ type: 'CAT6', count: 2 }],
+    // Access control needs 24 V, so it is the only device with a power cable.
     'access-control': [{ type: 'CAT6', count: 1 }, { type: 'POWER', count: 1 }],
-    antenna: [{ type: 'COAX', count: 1 }],
+    data: [{ type: 'CAT6', count: 1 }],
+    'floor-box': [{ type: 'CAT6', count: 1 }],
+    wap: [{ type: 'CAT6', count: 1 }],
     'control-panel': [{ type: 'CAT6', count: 1 }],
     scheduler: [{ type: 'CAT6', count: 1 }],
   },
+
   portsPerPanel: 24,
   serviceLoopFt: 10,
   deviceSlackFt: 15,

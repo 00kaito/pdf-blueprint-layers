@@ -63,7 +63,10 @@ const elbow = (from: Point, to: Point): Point => ({ x: to.x, y: from.y });
 const dedupe = (path: Point[]) =>
   path.filter((p, i) => i === 0 || Math.abs(p.x - path[i - 1].x) > 1e-6 || Math.abs(p.y - path[i - 1].y) > 1e-6);
 
-type Graph = { nodes: Point[]; adj: { to: number; w: number }[][] };
+type Edge = [number, number];
+/** Route network under construction: junction points and the straight segments between them. */
+type Net = { nodes: Point[]; edges: Edge[] };
+type Graph = Net & { adj: { to: number; w: number }[][] };
 
 const distToSegment = (p: Point, a: Point, b: Point) => {
   const len2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
@@ -72,36 +75,142 @@ const distToSegment = (p: Point, a: Point, b: Point) => {
   return segmentLength(p, { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
 };
 
-/** Route network: shared points join routes, and a route ending on another route's segment branches off it. */
-export const buildRouteGraph = (routes: CableRoute[], tol = ROUTE_JOIN_TOLERANCE): Graph => {
-  const nodes: Point[] = [];
-  const nodeAt = (p: Point) => {
-    const i = nodes.findIndex(n => segmentLength(n, p) <= tol);
-    if (i >= 0) return i;
-    nodes.push({ x: p.x, y: p.y });
-    return nodes.length - 1;
-  };
-  let edges: [number, number][] = [];
-  for (const r of routes) {
-    const ids = r.points.map(nodeAt);
-    for (let i = 1; i < ids.length; i++) if (ids[i] !== ids[i - 1]) edges.push([ids[i - 1], ids[i]]);
+/**
+ * Point of segment a–b a cable from `p` reaches first when it runs sideways + straight: an end, or
+ * the point level with `p` (a straight drop onto the segment).
+ */
+const closestOnSegment = (p: Point, a: Point, b: Point): { pt: Point; d: number } => {
+  const cands: Point[] = [a, b];
+  if (b.x !== a.x) {
+    const t = (p.x - a.x) / (b.x - a.x);
+    if (t > 0 && t < 1) cands.push({ x: p.x, y: a.y + t * (b.y - a.y) });
   }
-  // T-junctions: split a segment where another route's point lies on it.
+  if (b.y !== a.y) {
+    const t = (p.y - a.y) / (b.y - a.y);
+    if (t > 0 && t < 1) cands.push({ x: a.x + t * (b.x - a.x), y: p.y });
+  }
+  return cands.map(pt => ({ pt, d: manhattan(p, pt) })).reduce((m, c) => (c.d < m.d ? c : m));
+};
+
+/** Where segments a–b and c–d cross away from their ends, if they do. */
+const crossing = (a: Point, b: Point, c: Point, d: Point): Point | null => {
+  const den = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / den;
+  const u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / den;
+  const e = 1e-6;
+  return t > e && t < 1 - e && u > e && u < 1 - e ? { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) } : null;
+};
+
+const nodeAt = (net: Net, p: Point, tol = ROUTE_JOIN_TOLERANCE) => {
+  const i = net.nodes.findIndex(n => segmentLength(n, p) <= tol);
+  if (i >= 0) return i;
+  net.nodes.push({ x: p.x, y: p.y });
+  return net.nodes.length - 1;
+};
+
+/** Splits edge `ei` at `p` (a point on it) and returns the node there. */
+const splitEdgeAt = (net: Net, ei: number, p: Point) => {
+  const i = nodeAt(net, p);
+  const [a, b] = net.edges[ei];
+  if (i !== a && i !== b) net.edges.splice(ei, 1, [a, i], [i, b]);
+  return i;
+};
+
+/**
+ * Route network: shared points join routes, a route ending on another route's segment branches
+ * off it, and routes crossing each other are joined where they cross.
+ */
+const buildNet = (routes: CableRoute[], tol = ROUTE_JOIN_TOLERANCE): Net => {
+  const net: Net = { nodes: [], edges: [] };
+  for (const r of routes) {
+    const ids = r.points.map(p => nodeAt(net, p, tol));
+    for (let i = 1; i < ids.length; i++) if (ids[i] !== ids[i - 1]) net.edges.push([ids[i - 1], ids[i]]);
+  }
+  const { nodes, edges } = net;
+  for (let i = 0; i < edges.length; i++) {
+    for (let j = i + 1; j < edges.length; j++) {
+      const x = crossing(nodes[edges[i][0]], nodes[edges[i][1]], nodes[edges[j][0]], nodes[edges[j][1]]);
+      if (x) nodeAt(net, x, tol);
+    }
+  }
+  // Split every segment at the points lying on it (T-junctions and crossings).
   for (let n = 0; n < nodes.length; n++) {
-    const next: [number, number][] = [];
-    for (const [a, b] of edges) {
+    const next: Edge[] = [];
+    for (const [a, b] of net.edges) {
       if (a !== n && b !== n && distToSegment(nodes[n], nodes[a], nodes[b]) <= tol) next.push([a, n], [n, b]);
       else next.push([a, b]);
     }
-    edges = next;
+    net.edges = next;
   }
-  const adj: Graph['adj'] = nodes.map(() => []);
-  for (const [a, b] of edges) {
-    const w = segmentLength(nodes[a], nodes[b]);
+  return net;
+};
+
+/** Nodes connected to `start` along the routes. */
+const reachable = (net: Net, start: number) => {
+  const seen = new Set([start]);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const [a, b] of net.edges) {
+      if (seen.has(a) !== seen.has(b)) { seen.add(a); seen.add(b); grew = true; }
+    }
+  }
+  return seen;
+};
+
+/**
+ * Routes of one IDF that do not touch are still one network: each separate piece is joined to the
+ * rest by the shortest sideways + straight hop, nearest piece first, so a cable can change routes.
+ */
+const bridgePieces = (net: Net, start: number) => {
+  for (;;) {
+    const inNet = reachable(net, start);
+    const all = net.edges.map((_, i) => i);
+    const outside = all.filter(i => !inNet.has(net.edges[i][0]));
+    if (outside.length === 0) return;
+    const inside = all.filter(i => inNet.has(net.edges[i][0]));
+    const outNodes = new Set(outside.flatMap(i => net.edges[i]));
+    let best: { from: number; ei: number; pt: Point; d: number } | null = null;
+    const consider = (from: number, ei: number) => {
+      const [a, b] = net.edges[ei];
+      const c = closestOnSegment(net.nodes[from], net.nodes[a], net.nodes[b]);
+      if (!best || c.d < best.d) best = { from, ei, ...c };
+    };
+    inNet.forEach(n => outside.forEach(ei => consider(n, ei)));
+    outNodes.forEach(n => inside.forEach(ei => consider(n, ei)));
+    const { from, ei, pt } = best!;
+    const to = splitEdgeAt(net, ei, pt);
+    if (to === from) continue;
+    const f = net.nodes[from], t = net.nodes[to];
+    if (Math.abs(f.x - t.x) > 1e-6 && Math.abs(f.y - t.y) > 1e-6) {
+      net.nodes.push(elbow(f, t));
+      const corner = net.nodes.length - 1;
+      net.edges.push([from, corner], [corner, to]);
+    } else {
+      net.edges.push([from, to]);
+    }
+  }
+};
+
+const toGraph = (net: Net): Graph => {
+  const adj: Graph['adj'] = net.nodes.map(() => []);
+  for (const [a, b] of net.edges) {
+    const w = segmentLength(net.nodes[a], net.nodes[b]);
     adj[a].push({ to: b, w });
     adj[b].push({ to: a, w });
   }
-  return { nodes, adj };
+  return { ...net, adj };
+};
+
+/** Nearest point on the network for a cable from `p` (sideways + straight), and its segment. */
+const nearestOnNet = (net: Net, p: Point, allowed: (ei: number) => boolean = () => true) => {
+  let best: { pt: Point; d: number; ei: number } | null = null;
+  net.edges.forEach(([a, b], ei) => {
+    if (!allowed(ei)) return;
+    const c = closestOnSegment(p, net.nodes[a], net.nodes[b]);
+    if (!best || c.d < best.d - 1e-6) best = { ...c, ei };
+  });
+  return best as { pt: Point; d: number; ei: number } | null;
 };
 
 /** Shortest distances (and the previous node on that path) from `source` to every node. */
@@ -122,18 +231,6 @@ const dijkstra = (g: Graph, source: number) => {
   return { dist, prev };
 };
 
-/** Indices of the nodes nearest to `p` (by sideways + straight distance); several when tied. */
-const nearestNodes = (g: Graph, p: Point, allowed: (i: number) => boolean = () => true) => {
-  let best = Infinity;
-  let ids: number[] = [];
-  g.nodes.forEach((n, i) => {
-    if (!allowed(i)) return;
-    const d = manhattan(p, n);
-    if (d < best - 1e-6) { best = d; ids = [i]; } else if (Math.abs(d - best) <= 1e-6) ids.push(i);
-  });
-  return { ids, d: best };
-};
-
 export type CableRun = {
   rackId: string;
   /** Route length in canvas units (no slack). */
@@ -150,10 +247,14 @@ type RackReach = { rack: EditorObject; g: Graph; entryD: number; tree: ReturnTyp
 const prepareRacks = (racks: EditorObject[], routes: CableRoute[]): RackReach[] => {
   const rackIds = new Set(racks.map(r => r.id));
   return racks.map(rack => {
-    const g = buildRouteGraph(routesForRack(routes, rack.id, rackIds));
-    if (g.nodes.length === 0) return { rack, g, entryD: Infinity, tree: null };
-    const { ids, d } = nearestNodes(g, centerOf(rack));
-    return { rack, g, entryD: d, tree: dijkstra(g, ids[0]) };
+    const net = buildNet(routesForRack(routes, rack.id, rackIds));
+    const entry = nearestOnNet(net, centerOf(rack));
+    if (!entry) return { rack, g: toGraph(net), entryD: Infinity, tree: null };
+    // The rack joins its nearest route where a straight run meets it, not only at a control point.
+    const start = splitEdgeAt(net, entry.ei, entry.pt);
+    bridgePieces(net, start);
+    const g = toGraph(net);
+    return { rack, g, entryD: entry.d, tree: dijkstra(g, start) };
   });
 };
 
@@ -165,23 +266,25 @@ const runTo = (device: EditorObject, reach: RackReach): CableRun => {
     rackId: reach.rack.id, units: manhattan(from, to), path: dedupe([from, elbow(from, to), to]), routed: false,
   };
   if (!reach.tree) return direct;
+  const { dist, prev } = reach.tree;
 
-  // Nearest point among those connected to this rack (a route not joined to its network is skipped).
-  const tree = reach.tree;
-  const { ids, d } = nearestNodes(g, from, i => isFinite(tree.dist[i]));
+  // The cable drops onto the nearest route (anywhere along a segment), then follows the network.
+  const hit = nearestOnNet(g, from, ei => isFinite(dist[g.edges[ei][0]]));
+  if (!hit) return direct;
   // A device nearer to the rack than to any route goes straight in.
-  if (manhattan(from, to) <= d) return { ...direct, routed: true };
-  // A tie is decided by the shorter way on to the rack.
-  const node = ids.reduce((a, b) => (tree.dist[b] < tree.dist[a] ? b : a));
-  const along = tree.dist[node];
+  if (manhattan(from, to) <= hit.d) return { ...direct, routed: true };
+  const [a, b] = g.edges[hit.ei];
+  const viaA = dist[a] + segmentLength(hit.pt, g.nodes[a]);
+  const viaB = dist[b] + segmentLength(hit.pt, g.nodes[b]);
+  const node = viaA <= viaB ? a : b;
 
-  const nodePath: Point[] = [];
-  for (let n = node; n >= 0; n = reach.tree.prev[n]) nodePath.push(g.nodes[n]);
-  const first = nodePath[0], last = nodePath[nodePath.length - 1];
+  const nodePath: Point[] = [hit.pt];
+  for (let n = node; n >= 0; n = prev[n]) nodePath.push(g.nodes[n]);
+  const last = nodePath[nodePath.length - 1];
   return {
     rackId: reach.rack.id,
-    units: d + along + reach.entryD,
-    path: dedupe([from, elbow(from, first), ...nodePath, elbow(last, to), to]),
+    units: hit.d + Math.min(viaA, viaB) + reach.entryD,
+    path: dedupe([from, elbow(from, hit.pt), ...nodePath, elbow(last, to), to]),
     routed: true,
   };
 };

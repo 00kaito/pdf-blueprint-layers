@@ -17,7 +17,11 @@ export const useTouchGestures = ({
   doubleTapDelay = 300,
   longPressDelay = 500,
 }: TouchGesturesOptions) => {
-  const lastTapRef = useRef<number>(0);
+  /**
+   * Times come from the events themselves (`timeStamp`), not from when they are handled: the first tap
+   * selects the object and the re-render can delay the second tap's handling past the double-tap window.
+   */
+  const lastTapRef = useRef<number>(-Infinity);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMovedRef = useRef<boolean>(false);
@@ -38,8 +42,7 @@ export const useTouchGestures = ({
     }
 
     const touch = e.touches[0];
-    const now = Date.now();
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: now };
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: e.timeStamp };
     isMovedRef.current = false;
 
     clearLongPressTimer();
@@ -69,7 +72,7 @@ export const useTouchGestures = ({
 
     if (!touchStartRef.current) return;
 
-    const now = Date.now();
+    const now = e.timeStamp;
     const duration = now - touchStartRef.current.time;
 
     if (!isMovedRef.current && duration < longPressDelay) {
@@ -77,7 +80,7 @@ export const useTouchGestures = ({
 
       if (timeSinceLastTap < doubleTapDelay) {
         if (onDoubleTap) onDoubleTap();
-        lastTapRef.current = 0; // Reset for next sequence
+        lastTapRef.current = -Infinity; // Reset for next sequence
       } else {
         if (onTap) onTap();
         lastTapRef.current = now;
