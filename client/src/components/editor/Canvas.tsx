@@ -3,7 +3,7 @@ import {v4 as uuidv4} from 'uuid';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {Document, Page, pdfjs} from 'react-pdf';
 import {debounce} from '@/lib/utils';
-import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
+import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH, DEFAULT_ICON_SIZE} from '@/core/constants';
 import {getVisualDimensions} from '@/core/pdf-math';
 import {Upload} from 'lucide-react';
 import {Button} from '@/components/ui/button';
@@ -288,7 +288,7 @@ export const Canvas = () => {
        if (rect) {
           const x = (e.clientX - rect.left) / state.scale, y = (e.clientY - rect.top) / state.scale;
           const template = state.autoNumbering.template;
-          const size = 50 / state.scale;
+          const size = DEFAULT_ICON_SIZE / state.scale;
           const name = `${state.autoNumbering.prefix}${state.autoNumbering.counter.toString().padStart(2, '0')}`;
           dispatch({
             type: 'ADD_OBJECT',
@@ -369,7 +369,7 @@ export const Canvas = () => {
       const rect = containerRef.current?.getBoundingClientRect();
       if (rect) {
         const x = (e.clientX - rect.left) / state.scale, y = (e.clientY - rect.top) / state.scale;
-        let baseW = 50, baseH = 50;
+        let baseW = DEFAULT_ICON_SIZE, baseH = DEFAULT_ICON_SIZE;
         if (type === 'text') { baseW = 200; baseH = 50; } else if (type === 'image') { baseW = 200; baseH = 200; }
         const width = baseW / state.scale, height = baseH / state.scale;
         dispatch({
@@ -499,7 +499,8 @@ export const Canvas = () => {
           {state.objects.map((obj) => {
             const layer = state.layers.find(l => l.id === obj.layerId);
             if (!layer?.visible || obj.type === 'path') return null;
-            const disableMovement = isMobile && user?.role === 'PM';
+            // Phone: no dragging (it fights with scrolling) — the bottom bar's Move places the object instead.
+            const disableMovement = isMobile;
             return (
               <ObjectRenderer 
                 key={obj.id} 
@@ -514,7 +515,7 @@ export const Canvas = () => {
                 getSnapTargets={getSnapTargets}
                 pageHeight={docState.pdfCanvasHeight}
                 dragStep={dragStep}
-                touchLayout={state.ipadMode}
+                touchLayout={state.ipadMode && !isMobile}
                 idfColor={idfColorOf(obj.id)}
                 noCables={uiState.showCableRoutes && isCableDevice(obj) && obj.change !== 'REMOVE' && !hasCables(obj)}
               />

@@ -59,10 +59,10 @@ const Home = () => {
             <p className="text-muted-foreground text-sm">Processing large files may take a moment</p>
           </div>
         )}
-        <div className={cn("flex flex-col h-screen overflow-hidden bg-background relative", hasSelectedObject ? "pb-48" : "pb-16")}>
+        {/* Phone: plan + one simplified bottom bar (status, photos, copy, move, add); no side panels. */}
+        <div className="flex flex-col h-[100dvh] overflow-hidden bg-background relative">
           <Toolbar isSaving={isSaving} />
           <Canvas />
-          {/* Sidebars are hidden for TECH on mobile by not rendering them and restricting MobileBottomBar */}
           <MobileBottomBar />
         </div>
       </Suspense>

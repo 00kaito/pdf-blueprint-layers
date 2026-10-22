@@ -15,7 +15,7 @@ const MIN_SCALE = 0.1;
 const MAX_SCALE = 10;
 /** Each +/- click zooms by this factor. */
 const ZOOM_STEP = 1.25;
-const PRESETS = [0.5, 1, 2, 4];
+const PRESETS = [0.5, 1, 2, 4, 7.5, 10];
 /** Padding around the page inside the canvas scroller (p-8 on both sides). */
 const CANVAS_PADDING = 64;
 

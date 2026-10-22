@@ -6,7 +6,8 @@ export const SVG_RENDER_QUALITY_MULTIPLIER = 4;
 // Default dimensions for newly created objects
 export const DEFAULT_TEXT_WIDTH = 200;
 export const DEFAULT_TEXT_HEIGHT = 50;
-export const DEFAULT_ICON_SIZE = 50;
+/** Default size of icons, shapes and LV devices (25% smaller than the original 50). */
+export const DEFAULT_ICON_SIZE = 37.5;
 export const DEFAULT_IMAGE_SIZE = 200;
 
 // Default styles

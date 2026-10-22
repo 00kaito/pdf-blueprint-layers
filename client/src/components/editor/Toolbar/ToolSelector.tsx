@@ -39,6 +39,7 @@ import {FILL_LAYER_NAME} from '@/lib/editor-context';
 import {useToast} from '@/hooks/use-toast';
 import {LV_ICON_TYPES, LV_ICONS} from '@/core/lv-icons';
 import {LvIcon} from '@/components/editor/LvIcon';
+import {DEFAULT_ICON_SIZE} from '@/core/constants';
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
 const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
@@ -414,7 +415,7 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                           <Button variant="outline" size="icon" className="w-full h-10 p-1"
                             onClick={() => {
                               if (!uiState.activeLayerId) return;
-                              const size = 50 / uiState.scale;
+                              const size = DEFAULT_ICON_SIZE / uiState.scale;
                               const { x, y } = getCenterPosition(size, size);
                               const id = uuidv4();
                               dispatch({

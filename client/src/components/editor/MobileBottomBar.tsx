@@ -1,12 +1,17 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { useDocument, useUI } from '@/lib/editor-context';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { useUploadFile } from '@/hooks/useProjects';
+import { useObjectCreation } from '@/hooks/useObjectCreation';
 import { compressImage } from '@/core/image-compress';
-import { Camera, Loader2, Image as ImageIcon } from 'lucide-react';
+import { CANVAS_BASE_WIDTH } from '@/core/constants';
+import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames } from '@/core/lv-icons';
+import { Camera, Circle, CopyPlus, Images, Info, Loader2, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
+import { LvIcon } from './LvIcon';
 import {
   Dialog,
   DialogContent,
@@ -18,10 +23,8 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from '@/components/ui/drawer';
 import { PMObjectDetailsPanel } from './PMObjectDetailsPanel';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useManualSave } from '@/hooks/useManualSave';
 import { cn } from '@/lib/utils';
 
@@ -37,23 +40,95 @@ const dataUrlToFile = (dataUrl: string, filename: string): File => {
   return new File([u8arr], filename, { type: mime });
 };
 
+const STATUSES = [
+  { id: 'PLANNED', label: 'Planned', color: 'bg-red-400' },
+  { id: 'CABLE_PULLED', label: 'Cable', color: 'bg-blue-500' },
+  { id: 'TERMINATED', label: 'Term.', color: 'bg-purple-500' },
+  { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
+  { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
+  { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
+] as const;
+
+/** Shapes from the desktop toolbar offered on the phone (same icon types). */
+const SHAPES = [
+  { type: 'square', label: 'Square', icon: Square },
+  { type: 'circle', label: 'Circle', icon: Circle },
+  { type: 'triangle', label: 'Triangle', icon: Triangle },
+] as const;
+
+const ADD_TILE = "flex h-20 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-background px-1 text-center text-[11px] font-medium leading-tight active:bg-muted";
+
+/** One big labelled button of the phone action row. */
+const ActionButton = ({ icon: Icon, label, onClick, disabled, active, testId }: {
+  icon: typeof Camera; label: string; onClick: () => void; disabled?: boolean; active?: boolean; testId: string;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    data-testid={testId}
+    className={cn(
+      "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl h-14 text-[11px] font-semibold transition-colors disabled:opacity-40",
+      active ? "bg-primary text-primary-foreground" : "bg-muted/60 active:bg-muted"
+    )}
+  >
+    <Icon className="h-5 w-5" />
+    {label}
+  </button>
+);
+
+/**
+ * Phone layout: a simplified editor in one bottom bar — status, photos, duplicate, add, move.
+ * Moving is "Move, then tap the new place" (dragging a small icon fights with scrolling on a phone).
+ */
 export const MobileBottomBar: React.FC = () => {
   const { state: docState, dispatch: docDispatch } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
   const { data: user } = useCurrentUser();
-  const isMobile = useIsMobile();
   const { handleSave } = useManualSave();
+  const { handleAddIcon } = useObjectCreation();
   const isTech = user?.role === 'TECH';
   const isPM = user?.role === 'PM';
-  
+
   const uploadFileMutation = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
+  const layerLocked = !!docState.layers.find(l => l.id === selectedObject?.layerId)?.locked;
+  const canEdit = !isTech && !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path';
+  const canDelete = !isTech && !!selectedObject && !layerLocked;
+  const name = selectedObject
+    ? selectedObject.name || defaultObjectNames(docState.objects, docState.customIcons).get(selectedObject.id) || 'Object'
+    : '';
+
+  // Move ends when the object is deselected or another one is selected.
+  useEffect(() => { setMoving(false); }, [selectedObjectId]);
+
+  // Move: the next tap on the plan places the object's center there (captured before the canvas sees it).
+  useEffect(() => {
+    if (!moving || !selectedObject) return;
+    const onClick = (e: MouseEvent) => {
+      const page = document.querySelector<HTMLElement>('[data-canvas-page]');
+      if (!page || !page.contains(e.target as Node)) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const rect = page.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / uiState.scale;
+      const py = (e.clientY - rect.top) / uiState.scale;
+      const x = Math.max(0, Math.min(CANVAS_BASE_WIDTH - selectedObject.width, px - selectedObject.width / 2));
+      const y = Math.max(0, Math.min(docState.pdfCanvasHeight - selectedObject.height, py - selectedObject.height / 2));
+      docDispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { x, y } } });
+      setMoving(false);
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [moving, selectedObject, uiState.scale, docState.pdfCanvasHeight, docDispatch]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -64,9 +139,9 @@ export const MobileBottomBar: React.FC = () => {
       for (const file of files) {
         const photoDataUrl = await compressImage(file);
         const photoFile = dataUrlToFile(photoDataUrl, file.name);
-        const result = await uploadFileMutation.mutateAsync({ 
-          file: photoFile, 
-          projectId: docState.projectId || undefined 
+        const result = await uploadFileMutation.mutateAsync({
+          file: photoFile,
+          projectId: docState.projectId || undefined
         });
 
         docDispatch({
@@ -85,139 +160,195 @@ export const MobileBottomBar: React.FC = () => {
     }
   };
 
-  const StatusToggle = () => (
-    <div className="flex items-center gap-2 shrink-0">
-      <Checkbox 
-        id="status-colors-mobile" 
-        checked={uiState.showStatusColors} 
-        onCheckedChange={() => uiDispatch({ type: 'TOGGLE_STATUS_COLORS' })}
-      />
-      <label htmlFor="status-colors-mobile" className="text-[10px] font-bold uppercase tracking-tight leading-none whitespace-nowrap">By status</label>
-    </div>
-  );
+  const setStatus = async (status: typeof STATUSES[number]['id']) => {
+    if (!selectedObject) return;
+    docDispatch({
+      type: 'UPDATE_OBJECTS',
+      payload: {
+        ids: [selectedObject.id],
+        updates: {
+          status,
+          statusUpdatedAt: new Date().toISOString(),
+          statusUpdatedBy: user?.username || 'Unknown'
+        }
+      }
+    });
+    await handleSave(true);
+  };
 
-  const pmMobileDrawer = isPM && isMobile && selectedObject;
+  const duplicate = () => {
+    if (!selectedObject) return;
+    docDispatch({ type: 'DUPLICATE_OBJECT', payload: { id: selectedObject.id, newId: uuidv4() } });
+  };
 
-  // PM version
+  const remove = () => {
+    if (!selectedObject || !window.confirm(`Delete ${name}?`)) return;
+    docDispatch({ type: 'DELETE_OBJECT', payload: selectedObject.id });
+  };
+
+  const addIcon = (type: string) => {
+    handleAddIcon(type);
+    setIsAddOpen(false);
+  };
+
+  const photoCount = selectedObject?.photos?.length || 0;
+
   return (
-    <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-2xl z-[100] h-auto flex flex-col py-1">
-        <div className="flex items-center px-4 justify-between h-24">
-          <div className="flex items-center gap-4 min-w-0 mr-2">
-              <StatusToggle />
-
-              {pmMobileDrawer ? (
-                <DrawerTrigger asChild>
-                  <div className="flex items-center gap-1.5 min-w-0 cursor-pointer">
-                    <span className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter shrink-0">OBJ:</span>
-                    <span className="text-sm font-bold truncate">
-                      {selectedObject ? (selectedObject.name || 'Untitled') : "Select..."}
-                    </span>
-                  </div>
-                </DrawerTrigger>
-              ) : (
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter shrink-0">OBJ:</span>
-                  <span className="text-sm font-bold truncate">
-                    {selectedObject ? (selectedObject.name || 'Untitled') : "Select..."}
-                  </span>
-                </div>
-              )}
+    <>
+      <div className="shrink-0 bg-background border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.06)] relative z-10 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] space-y-2" data-testid="mobile-bar">
+        {moving && selectedObject ? (
+          <div className="flex items-center gap-2 h-14">
+            <Move className="h-5 w-5 text-primary shrink-0" />
+            <span className="flex-1 text-sm font-medium">Tap the plan where <b>{name}</b> should go</span>
+            <Button variant="outline" className="h-11" onClick={() => setMoving(false)} data-testid="mobile-move-cancel">Cancel</Button>
           </div>
-          
-          <div className="flex items-center gap-2 shrink-0">
-            {selectedObject && (
-              <>
-                <Button 
-                  size="icon" 
-                  variant="outline" 
-                  className="h-14 w-14 rounded-full border-2"
-                  onClick={() => setIsGalleryOpen(true)}
-                >
-                  <ImageIcon className="h-7 w-7" />
-                </Button>
-                
-                <Button 
-                  size="lg" 
-                  variant="default" 
-                  className="h-14 gap-2 px-6 rounded-full shadow-lg"
-                  disabled={isUploading}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {isUploading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <Camera className="h-6 w-6" />
-                  )}
-                  <span className="text-[14px] font-black uppercase tracking-wider">Photo ({selectedObject?.photos?.length || 0})</span>
-                </Button>
-              </>
-            )}
-            
-            <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                multiple
-                onChange={handleFileChange}
-                {...({ capture: 'environment' } as any)}
-              />
-          </div>
-        </div>
-
-        {!isDrawerOpen && isPM && selectedObject && selectedObject.type !== 'path' && (
-          <div className="px-4 pb-4 pt-3 border-t border-border shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden bg-muted/20">
-            <div className="flex items-center gap-3 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
-              {[
-                { id: 'PLANNED', label: 'Plan', color: 'bg-red-400' },
-                { id: 'CABLE_PULLED', label: 'Cable', color: 'bg-blue-500' },
-                { id: 'TERMINATED', label: 'Term', color: 'bg-purple-500' },
-                { id: 'TESTED', label: 'Test', color: 'bg-green-400' },
-                { id: 'APPROVED', label: 'Appr', color: 'bg-green-600' },
-                { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
-              ].map((s) => (
+        ) : selectedObject ? (
+          <>
+            {/* Name + details / deselect */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                onClick={() => isPM && setIsDetailsOpen(true)}
+                disabled={!isPM}
+              >
+                <span className="truncate text-sm font-bold" data-testid="mobile-object-name">{name}</span>
+                {isPM && <Info className="h-4 w-4 shrink-0 text-muted-foreground" />}
+              </button>
+              {canDelete && (
                 <Button
-                  key={s.id}
-                  variant="outline"
-                  size="default"
-                  className={cn(
-                    "h-14 text-[13px] px-5 min-w-fit flex items-center gap-3 font-black uppercase tracking-tight rounded-full transition-all",
-                    selectedObject.status === s.id 
-                      ? "bg-primary text-primary-foreground border-primary shadow-md scale-105" 
-                      : "bg-background shadow-sm border-border/50"
-                  )}
-                  onClick={async () => {
-                    docDispatch({
-                      type: 'UPDATE_OBJECTS',
-                      payload: {
-                        ids: [selectedObject.id],
-                        updates: { 
-                          status: s.id as any,
-                          statusUpdatedAt: new Date().toISOString(),
-                          statusUpdatedBy: user?.username || 'Unknown'
-                        }
-                      }
-                    });
-                    await handleSave(true);
-                  }}
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 text-destructive"
+                  onClick={remove}
+                  aria-label="Delete"
+                  data-testid="mobile-delete"
                 >
-                  <div className={cn("w-1.5 h-1.5 rounded-full", s.color)} />
-                  {s.label}
+                  <Trash2 className="h-5 w-5" />
                 </Button>
+              )}
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => uiDispatch({ type: 'SELECT_OBJECT', payload: null })} aria-label="Deselect">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Status */}
+            {selectedObject.type !== 'text' && (
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-3 px-3">
+                {STATUSES.map(s => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setStatus(s.id)}
+                    data-testid={`mobile-status-${s.id}`}
+                    className={cn(
+                      "flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-bold",
+                      selectedObject.status === s.id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border"
+                    )}
+                  >
+                    <span className={cn("h-2 w-2 rounded-full", s.color)} />
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-1.5">
+              <ActionButton
+                icon={isUploading ? Loader2 : Camera}
+                label="Photo"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                testId="mobile-photo"
+              />
+              <ActionButton icon={Images} label={`Photos (${photoCount})`} onClick={() => setIsGalleryOpen(true)} testId="mobile-gallery" />
+              {canEdit && <ActionButton icon={CopyPlus} label="Copy" onClick={duplicate} testId="mobile-duplicate" />}
+              {canEdit && <ActionButton icon={Move} label="Move" onClick={() => setMoving(true)} testId="mobile-move" />}
+              {!isTech && <ActionButton icon={Plus} label="Add" onClick={() => setIsAddOpen(true)} testId="mobile-add" />}
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-3 h-14">
+            <div className="flex items-center gap-2 shrink-0">
+              <Checkbox
+                id="status-colors-mobile"
+                checked={uiState.showStatusColors}
+                onCheckedChange={() => uiDispatch({ type: 'TOGGLE_STATUS_COLORS' })}
+              />
+              <label htmlFor="status-colors-mobile" className="text-xs font-semibold whitespace-nowrap">By status</label>
+            </div>
+            <span className="flex-1 text-xs text-muted-foreground">Tap an object</span>
+            {!isTech && (
+              <Button className="h-12 gap-1.5 rounded-full px-5" onClick={() => setIsAddOpen(true)} data-testid="mobile-add">
+                <Plus className="h-5 w-5" /> Add
+              </Button>
+            )}
+          </div>
+        )}
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept="image/*"
+          multiple
+          onChange={handleFileChange}
+          {...({ capture: 'environment' } as any)}
+        />
+      </div>
+
+      {/* Add: device icons, placed in the middle of the visible plan */}
+      <Drawer open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Add</DrawerTitle>
+          </DrawerHeader>
+          <div className="max-h-[60vh] overflow-y-auto px-4 pb-6 space-y-3" data-testid="mobile-add-sheet">
+            <div className="grid grid-cols-3 gap-2">
+              {LV_ICON_TYPES.map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => addIcon(type)}
+                  data-testid={`mobile-add-${type}`}
+                  className={ADD_TILE}
+                >
+                  <LvIcon type={type} className="h-7 w-7" />
+                  {LV_ICONS[type].label}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shapes</div>
+            <div className="grid grid-cols-3 gap-2">
+              {SHAPES.map(({ type, label, icon: Icon }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => addIcon(type)}
+                  data-testid={`mobile-add-${type}`}
+                  className={ADD_TILE}
+                >
+                  <Icon className="h-7 w-7" />
+                  {label}
+                </button>
               ))}
             </div>
           </div>
-        )}
-      </div>
-      
-      {pmMobileDrawer && (
-        <DrawerContent>
+        </DrawerContent>
+      </Drawer>
+
+      {isPM && selectedObject && (
+        <Drawer open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>{selectedObject.name || 'Object Details'}</DrawerTitle>
+              <DrawerTitle>{name}</DrawerTitle>
             </DrawerHeader>
             <PMObjectDetailsPanel />
-        </DrawerContent>
+          </DrawerContent>
+        </Drawer>
       )}
 
       <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
@@ -227,14 +358,14 @@ export const MobileBottomBar: React.FC = () => {
           </DialogHeader>
           <div className="p-4 max-h-[70vh] overflow-y-auto">
             {selectedObject && (
-              <ObjectPhotoGallery 
-                objectId={selectedObject.id} 
-                photos={selectedObject.photos || []} 
+              <ObjectPhotoGallery
+                objectId={selectedObject.id}
+                photos={selectedObject.photos || []}
               />
             )}
           </div>
         </DialogContent>
       </Dialog>
-    </Drawer>
+    </>
   );
 };
