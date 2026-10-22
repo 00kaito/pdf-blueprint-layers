@@ -55,7 +55,6 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey.join("/");
-    console.log(`[Query] Fetching: ${url}`);
     
     const controller = new AbortController();
     // Default GET timeout of 15 seconds
@@ -67,7 +66,6 @@ export const getQueryFn: <T>(options: {
         signal: controller.signal,
       });
 
-      console.log(`[Query] Response: ${url} (${res.status})`);
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
         return null;

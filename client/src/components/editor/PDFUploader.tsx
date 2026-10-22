@@ -168,7 +168,6 @@ export const PDFUploader = () => {
     }
   };
 
-  console.log('[PDFUploader] Rendering. User:', user ? { username: user.username, role: user.role } : 'null');
 
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col p-4 md:p-8">

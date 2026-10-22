@@ -1,7 +1,8 @@
 import { useDocument, useUI } from '@/lib/editor-context';
 import { useSaveProject, useCreateProject, useUploadFile } from './useProjects';
 import { useToast } from './use-toast';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import { buildProjectState, isAbortError } from '@/lib/project-state';
 
 export function useManualSave() {
   const { state: docState, dispatch } = useDocument();
@@ -64,21 +65,10 @@ export function useManualSave() {
           dispatch({ type: 'SET_PDF_FILE_IDS', payload: { pdfFileId: currentPdfFileId, overlayPdfFileId: currentOverlayPdfFileId } });
         }
 
-        const stateToSave = {
-          layers: docState.layers,
-          objects: docState.objects,
-          customIcons: docState.customIcons,
-          exportSettings: docState.exportSettings,
-          autoNumbering: docState.autoNumbering,
-          overlayOpacity: docState.overlayOpacity,
-          overlayOffset: docState.overlayOffset,
-          measureCalibration: docState.measureCalibration,
-          lvSettings: docState.lvSettings,
-          cableRoutes: docState.cableRoutes,
+        const stateToSave = buildProjectState(docState, uiState.activeLayerId, {
           pdfFileId: currentPdfFileId,
           overlayPdfFileId: currentOverlayPdfFileId,
-          activeLayerId: uiState.activeLayerId
-        };
+        });
 
         await saveProject.mutateAsync({ id: currentProjectId!, state: stateToSave as any });
         if (!silent) {
@@ -88,12 +78,11 @@ export function useManualSave() {
           });
         }
       } catch (e: any) {
-        const isAbortError = e.name === 'AbortError' || e.message?.includes('aborted') || e.message?.includes('signal is aborted');
-        
-        if (isAbortError && retryCount < 3) {
+        const aborted = isAbortError(e);
+
+        if (aborted && retryCount < 3) {
           const delay = Math.pow(2, retryCount) * 1000;
-          console.log(`[ManualSave] Save aborted, retrying in ${delay}ms (attempt ${retryCount + 1})...`);
-          
+
           if (!silent && retryCount === 0) {
             toast({ 
               title: "Connection unstable", 
@@ -105,11 +94,11 @@ export function useManualSave() {
           return performSave(retryCount + 1);
         }
 
-        const errorMessage = isAbortError 
+        const errorMessage = aborted
           ? "The save request took too long or was interrupted. Please check your internet connection and try again."
           : e.message;
-          
-        if (!silent || isAbortError) {
+
+        if (!silent || aborted) {
           toast({ 
             variant: "destructive", 
             title: "Failed to save project", 
@@ -129,16 +118,6 @@ export function useManualSave() {
       activeSaveRef.current = false;
     }
   };
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && activeSaveRef.current) {
-        console.log("[ManualSave] Page hidden during active save, allowing it to complete...");
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
 
   return { handleSave, isSaving };
 }

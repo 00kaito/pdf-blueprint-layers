@@ -38,3 +38,9 @@ export async function compressImage(file: File): Promise<string> {
     reader.onerror = (e) => reject(e);
   });
 }
+
+/** Compressed photo as a JPEG file, ready to upload. */
+export async function compressImageToFile(file: File): Promise<File> {
+  const blob = await (await fetch(await compressImage(file))).blob();
+  return new File([blob], file.name, { type: blob.type || 'image/jpeg' });
+}

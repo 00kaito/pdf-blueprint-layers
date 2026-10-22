@@ -4,7 +4,8 @@ import { useDocument, useUI } from '@/lib/editor-context';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { useUploadFile } from '@/hooks/useProjects';
 import { useObjectCreation } from '@/hooks/useObjectCreation';
-import { compressImage } from '@/core/image-compress';
+import { compressImageToFile } from '@/core/image-compress';
+import { STATUSES, statusUpdate, type ObjectStatus } from '@/core/status';
 import { CANVAS_BASE_WIDTH } from '@/core/constants';
 import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames } from '@/core/lv-icons';
 import { Camera, Circle, CopyPlus, Images, Info, Loader2, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
@@ -25,29 +26,7 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer';
 import { PMObjectDetailsPanel } from './PMObjectDetailsPanel';
-import { useManualSave } from '@/hooks/useManualSave';
 import { cn } from '@/lib/utils';
-
-const dataUrlToFile = (dataUrl: string, filename: string): File => {
-  const arr = dataUrl.split(',');
-  const mime = arr[0].match(/:(.*?);/)?.[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
-};
-
-const STATUSES = [
-  { id: 'PLANNED', label: 'Planned', color: 'bg-red-400' },
-  { id: 'CABLE_PULLED', label: 'Cable', color: 'bg-blue-500' },
-  { id: 'TERMINATED', label: 'Term.', color: 'bg-purple-500' },
-  { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
-  { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
-  { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
-] as const;
 
 /** Shapes from the desktop toolbar offered on the phone (same icon types). */
 const SHAPES = [
@@ -85,7 +64,6 @@ export const MobileBottomBar: React.FC = () => {
   const { state: docState, dispatch: docDispatch } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
   const { data: user } = useCurrentUser();
-  const { handleSave } = useManualSave();
   const { handleAddIcon } = useObjectCreation();
   const isTech = user?.role === 'TECH';
   const isPM = user?.role === 'PM';
@@ -137,18 +115,16 @@ export const MobileBottomBar: React.FC = () => {
     setIsUploading(true);
     try {
       for (const file of files) {
-        const photoDataUrl = await compressImage(file);
-        const photoFile = dataUrlToFile(photoDataUrl, file.name);
         const result = await uploadFileMutation.mutateAsync({
-          file: photoFile,
+          file: await compressImageToFile(file),
           projectId: docState.projectId || undefined
         });
 
+        // Saved with the project by autosave.
         docDispatch({
           type: 'ADD_OBJECT_PHOTO',
           payload: { id: selectedObjectId, photoDataUrl: result.url },
         });
-        await handleSave(true);
       }
     } catch (error) {
       console.error('Error uploading photos:', error);
@@ -160,20 +136,9 @@ export const MobileBottomBar: React.FC = () => {
     }
   };
 
-  const setStatus = async (status: typeof STATUSES[number]['id']) => {
+  const setStatus = (status: ObjectStatus) => {
     if (!selectedObject) return;
-    docDispatch({
-      type: 'UPDATE_OBJECTS',
-      payload: {
-        ids: [selectedObject.id],
-        updates: {
-          status,
-          statusUpdatedAt: new Date().toISOString(),
-          statusUpdatedBy: user?.username || 'Unknown'
-        }
-      }
-    });
-    await handleSave(true);
+    docDispatch({ type: 'UPDATE_OBJECTS', payload: { ids: [selectedObject.id], updates: statusUpdate(status, user?.username) } });
   };
 
   const duplicate = () => {
@@ -248,8 +213,8 @@ export const MobileBottomBar: React.FC = () => {
                         : "bg-background border-border"
                     )}
                   >
-                    <span className={cn("h-2 w-2 rounded-full", s.color)} />
-                    {s.label}
+                    <span className={cn("h-2 w-2 rounded-full", s.dot)} />
+                    {s.short}
                   </button>
                 ))}
               </div>

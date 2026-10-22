@@ -9,6 +9,7 @@ import {ToolSelector} from './Toolbar/ToolSelector';
 import {MainMenu} from './Toolbar/MainMenu';
 import {ContextBar} from './Toolbar/ContextBar';
 import {useIsMobile} from '@/hooks/use-mobile';
+import {ProjectName} from './Toolbar/ProjectName';
 import {cn} from '@/lib/utils';
 
 /** Small autosave indicator: a dot instead of a "Saved" pill. */
@@ -35,7 +36,8 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
   if (isMobile) {
     // Phone layout: no editing tools, just the project actions.
     return (
-      <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-end shrink-0">
+      <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-between gap-3 shrink-0">
+        <ProjectName className="min-w-0" />
         <ProjectActions
           projectId={docState.projectId}
           pdfFile={docState.pdfFile}
@@ -57,6 +59,8 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {/* TECH has no context bar, which shows the name for everyone else. */}
+          {isTech && <ProjectName className="max-w-[9rem] xl:max-w-[16rem]" />}
           <HistoryControls />
           <Separator orientation="vertical" className="h-6" />
           <ZoomControls scale={uiState.scale} />

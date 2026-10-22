@@ -7,6 +7,7 @@ import {
 } from './cable-routing';
 import {CABLE_LABEL, CABLE_TYPES, defaultObjectNames, formatCables, objectTypeName} from './lv-icons';
 import {PLAN_CHANGE_BY_ID, PLAN_CHANGES} from './plan-change';
+import {statusOf} from './status';
 import type {Point} from './measure';
 
 /**
@@ -16,11 +17,6 @@ import type {Point} from './measure';
 
 /** Badge text per plan change: the on-screen symbols are not in the PDF's standard fonts. */
 const PDF_BADGE: Record<string, string> = { RELOCATE: '<>', REMOVE: 'X', NEW: '+', ON_HOLD: '||' };
-
-const STATUS_LABEL: Record<string, string> = {
-  PLANNED: 'Planned', CABLE_PULLED: 'Cable Pulled', TERMINATED: 'Terminated',
-  TESTED: 'Tested', APPROVED: 'Approved', ISSUE: 'Issue',
-};
 
 const PL: Record<string, string> = {
   'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
@@ -332,7 +328,7 @@ export const appendLvPages = (
         name, objectTypeName(o, data.customIcons), run ? rackLabel(racks, run.rackId) : '-',
         formatCables(o.cables).replace(/×/g, 'x'),
         feet !== null ? ft(feet) + (run && !run.routed ? ' est.' : '') : '-', '',
-        STATUS_LABEL[o.status ?? 'PLANNED'] ?? o.status ?? '', o.change ? PLAN_CHANGE_BY_ID[o.change].label : '',
+        statusOf(o.status ?? 'PLANNED')?.label ?? o.status ?? '', o.change ? PLAN_CHANGE_BY_ID[o.change].label : '',
       ],
       dot: run ? colors.get(run.rackId) : undefined,
     })),

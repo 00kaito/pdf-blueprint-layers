@@ -14,8 +14,6 @@ import {Loader2} from "lucide-react";
 function AppContent() {
   const {data: user, isLoading, isError, error, refetch} = useCurrentUser();
 
-  console.log('[App] Current path:', window.location.pathname);
-  console.log('[App] User state:', user ? { username: user.username, role: user.role } : 'null');
 
   if (isLoading) {
     return (
@@ -58,7 +56,6 @@ function AppContent() {
         
         <Route path="/admin">
           {() => {
-            console.log('[App] Matching /admin route. User role:', user?.role);
             if (!user) return <Redirect to="/auth" />;
             if (user.role !== 'admin') {
               console.warn('[App] User is not admin, redirecting to /');
@@ -78,7 +75,6 @@ function AppContent() {
 
         <Route>
           {() => {
-            console.log('[App] No route matched, showing NotFound. Path:', window.location.pathname);
             return <NotFound />;
           }}
         </Route>

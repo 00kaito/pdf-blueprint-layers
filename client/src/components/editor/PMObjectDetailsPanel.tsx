@@ -10,14 +10,13 @@ import { CableEditor } from './CableEditor';
 import { isCableDevice } from '@/core/cable-routing';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/useAuth';
-import { useManualSave } from '@/hooks/useManualSave';
+import { STATUSES, statusUpdate } from '@/core/status';
 
 export const PMObjectDetailsPanel: React.FC = () => {
   const { state: uiState } = useUI();
   const { state: documentState } = useDocument();
   const dispatch = useDocumentDispatch();
   const { data: user } = useCurrentUser();
-  const { handleSave } = useManualSave();
 
   const selectedObject = documentState.objects.find(
     obj => obj.id === uiState.selectedObjectIds[0]
@@ -73,14 +72,7 @@ export const PMObjectDetailsPanel: React.FC = () => {
         <div>
           <h4 className="text-sm font-semibold mb-2 uppercase tracking-wider text-muted-foreground">Status</h4>
           <div className="grid grid-cols-2 gap-2">
-            {[
-              { id: 'PLANNED', label: 'Planned', color: 'bg-red-400' },
-              { id: 'CABLE_PULLED', label: 'Cable Pulled', color: 'bg-blue-500' },
-              { id: 'TERMINATED', label: 'Terminated', color: 'bg-purple-500' },
-              { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
-              { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
-              { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
-            ].map((s) => (
+            {STATUSES.map((s) => (
               <Button
                 key={s.id}
                 variant="outline"
@@ -89,22 +81,12 @@ export const PMObjectDetailsPanel: React.FC = () => {
                   "h-14 text-[13px] px-4 justify-start gap-3 font-black uppercase tracking-tight shadow-md transition-all",
                   selectedObject.status === s.id ? "ring-2 ring-primary ring-offset-2 bg-primary text-primary-foreground scale-[1.02]" : "bg-background border-border/60"
                 )}
-                onClick={async () => {
-                  dispatch({
-                    type: 'UPDATE_OBJECTS',
-                    payload: {
-                      ids: [selectedObject.id],
-                      updates: { 
-                        status: s.id as any,
-                        statusUpdatedAt: new Date().toISOString(),
-                        statusUpdatedBy: user?.username || 'Unknown'
-                      }
-                    }
-                  });
-                  await handleSave(true);
-                }}
+                onClick={() => dispatch({
+                  type: 'UPDATE_OBJECTS',
+                  payload: { ids: [selectedObject.id], updates: statusUpdate(s.id, user?.username) },
+                })}
               >
-                <div className={cn("w-3 h-3 rounded-full", s.color)} />
+                <div className={cn("w-3 h-3 rounded-full", s.dot)} />
                 {s.label}
               </Button>
             ))}

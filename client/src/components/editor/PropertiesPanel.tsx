@@ -17,6 +17,7 @@ import {PlanChangeSection} from './PlanChangeSection';
 import {CableEditor} from './CableEditor';
 import {RackSelect} from './RackSelect';
 import {isCableDevice} from '@/core/cable-routing';
+import {STATUSES, statusUpdate} from '@/core/status';
 import {useCurrentUser} from '@/hooks/useAuth';
 
 export const PropertiesPanel = () => {
@@ -56,12 +57,7 @@ export const PropertiesPanel = () => {
       updates = filteredUpdates;
     }
 
-    const finalUpdates = { ...updates };
-    
-    if (updates.status) {
-      finalUpdates.statusUpdatedAt = new Date().toISOString();
-      finalUpdates.statusUpdatedBy = user?.username || 'Unknown';
-    }
+    const finalUpdates = updates.status ? { ...updates, ...statusUpdate(updates.status, user?.username) } : updates;
 
     dispatch({
       type: 'UPDATE_OBJECTS',
@@ -176,14 +172,7 @@ export const PropertiesPanel = () => {
                   <div className="space-y-2">
                     <Label className="text-xs font-medium">Progress Status</Label>
                     <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { id: 'PLANNED', label: 'Planned', color: 'bg-red-400' },
-                        { id: 'CABLE_PULLED', label: 'Cable Pulled', color: 'bg-blue-500' },
-                        { id: 'TERMINATED', label: 'Terminated', color: 'bg-purple-500' },
-                        { id: 'TESTED', label: 'Tested', color: 'bg-green-400' },
-                        { id: 'APPROVED', label: 'Approved', color: 'bg-green-600' },
-                        { id: 'ISSUE', label: 'Issue', color: 'bg-red-600' },
-                      ].map((s) => (
+                      {STATUSES.map((s) => (
                         <Button
                           key={s.id}
                           variant="outline"
@@ -192,9 +181,9 @@ export const PropertiesPanel = () => {
                             "h-8 text-[10px] px-1 justify-start gap-1.5 font-semibold",
                             selectedObjects.every(o => o.status === s.id) ? "ring-2 ring-primary ring-offset-1" : ""
                           )}
-                          onClick={() => handleUpdate({ status: s.id as any })}
+                          onClick={() => handleUpdate({ status: s.id })}
                         >
-                          <div className={cn("w-2 h-2 rounded-full", s.color)} />
+                          <div className={cn("w-2 h-2 rounded-full", s.dot)} />
                           {s.label}
                         </Button>
                       ))}

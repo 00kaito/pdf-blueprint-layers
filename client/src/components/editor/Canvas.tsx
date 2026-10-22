@@ -247,12 +247,10 @@ export const Canvas = () => {
         const key = e.key.toLowerCase();
         if (key === 'c') {
           e.preventDefault();
-          console.log('[Canvas] CTRL+C detected');
           dispatch({ type: 'COPY_OBJECT' });
         } else if (key === 'v') {
           e.preventDefault();
           const isIncremental = e.shiftKey;
-          console.log('[Canvas] CTRL+V detected. Shift (isIncremental):', isIncremental, 'Pos:', mousePosRef.current);
           dispatch({ 
             type: 'PASTE_OBJECT', 
             payload: { ...mousePosRef.current, isIncremental } 

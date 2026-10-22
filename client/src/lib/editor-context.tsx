@@ -450,21 +450,18 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
     }
     case 'PASTE_OBJECT': {
       if (state.clipboardObjects.length === 0) {
-        console.log('[Paste] Failed: Clipboard empty');
         return state;
       }
       
       // Default to active layer, or first layer if none active
       const activeLayerId = state.activeLayerId || (state.layers.length > 0 ? state.layers[0].id : null);
       if (!activeLayerId) {
-        console.log('[Paste] Failed: No layer available');
         return state;
       }
       
       const incrementString = (str: string) => {
         const match = str.match(/^(.*?)(\d+)([^\d]*)$/);
         if (!match) {
-          console.log(`[Paste] No number found to increment in: "${str}"`);
           return str;
         }
         
@@ -476,7 +473,6 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         const nextNumStr = nextNum.toString().padStart(numStr.length, '0');
         
         const result = `${prefix}${nextNumStr}${suffix}`;
-        console.log(`[Paste] Incremented "${str}" -> "${result}"`);
         return result;
       };
 
@@ -489,7 +485,6 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
 
-      console.log(`[Paste] PASTE_OBJECT action.payload:`, action.payload);
 
       const newObjects = state.clipboardObjects.map((o) => {
         const id = uuidv4();
@@ -511,7 +506,6 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         let name = o.name;
 
         if (action.payload?.isIncremental) {
-          console.log(`[Paste] Incremental paste for object type: ${o.type}, current content: "${content}", name: "${name}"`);
           if (o.type === 'text' && content) {
             content = incrementString(content);
           } else if (o.type !== 'text' && name) {

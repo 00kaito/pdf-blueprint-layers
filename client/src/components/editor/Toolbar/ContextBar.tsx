@@ -9,6 +9,7 @@ import {feetPerUnit, formatFeet, formatFeetInches, segmentLength} from '@/core/m
 import {cn} from '@/lib/utils';
 import {effectiveRouteRack, getRacks, rackColorMap, rackLabel, SHARED_ROUTE_COLOR} from '@/core/cable-routing';
 import {ObjectPropertyEditor} from './ObjectPropertyEditor';
+import {ProjectName} from './ProjectName';
 import {BRUSH_SIZE_STEP, MAX_BRUSH_SIZE, MIN_BRUSH_SIZE} from './ToolSelector';
 
 const TOOL_NAMES: Record<string, string> = {
@@ -341,6 +342,7 @@ export const ContextBar = () => {
         <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground whitespace-nowrap">{toolName}</span>
       )}
       {content}
+      <ProjectName className="ml-auto pl-4 max-w-[16rem] shrink-0" />
     </div>
   );
 };

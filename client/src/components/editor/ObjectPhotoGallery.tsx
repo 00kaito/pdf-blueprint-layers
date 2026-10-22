@@ -18,9 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Camera, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, AlertCircle, X } from 'lucide-react';
-import { compressImage } from '@/core/image-compress';
+import { compressImageToFile } from '@/core/image-compress';
 import { useUploadFile } from '@/hooks/useProjects';
-import { useManualSave } from '@/hooks/useManualSave';
 import { Progress } from '@/components/ui/progress';
 import { useCurrentUser } from '@/hooks/useAuth';
 
@@ -36,24 +35,11 @@ interface UploadStatus {
   error?: string;
 }
 
-const dataUrlToFile = (dataUrl: string, filename: string): File => {
-  const arr = dataUrl.split(',');
-  const mime = arr[0].match(/:(.*?);/)?.[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
-};
-
 export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId, photos }) => {
   const { state, dispatch } = useDocument();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
   const uploadFile = useUploadFile();
-  const { handleSave } = useManualSave();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [uploadQueue, setUploadQueue] = useState<Record<string, UploadStatus>>({});
@@ -63,8 +49,6 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    console.log(`[PhotoGallery] Starting upload for ${files.length} files`);
-    
     for (const file of files) {
       const uploadId = `${Date.now()}-${file.name}`;
       
@@ -74,17 +58,13 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
       }));
 
       try {
-        console.log(`[PhotoGallery] Stage 1: Compressing ${file.name}`);
-        const photoDataUrl = await compressImage(file);
-        
+        const photoFile = await compressImageToFile(file);
+
         setUploadQueue(prev => ({
           ...prev,
           [uploadId]: { ...prev[uploadId], progress: 40, status: 'uploading' }
         }));
 
-        const photoFile = dataUrlToFile(photoDataUrl, file.name);
-        console.log(`[PhotoGallery] Stage 2: Uploading ${file.name} (Compressed: ${photoFile.size} bytes)`);
-        
         const result = await uploadFile.mutateAsync({ 
           file: photoFile, 
           projectId: state.projectId || undefined 
@@ -95,12 +75,11 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           [uploadId]: { ...prev[uploadId], progress: 80, status: 'done' }
         }));
 
-        console.log(`[PhotoGallery] Stage 3: Adding to project state: ${result.url}`);
+        // Saved with the project by autosave.
         dispatch({
           type: 'ADD_OBJECT_PHOTO',
           payload: { id: objectId, photoDataUrl: result.url },
         });
-        await handleSave(true);
 
         setUploadQueue(prev => ({
           ...prev,
@@ -138,14 +117,13 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
     setPhotoToDelete(index);
   };
 
-  const removePhoto = async () => {
+  const removePhoto = () => {
     if (photoToDelete === null) return;
-    
+
     dispatch({
       type: 'REMOVE_OBJECT_PHOTO',
       payload: { id: objectId, index: photoToDelete },
     });
-    await handleSave(true);
     
     if (lightboxIndex === photoToDelete) {
       setLightboxIndex(null);

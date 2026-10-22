@@ -9,6 +9,7 @@ import {useCurrentUser} from '@/hooks/useAuth';
 import {DEFAULT_LABEL_POSITION, getLeaderLine, LabelPosition} from '@/core/label-position';
 import {Box, Guide, SNAP_DISTANCE_PX, snapBox, stepPoint} from '@/core/snapping';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
+import {statusOf} from '@/core/status';
 import {dragStore} from '@/lib/drag-store';
 import {LV_ICONS} from '@/core/lv-icons';
 import {LvIcon} from '@/components/editor/LvIcon';
@@ -89,18 +90,6 @@ const IconRenderer = ({ iconType, color }: { iconType: string, color?: string })
     case 'arrow-right': return <ArrowRight {...props} />;
     case 'camera': return <Camera {...props} />;
     default: return <Square {...props} />;
-  }
-};
-
-const getStatusColor = (status?: string) => {
-  switch (status) {
-    case 'PLANNED': return '#f87171'; // Red 400
-    case 'CABLE_PULLED': return '#3b82f6'; // Blue 500
-    case 'TERMINATED': return '#a855f7'; // Purple 500
-    case 'TESTED': return '#4ade80'; // Green 400 (Jasnozielony)
-    case 'APPROVED': return '#16a34a'; // Green 600
-    case 'ISSUE': return '#dc2626'; // Red 600
-    default: return null;
   }
 };
 
@@ -229,7 +218,7 @@ export const ObjectRenderer = memo(({
     ? (getStatusCategoryColor(obj.status) || obj.color || '#000000')
     : (obj.color || '#000000');
   
-  const indicatorColor = obj.type !== 'text' ? getStatusColor(obj.status) : null;
+  const indicatorColor = obj.type !== 'text' ? (statusOf(obj.status)?.hex ?? null) : null;
 
   // --- Label: optional manual placement + dashed leader line back to the object ---
   const labelRef = useRef<HTMLDivElement>(null);

@@ -132,7 +132,6 @@ export const useExport = () => {
   const handleFlattenAndDownload = useCallback(async () => {
     if (!docState.pdfFile) return;
 
-    console.log("[Export] Starting flattening process...");
     const arrayBuffer = await docState.pdfFile.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
     const pages = pdfDoc.getPages();
@@ -153,7 +152,6 @@ export const useExport = () => {
     // Overlay PDF Pass: Draw the overlay if one exists
     if (docState.overlayPdfFile) {
        try {
-          console.log("[Export] Embedding overlay PDF...");
           const overlayBuffer = await docState.overlayPdfFile.arrayBuffer();
           // Embed the page matching the current view (or the first page if overlay is shorter)
           const tempDoc = await PDFDocument.load(overlayBuffer, { ignoreEncryption: true });
