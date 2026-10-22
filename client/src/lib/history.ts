@@ -112,6 +112,7 @@ const describe = (action: EditorAction, prev: EditorState): string => {
       return `Edit ${name} (${keys.join(', ')})`;
     }
     case 'UPDATE_OBJECTS': return `Edit ${plural(action.payload.ids.length, 'object')} (${Object.keys(action.payload.updates).join(', ')})`;
+    case 'SCALE_OBJECTS': return `Resize ${plural(action.payload.ids.length, 'object')} to ${Math.round(action.payload.factor * 100)}%`;
     case 'RENAME_OBJECTS': return `Number ${plural(Object.keys(action.payload).length, 'label')}`;
     case 'DELETE_OBJECT': return `Delete ${objName(action.payload)}`;
     case 'DELETE_OBJECTS': return action.payload.length === 1 ? `Delete ${objName(action.payload[0])}` : `Delete ${plural(action.payload.length, 'object')}`;

@@ -8,6 +8,7 @@ import {
 import {CABLE_LABEL, CABLE_TYPES, defaultObjectNames, formatCables, objectTypeName} from './lv-icons';
 import {PLAN_CHANGE_BY_ID, PLAN_CHANGES} from './plan-change';
 import {statusOf} from './status';
+import {COVERAGE_FAR, COVERAGE_NEAR, COVERAGE_OPACITY, coverageCameras, coverageOf, coverageZones} from './camera-coverage';
 import type {Point} from './measure';
 
 /**
@@ -50,6 +51,26 @@ const line = (pp: PlanPainter, a: Point, b: Point, color: string, width: number,
     start: pp.at(a), end: pp.at(b), thickness: width * pp.k, color: hexToRgb(color), opacity,
     dashArray: dash?.map(d => d * pp.k), lineCap: LineCapStyle.Round,
   });
+
+/** A filled polygon in plan units (drawSvgPath flips y, hence the negated page y). */
+const polygon = (pp: PlanPainter, pts: Point[], color: string, opacity: number) => {
+  const d = pts.map((p, i) => { const c = pp.at(p); return `${i ? 'L' : 'M'}${c.x.toFixed(2)} ${(-c.y).toFixed(2)}`; }).join(' ') + ' Z';
+  pp.page.drawSvgPath(d, {
+    x: 0, y: 0, color: hexToRgb(color), opacity,
+    borderColor: hexToRgb(color), borderWidth: 0.5 * pp.k, borderOpacity: 0.6,
+  });
+};
+
+/** CCTV fields of view, as on screen: darker near sector, lighter far band, see-through. */
+export const drawCameraCoverage = (pp: PlanPainter, objects: EditorObject[], visibleLayerIds: Set<string>, ftPerUnit: number | null) => {
+  for (const cam of coverageCameras(objects, visibleLayerIds)) {
+    const c = coverageOf(cam, ftPerUnit);
+    if (!c) continue;
+    const { near, far } = coverageZones(c);
+    if (far) polygon(pp, far, COVERAGE_FAR, COVERAGE_OPACITY);
+    polygon(pp, near, COVERAGE_NEAR, COVERAGE_OPACITY);
+  }
+};
 
 /** Cable routes in their IDF colour, shared ones dashed grey — as on screen. */
 export const drawCableRoutes = (pp: PlanPainter, routes: CableRoute[], objects: EditorObject[]) => {

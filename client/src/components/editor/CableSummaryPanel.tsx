@@ -1,9 +1,9 @@
-import React, {useMemo} from 'react';
+import React, {useMemo, useState} from 'react';
 import {AlertTriangle} from 'lucide-react';
 import {useDocument, useUI} from '@/lib/editor-context';
-import {CableType} from '@/lib/types';
-import {buildCableSummary, ProgressBucket, rackColorMap, RackSummary} from '@/core/cable-routing';
-import {CABLE_LABEL, CABLE_TYPES} from '@/core/lv-icons';
+import {CableType, EditorObject} from '@/lib/types';
+import {buildCableSummary, isCableDevice, ProgressBucket, rackColorMap, RackSummary} from '@/core/cable-routing';
+import {CABLE_LABEL, CABLE_TYPES, deviceKey, objectTypeName} from '@/core/lv-icons';
 import {PLAN_CHANGES} from '@/core/plan-change';
 import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '@/components/ui/dialog';
 import {Input} from '@/components/ui/input';
@@ -22,6 +22,10 @@ const BUCKETS: { id: ProgressBucket; label: string }[] = [
 ];
 
 const ft = (n: number) => `${Math.round(n).toLocaleString()} ft`;
+
+const ALL = 'all';
+/** Device type of a cable device: its icon / library image (inline images share one bucket). */
+const typeKey = (o: EditorObject) => deviceKey(o) ?? 'other';
 
 const NumberSetting = ({ label, value, onChange, disabled }: {
   label: string; value: number; onChange: (v: number) => void; disabled?: boolean;
@@ -45,9 +49,29 @@ export const CableSummaryPanel = () => {
   const open = uiState.cableSummaryOpen;
   const s = docState.lvSettings;
 
+  // Device types on the plan (cable devices), for the filter: key = icon / image, label = its type name.
+  const deviceTypes = useMemo(() => {
+    const byKey = new Map<string, { label: string; count: number }>();
+    for (const o of docState.objects) {
+      if (!isCableDevice(o) || o.change === 'REMOVE') continue;
+      const key = typeKey(o);
+      const t = byKey.get(key) ?? { label: objectTypeName(o, docState.customIcons), count: 0 };
+      t.count += 1;
+      byKey.set(key, t);
+    }
+    return Array.from(byKey, ([key, t]) => ({ key, ...t })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [docState.objects, docState.customIcons]);
+  const [typeFilter, setTypeFilter] = useState<string>(ALL);
+  // The filtered type was removed from the plan: back to all devices.
+  const filter = deviceTypes.some(t => t.key === typeFilter) ? typeFilter : ALL;
+  const filterLabel = deviceTypes.find(t => t.key === filter)?.label;
+
   const summary = useMemo(
-    () => open ? buildCableSummary(docState.objects, docState.cableRoutes, docState.measureCalibration, s) : null,
-    [open, docState.objects, docState.cableRoutes, docState.measureCalibration, s],
+    () => open
+      ? buildCableSummary(docState.objects, docState.cableRoutes, docState.measureCalibration, s,
+        filter === ALL ? undefined : (o) => typeKey(o) === filter)
+      : null,
+    [open, docState.objects, docState.cableRoutes, docState.measureCalibration, s, filter],
   );
 
   const rackColors = useMemo(() => rackColorMap(docState.objects), [docState.objects]);
@@ -65,7 +89,7 @@ export const CableSummaryPanel = () => {
 
   const rackRow = (r: RackSummary, total = false) => {
     const deviceIds = total || !summary ? [] : docState.objects
-      .filter(o => summary.runs.get(o.id)?.rackId === r.rackId && o.change !== 'REMOVE')
+      .filter(o => summary.runs.get(o.id)?.rackId === r.rackId && o.change !== 'REMOVE' && (filter === ALL || typeKey(o) === filter))
       .map(o => o.id);
     return (
       <tr
@@ -78,7 +102,7 @@ export const CableSummaryPanel = () => {
           {r.rackId && rackColors.has(r.rackId) && (
             <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: rackColors.get(r.rackId) }} />
           )}
-          {r.name}
+          {total && filterLabel ? `${filterLabel} total` : r.name}
           {r.estimated > 0 && summary?.hasScale && (
             <span className="ml-1 text-[10px] font-normal text-amber-600" title="Devices with no cable route to the rack — length estimated">
               ({r.estimated} est.)
@@ -144,10 +168,27 @@ export const CableSummaryPanel = () => {
           </div>
         )}
 
+        {summary && deviceTypes.length > 1 && (
+          <div className="flex items-center gap-2">
+            <Label className="text-[10px] uppercase text-muted-foreground whitespace-nowrap">Device type</Label>
+            <Select value={filter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="h-8 text-xs w-56" data-testid="cable-summary-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All devices</SelectItem>
+                {deviceTypes.map(t => (
+                  <SelectItem key={t.key} value={t.key}>{t.label} ({t.count})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {summary && (
           <>
             <section className="space-y-1">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Per rack</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Per rack{filterLabel && <span className="normal-case font-normal"> — {filterLabel} only</span>}
+              </h4>
               {types.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">No cables yet — set them on the devices (Object Properties → Cables).</p>
               ) : (
@@ -163,8 +204,9 @@ export const CableSummaryPanel = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {summary.racks.map(r => rackRow(r))}
-                      {summary.racks.length > 1 && rackRow(summary.total, true)}
+                      {/* Filtered: only the racks serving that device type. */}
+                      {summary.racks.filter(r => filter === ALL || r.devices > 0).map(r => rackRow(r))}
+                      {(summary.racks.length > 1 || filter !== ALL) && rackRow(summary.total, true)}
                     </tbody>
                   </table>
                 </div>

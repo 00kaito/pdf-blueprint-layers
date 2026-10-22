@@ -61,16 +61,17 @@ export const CableEditor = ({ objects, readOnly = false, large = false }: {
       )}
 
       {cables.map((c, i) => (
-        <div key={i} className="flex items-center gap-1.5">
+        <div key={i} className="flex items-center gap-1">
           <Select value={c.type} onValueChange={(v) => updateRow(i, { type: v as CableType })}>
-            <SelectTrigger className={cn("text-xs flex-1", rowH)}>
+            {/* min-w-0: a long type name ("Speaker") must shrink, not push the remove button out of the panel. */}
+            <SelectTrigger className={cn("text-xs flex-1 min-w-0 px-2", rowH)}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {CABLE_TYPES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" className={cn("shrink-0", rowH, large ? "w-10" : "w-8")}
+          <Button variant="outline" size="icon" className={cn("shrink-0", rowH, large ? "w-10" : "w-7")}
             onClick={() => updateRow(i, { count: Math.max(1, c.count - 1) })} aria-label="Fewer">
             <Minus className="w-3 h-3" />
           </Button>
@@ -82,13 +83,13 @@ export const CableEditor = ({ objects, readOnly = false, large = false }: {
               const n = parseInt(e.target.value, 10);
               if (n > 0) updateRow(i, { count: Math.min(n, 999) });
             }}
-            className={cn("text-xs w-12 text-center px-1", rowH)}
+            className={cn("text-xs shrink-0 text-center px-1", large ? "w-12" : "w-9", rowH)}
           />
-          <Button variant="outline" size="icon" className={cn("shrink-0", rowH, large ? "w-10" : "w-8")}
+          <Button variant="outline" size="icon" className={cn("shrink-0", rowH, large ? "w-10" : "w-7")}
             onClick={() => updateRow(i, { count: c.count + 1 })} aria-label="More">
             <Plus className="w-3 h-3" />
           </Button>
-          <Button variant="ghost" size="icon" className={cn("shrink-0 text-muted-foreground", rowH, large ? "w-10" : "w-8")}
+          <Button variant="ghost" size="icon" className={cn("shrink-0 text-muted-foreground", rowH, large ? "w-10" : "w-7")}
             onClick={() => set(cables.filter((_, j) => j !== i))} aria-label="Remove cable">
             <X className="w-3 h-3" />
           </Button>

@@ -24,6 +24,7 @@ import {MeasureLayer} from './Canvas/MeasureLayer';
 import {GuidesLayer} from './Canvas/GuidesLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import {RouteLayer} from './Canvas/RouteLayer';
+import {CoverageLayer} from './Canvas/CoverageLayer';
 import {useRouteDrawing} from '@/hooks/useRouteDrawing';
 import {
   computeCableRuns, getRacks, hasCables, isCableDevice, rackColorMap, rackLabel, runFeet, SHARED_ROUTE_COLOR,
@@ -476,6 +477,13 @@ export const Canvas = () => {
               data-testid="selection-rect"
             />
           )}
+          <CoverageLayer
+            objects={docState.objects}
+            layers={docState.layers}
+            scale={state.scale}
+            ftPerUnit={ftPerUnitValue}
+            visible={uiState.showCameraCoverage}
+          />
           <RouteLayer
             routes={state.cableRoutes}
             scale={state.scale}
@@ -490,7 +498,7 @@ export const Canvas = () => {
             onDeleteRoute={(id) => dispatch({ type: 'DELETE_CABLE_ROUTE', payload: id })}
             drawing={route.points}
             hover={route.hover}
-            run={selectedRun}
+            run={state.showCableRoutes || state.tool === 'route' ? selectedRun : null}
           />
           <GuidesLayer scale={state.scale} tape={state.measureTape} ftPerUnit={feetPerUnit(state.measureCalibration)} />
 
@@ -515,6 +523,7 @@ export const Canvas = () => {
                 dragStep={dragStep}
                 touchLayout={state.ipadMode && !isMobile}
                 idfColor={idfColorOf(obj.id)}
+                labelFontSize={docState.exportSettings.labelFontSize}
                 noCables={uiState.showCableRoutes && isCableDevice(obj) && obj.change !== 'REMOVE' && !hasCables(obj)}
               />
             );

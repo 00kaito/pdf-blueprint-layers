@@ -20,6 +20,8 @@ const clampOverlayCoord = (v: number) =>
 
 /** Gap (unscaled canvas units) between an object and its clone. */
 const DUPLICATE_GAP = 4;
+/** Smallest width / height a bulk resize leaves (canvas units). */
+const MIN_OBJECT_SIZE = 2;
 
 /** "CAM 7" → "CAM 8", "P-09" → "P-10"; unchanged without a trailing number. Skips labels already in use. */
 const nextFreeLabel = (name: string, taken: Set<string>) => {
@@ -81,6 +83,16 @@ const saveStylusOnly = (value: boolean) => {
   try { localStorage.setItem(STYLUS_ONLY_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
 };
 
+const CAMERA_COVERAGE_STORAGE_KEY = 'editor.showCameraCoverage';
+
+const loadCameraCoverage = (): boolean => {
+  try { return localStorage.getItem(CAMERA_COVERAGE_STORAGE_KEY) === 'true'; } catch { return false; }
+};
+
+const saveCameraCoverage = (value: boolean) => {
+  try { localStorage.setItem(CAMERA_COVERAGE_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
+};
+
 const SNAP_STORAGE_KEY = 'editor.snapEnabled';
 
 const loadSnapEnabled = (): boolean => {
@@ -139,6 +151,7 @@ const initialUIState: UIState = {
   drawStraight: false,
   ipadMode: loadIpadMode(),
   stylusOnly: loadStylusOnly(),
+  showCameraCoverage: loadCameraCoverage(),
   measureTape: null,
   snapEnabled: loadSnapEnabled()
 };
@@ -259,8 +272,13 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       const defaults = key ? state.lvSettings.cableDefaults[key] : undefined;
       let object = defaults ? { ...action.payload, cables: defaults.map(c => ({ ...c })) } : action.payload;
       // … and the size of that device type already on the plan (latest placed), centred where it was put.
+      // The first icon of a type takes the size of the latest icon of any type: the default size is
+      // per zoom level, so an icon added at another zoom would be out of proportion with the plan.
       const sizeKey = deviceKey(action.payload);
-      const same = sizeKey ? [...state.objects].reverse().find(o => !o.isFill && deviceKey(o) === sizeKey) : undefined;
+      const placed = [...state.objects].reverse().filter(o => !o.isFill);
+      const same = sizeKey
+        ? placed.find(o => deviceKey(o) === sizeKey) ?? (action.payload.type === 'icon' ? placed.find(o => o.type === 'icon') : undefined)
+        : undefined;
       if (same && (same.width !== object.width || same.height !== object.height)) {
         object = {
           ...object,
@@ -311,6 +329,27 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
           action.payload.ids.includes(o.id) ? applyObjectUpdates(o, action.payload.updates) : o
         ),
       };
+    case 'SCALE_OBJECTS': {
+      const { ids, factor } = action.payload;
+      if (!(factor > 0) || factor === 1) return state;
+      return {
+        ...state,
+        objects: state.objects.map((o) => {
+          // Fills and drawings are shapes of the plan itself, not placed objects.
+          if (!ids.includes(o.id) || o.isFill || o.type === 'path') return o;
+          const width = Math.max(MIN_OBJECT_SIZE, o.width * factor);
+          const height = Math.max(MIN_OBJECT_SIZE, o.height * factor);
+          return {
+            ...o,
+            x: o.x + (o.width - width) / 2,
+            y: o.y + (o.height - height) / 2,
+            width,
+            height,
+            ...(o.fontSize ? { fontSize: o.fontSize * (width / o.width) } : {}),
+          };
+        }),
+      };
+    }
     case 'RENAME_OBJECTS':
       return {
         ...state,
@@ -390,6 +429,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, selectedRouteId: action.payload, selectedObjectIds: action.payload ? [] : state.selectedObjectIds };
     case 'TOGGLE_CABLE_ROUTES':
       return { ...state, showCableRoutes: !state.showCableRoutes };
+    case 'TOGGLE_CAMERA_COVERAGE':
+      return { ...state, showCameraCoverage: !state.showCameraCoverage };
     case 'SET_CABLE_SUMMARY_OPEN':
       return { ...state, cableSummaryOpen: action.payload };
     case 'SET_MEASURE_CALIBRATION':
@@ -652,6 +693,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => saveIpadMode(state.ipadMode), [state.ipadMode]);
   useEffect(() => saveStylusOnly(state.stylusOnly), [state.stylusOnly]);
+  useEffect(() => saveCameraCoverage(state.showCameraCoverage), [state.showCameraCoverage]);
   useEffect(() => saveSnapEnabled(state.snapEnabled), [state.snapEnabled]);
   useEffect(() => {
     if (state.layers.length === 0 || state.layers.some(layer => layer.id === state.activeLayerId)) return;
@@ -694,6 +736,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     tool: state.tool,
     showStatusColors: state.showStatusColors,
     showCableRoutes: state.showCableRoutes,
+    showCameraCoverage: state.showCameraCoverage,
     selectedRouteId: state.selectedRouteId,
     routeRackId: state.routeRackId,
     cableSummaryOpen: state.cableSummaryOpen,
@@ -708,7 +751,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting]);
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

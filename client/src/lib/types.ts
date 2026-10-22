@@ -78,6 +78,8 @@ export type EditorObject = {
   change?: PlanChange;
   /** Where the object stood when it was marked RELOCATE — drawn as a ghost with an arrow to the new spot. */
   changeOrigin?: { x: number; y: number };
+  /** CCTV camera field of view; unset values use the defaults (25 ft, 100°). */
+  camera?: { rangeFt?: number; angleDeg?: number };
   changeNote?: string;
   changeUpdatedAt?: string;
   changeUpdatedBy?: string;
@@ -164,6 +166,8 @@ export type UIState = {
   showStatusColors: boolean;
   /** Cable routes drawn on the plan (always shown while the route tool is active). */
   showCableRoutes: boolean;
+  /** CCTV fields of view drawn on the plan (and exported). Remembered per device. */
+  showCameraCoverage: boolean;
   /** Cable route selected for deleting / extending. */
   selectedRouteId: string | null;
   /** IDF the route tool draws for: a rack id, 'shared', or null = the first rack. */
@@ -193,6 +197,8 @@ export type EditorAction =
   | { type: 'ADD_OBJECT'; payload: EditorObject }
   | { type: 'UPDATE_OBJECT'; payload: { id: string; updates: Partial<EditorObject> } }
   | { type: 'UPDATE_OBJECTS'; payload: { ids: string[]; updates: Partial<EditorObject> } }
+  /** Resizes each object by `factor` around its own centre (1.2 = +20%). */
+  | { type: 'SCALE_OBJECTS'; payload: { ids: string[]; factor: number } }
   /** Clone an object next to itself (tablet double tap); the clone gets `newId` and is selected. */
   | { type: 'DUPLICATE_OBJECT'; payload: { id: string; newId: string } }
   /** A different label per object (bulk rename with a numbering pattern) — one undo step. */
@@ -225,6 +231,7 @@ export type EditorAction =
   | { type: 'SET_ROUTE_RACK'; payload: UIState['routeRackId'] }
   | { type: 'SELECT_CABLE_ROUTE'; payload: string | null }
   | { type: 'TOGGLE_CABLE_ROUTES' }
+  | { type: 'TOGGLE_CAMERA_COVERAGE' }
   | { type: 'SET_CABLE_SUMMARY_OPEN'; payload: boolean }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }

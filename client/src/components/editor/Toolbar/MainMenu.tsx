@@ -1,6 +1,6 @@
 import React, {useRef, useState} from 'react';
 import {
-  Archive, Cable, ChevronLeft, Copy, Download, FileUp, FolderOpen, Loader2, LogOut, Menu, PenTool, Save, Share2, Spline, Tablet, User,
+  Archive, Cable, ChevronLeft, Copy, Download, FileUp, FolderOpen, Loader2, LogOut, Menu, PenTool, Save, Share2, Spline, Tablet, User, Video,
 } from 'lucide-react';
 import {CableSummaryPanel} from '../CableSummaryPanel';
 import {Button} from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {useManualSave} from '@/hooks/useManualSave';
 import {useUploadFile} from '@/hooks/useProjects';
 import {useToast} from '@/hooks/use-toast';
 import {ShareProjectDialog} from '../ShareProjectDialog';
+import {ExportPdfDialog} from '../ExportPdfDialog';
 import {OverlaySettings} from '../OverlaySettings';
 import {cn} from '@/lib/utils';
 
@@ -37,7 +38,8 @@ export const MainMenu = () => {
   const logout = useLogout();
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
-  const { handleFlattenAndDownload, handleExportProject } = useExport();
+  const { handleExportProject } = useExport();
+  const [exportOpen, setExportOpen] = useState(false);
   const { handleFileImport } = useImport();
   const { handleSave, isSaving } = useManualSave();
   const dirInputRef = useRef<HTMLInputElement>(null);
@@ -189,9 +191,24 @@ export const MainMenu = () => {
             <Spline className="w-4 h-4 mr-2" />
             Show cable routes
           </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={uiState.showCameraCoverage}
+            onCheckedChange={() => {
+              // Coverage is drawn in feet: without the measuring scale there is nothing to draw yet.
+              if (!uiState.showCameraCoverage && !docState.measureCalibration) {
+                toast({ title: 'Set the scale first', description: 'Camera coverage appears once the plan is calibrated (measure tool).' });
+              }
+              dispatch({ type: 'TOGGLE_CAMERA_COVERAGE' });
+            }}
+            className="cursor-pointer"
+            data-testid="menu-camera-coverage"
+          >
+            <Video className="w-4 h-4 mr-2" />
+            Show camera coverage
+          </DropdownMenuCheckboxItem>
 
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleFlattenAndDownload} className="gap-2 cursor-pointer">
+          <DropdownMenuItem onClick={() => setExportOpen(true)} className="gap-2 cursor-pointer" data-testid="menu-export-pdf">
             <Download className="w-4 h-4 text-primary" />
             <div className="flex flex-col">
               <span>Export PDF</span>
@@ -208,8 +225,8 @@ export const MainMenu = () => {
           {/* Not a menu item: dragging the slider must not close the menu. */}
           <div className="px-2 pt-1 pb-2 space-y-2" onKeyDown={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">PDF label font size</Label>
-              <span className="text-xs font-bold text-primary">{docState.exportSettings.labelFontSize}px</span>
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Label size (plan &amp; PDF)</Label>
+              <span className="text-xs font-bold text-primary">{docState.exportSettings.labelFontSize}</span>
             </div>
             <Slider
               min={1} max={30} step={1}
@@ -274,6 +291,7 @@ export const MainMenu = () => {
       />
 
       <ShareProjectDialog projectId={docState.projectId} open={shareOpen} onOpenChange={setShareOpen} />
+      <ExportPdfDialog open={exportOpen} onOpenChange={setExportOpen} />
       <CableSummaryPanel />
 
       <Dialog open={overlayOpen} onOpenChange={setOverlayOpen}>

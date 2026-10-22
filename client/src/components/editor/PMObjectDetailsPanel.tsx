@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
 import { PlanChangeSection } from './PlanChangeSection';
 import { CableEditor } from './CableEditor';
+import { CameraCoverageEditor } from './CameraCoverageEditor';
+import { isCamera } from '@/core/camera-coverage';
 import { isCableDevice } from '@/core/cable-routing';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/useAuth';
@@ -96,6 +98,9 @@ export const PMObjectDetailsPanel: React.FC = () => {
         {selectedObject.type !== 'text' && <PlanChangeSection objects={[selectedObject]} large />}
         {isCableDevice(selectedObject) && (
           <CableEditor objects={[selectedObject]} readOnly={user?.role === 'TECH'} large />
+        )}
+        {isCamera(selectedObject) && (
+          <CameraCoverageEditor objects={[selectedObject]} readOnly={user?.role === 'TECH'} large />
         )}
 
         <div>

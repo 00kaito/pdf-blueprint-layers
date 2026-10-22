@@ -369,6 +369,8 @@ export const buildCableSummary = (
   routes: CableRoute[],
   calibration: MeasureCalibration | null,
   settings: LvSettings,
+  /** Count only these devices (e.g. one device type); runs still use the whole plan. */
+  include: (o: EditorObject) => boolean = () => true,
 ): CableSummary => {
   const fpu = feetPerUnit(calibration);
   const runs = computeCableRuns(objects, routes);
@@ -385,6 +387,7 @@ export const buildCableSummary = (
   const noCables: string[] = [];
 
   for (const o of objects) {
+    if (!include(o)) continue;
     if (o.change && !o.isFill) changes[o.change].push(o.id);
     if (!isCableDevice(o)) continue;
     const cables = o.cables ?? [];

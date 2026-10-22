@@ -32,6 +32,8 @@ const RESIZE_HANDLE_CLASS = "after:absolute after:inset-[6px] after:rounded-full
  * was selected — the second tap of a double tap must not hit an action that just appeared.
  */
 const ACTION_GUARD_MS = 400;
+/** Smallest on-screen label font (the labels' size before print-size preview). */
+const LABEL_MIN_PX = 10;
 
 /** Touch: finger travel (px) before a press on a selected object moves it, so a tap never nudges it. */
 const TOUCH_DRAG_THRESHOLD_PX = 8;
@@ -68,6 +70,8 @@ interface ObjectRendererProps {
   idfColor?: string;
   /** Device with no cable assigned — flagged while cable routes are shown. */
   noCables?: boolean;
+  /** Label size of the exported PDF (canvas units): labels grow with it, never below the screen's 10px. */
+  labelFontSize?: number;
 }
 
 /** Client coordinates of a mouse or touch event. */
@@ -120,6 +124,7 @@ export const ObjectRenderer = memo(({
   touchLayout = false,
   idfColor,
   noCables = false,
+  labelFontSize = 1,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -658,13 +663,17 @@ export const ObjectRenderer = memo(({
       {!isFill && <div 
         ref={labelRef}
         className={cn(
-          "object-label absolute whitespace-nowrap border border-border px-1.5 py-0.5 rounded text-[10px] font-medium shadow-sm touch-none",
+          "object-label absolute whitespace-nowrap border border-border px-1.5 py-0.5 rounded font-medium shadow-sm touch-none",
           // A detached label is opaque so the leader line visibly ends at its border.
           labelCenter ? "bg-white -translate-x-1/2 -translate-y-1/2" : cn("bg-white/80", LABEL_POSITION_CLASSES[obj.labelPosition ?? DEFAULT_LABEL_POSITION]),
           canMoveLabel && obj.name ? "pointer-events-auto cursor-move" : "pointer-events-none",
           dragLabelOffset && "ring-1 ring-primary"
         )}
-        style={labelCenter ? { left: labelCenter.x, top: labelCenter.y } : undefined}
+        style={{
+          ...(labelCenter ? { left: labelCenter.x, top: labelCenter.y } : {}),
+          // Same size relative to the plan as in the printed PDF, so overlaps show before printing.
+          fontSize: Math.max(LABEL_MIN_PX, labelFontSize * scale),
+        }}
         title={canMoveLabel && obj.name ? 'Drag to move the label' : undefined}
         onPointerDown={handleLabelPointerDown}
         onPointerMove={handleLabelPointerMove}

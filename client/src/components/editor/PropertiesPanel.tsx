@@ -16,6 +16,9 @@ import {BulkLabelInput} from './BulkLabelInput';
 import {PlanChangeSection} from './PlanChangeSection';
 import {CableEditor} from './CableEditor';
 import {RackSelect} from './RackSelect';
+import {CameraCoverageEditor} from './CameraCoverageEditor';
+import {ResizeByPercent} from './ResizeByPercent';
+import {isCamera} from '@/core/camera-coverage';
 import {isCableDevice} from '@/core/cable-routing';
 import {STATUSES, statusUpdate} from '@/core/status';
 import {useCurrentUser} from '@/hooks/useAuth';
@@ -259,6 +262,9 @@ export const PropertiesPanel = () => {
                   <RackSelect objects={selectedObjects} readOnly={isTech} />
                 </>
               )}
+              {selectedObjects.every(isCamera) && (
+                <CameraCoverageEditor objects={selectedObjects} readOnly={isTech} />
+              )}
             </div>
 
             <Separator />
@@ -299,6 +305,8 @@ export const PropertiesPanel = () => {
                     </div>
                 </div>
               )}
+
+              {!isTech && <ResizeByPercent ids={selectedObjects.map(o => o.id)} />}
 
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between items-center">

@@ -24,8 +24,9 @@ import {DEFAULT_LABEL_POSITION, getLabelAnchor, getLeaderLine} from '@/core/labe
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {useProjectList} from '@/hooks/useProjects';
 import {
-  appendLvPages, drawCableRoutes, drawObjectLvMarks, idfColorResolver, lvIconOpacity, makePlanPainter, pdfSafeText,
+  appendLvPages, drawCableRoutes, drawCameraCoverage, drawObjectLvMarks, idfColorResolver, lvIconOpacity, makePlanPainter, pdfSafeText,
 } from '@/core/pdf-lv-export';
+import {feetPerUnit} from '@/core/measure';
 
 const toSafeFileName = (name: string) =>
   name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\.(pdf|zip)$/i, '').trim();
@@ -129,7 +130,11 @@ export const useExport = () => {
     saveAs(content, `${toSafeFileName(projectName) || 'project-bundle'}.zip`);
   }, [docState, projects]);
 
-  const handleFlattenAndDownload = useCallback(async () => {
+  /** Project name — the default name of the exported PDF. */
+  const projectName = toSafeFileName(projects?.find(p => p.id === docState.projectId)?.name || docState.pdfFile?.name || '');
+
+  /** Exports the current page; `fileName` (without .pdf) defaults to the project name. */
+  const handleFlattenAndDownload = useCallback(async (fileName?: string) => {
     if (!docState.pdfFile) return;
 
     const arrayBuffer = await docState.pdfFile.arrayBuffer();
@@ -221,8 +226,12 @@ export const useExport = () => {
        }
     }
 
-    // Cable routes under the devices, as on screen.
+    // Camera coverage and cable routes under the devices, as on screen.
     const planPainter = makePlanPainter(page, vW / CANVAS_BASE_WIDTH, pW, pH, pageRotation);
+    if (uiState.showCameraCoverage) {
+      const shown = new Set(docState.layers.filter(l => l.visible).map(l => l.id));
+      drawCameraCoverage(planPainter, docState.objects, shown, feetPerUnit(docState.measureCalibration));
+    }
     if (uiState.showCableRoutes) drawCableRoutes(planPainter, docState.cableRoutes, docState.objects);
     const idfColorOf = idfColorResolver(docState.objects, docState.cableRoutes);
 
@@ -430,15 +439,15 @@ export const useExport = () => {
        });
     }
 
-    const projectName = projects?.find(p => p.id === docState.projectId)?.name || docState.pdfFile.name || '';
     appendLvPages(pdfDoc, { regular: helveticaFont, bold: helveticaBoldFont }, {
-      projectName: toSafeFileName(projectName), objects: docState.objects, routes: docState.cableRoutes,
+      projectName, objects: docState.objects, routes: docState.cableRoutes,
       calibration: docState.measureCalibration, settings: docState.lvSettings, customIcons: docState.customIcons,
     });
 
     const pdfBytes = await pdfDoc.save();
-    saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), `${toSafeFileName(projectName) || 'edited-document'}.pdf`);
-  }, [docState, uiState.currentPage, uiState.showCableRoutes, projects]);
+    const name = toSafeFileName(fileName ?? '') || projectName || 'edited-document';
+    saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), `${name}.pdf`);
+  }, [docState, uiState.currentPage, uiState.showCableRoutes, uiState.showCameraCoverage, projectName]);
 
-  return { handleExportProject, handleFlattenAndDownload };
+  return { handleExportProject, handleFlattenAndDownload, projectName };
 };

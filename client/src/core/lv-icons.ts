@@ -150,5 +150,14 @@ export const deviceKey = (o: { type: string; content?: string; isFill?: boolean 
 export const normalizeLvSettings = (s: Partial<LvSettings> | undefined): LvSettings => ({
   ...DEFAULT_LV_SETTINGS,
   ...s,
-  cableDefaults: { ...DEFAULT_LV_SETTINGS.cableDefaults, ...s?.cableDefaults },
+  cableDefaults: withoutStrayPower({ ...DEFAULT_LV_SETTINGS.cableDefaults, ...s?.cableDefaults }),
 });
+
+/**
+ * Only access control (24 V) gets a power cable by default. Projects saved before that rule kept
+ * power in other types' defaults (e.g. floor box); new devices of those types no longer inherit it.
+ */
+const withoutStrayPower = (defaults: LvSettings['cableDefaults']) =>
+  Object.fromEntries(Object.entries(defaults).map(([key, cables]) => [
+    key, key === 'access-control' ? cables : cables.filter(c => c.type !== 'POWER'),
+  ]));
