@@ -10,7 +10,7 @@ import { CANVAS_BASE_WIDTH } from '@/core/constants';
 import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames } from '@/core/lv-icons';
 import { Camera, Circle, CopyPlus, Images, Info, Loader2, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BlindspotShape } from './BlindspotShape';
+import { BlindspotShape, CoverageAreaShape } from './BlindspotShape';
 import { BLINDSPOT_ICON } from '@/core/camera-coverage';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
@@ -310,6 +310,15 @@ export const MobileBottomBar: React.FC = () => {
               >
                 <BlindspotShape className="h-6 w-9" />
                 Camera blindspot
+              </button>
+              <button
+                type="button"
+                onClick={() => { uiDispatch({ type: 'SET_TOOL', payload: 'area' }); setIsAddOpen(false); }}
+                data-testid="mobile-add-coverage-area"
+                className={ADD_TILE}
+              >
+                <CoverageAreaShape className="h-6 w-9" />
+                Coverage area
               </button>
             </div>
           </div>

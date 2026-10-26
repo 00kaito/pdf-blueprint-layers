@@ -36,12 +36,12 @@ import {Label} from "@/components/ui/label";
 import {Slider} from "@/components/ui/slider";
 import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
-import {FILL_LAYER_NAME} from '@/lib/editor-context';
+import {COVERAGE_AREA_LAYER_NAME, FILL_LAYER_NAME} from '@/lib/editor-context';
 import {useToast} from '@/hooks/use-toast';
 import {LV_ICON_TYPES, LV_ICONS} from '@/core/lv-icons';
 import {LvIcon} from '@/components/editor/LvIcon';
-import {BlindspotShape} from '@/components/editor/BlindspotShape';
-import {BLINDSPOT_ICON, isBlindspot, isBlindspotWall, isCamera} from '@/core/camera-coverage';
+import {BlindspotShape, CoverageAreaShape} from '@/components/editor/BlindspotShape';
+import {BLINDSPOT_ICON, isBlindspot, isBlindspotWall, isCamera, isCoverageArea} from '@/core/camera-coverage';
 import {DEFAULT_ICON_SIZE} from '@/core/constants';
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
@@ -94,8 +94,8 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
   const { toast } = useToast();
   const calibration = docState.measureCalibration;
   // Blindspot tools are offered only around cameras: a camera or blindspot (box / wall) is selected, or walls are being drawn.
-  const showBlindspot = uiState.tool === 'wall' || docState.objects.some(o =>
-    uiState.selectedObjectIds.includes(o.id) && (isCamera(o) || isBlindspot(o) || isBlindspotWall(o)));
+  const showBlindspot = uiState.tool === 'wall' || uiState.tool === 'area' || docState.objects.some(o =>
+    uiState.selectedObjectIds.includes(o.id) && (isCamera(o) || isBlindspot(o) || isBlindspotWall(o) || isCoverageArea(o)));
 
   const selectMeasure = (pressed: boolean) => {
     if (pressed && !calibration) {
@@ -353,6 +353,23 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Camera blindspot — a box cameras cannot see past; resize it over a shelf or column</TooltipContent>
+              </Tooltip>
+            )}
+            {showBlindspot && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={uiState.tool === 'area'}
+                    onPressedChange={(pressed) => dispatch({ type: 'SET_TOOL', payload: pressed ? 'area' : 'select' })}
+                    size="sm"
+                    className="h-8 w-8"
+                    aria-label="Coverage area"
+                    data-testid="tool-area"
+                  >
+                    <CoverageAreaShape className="w-5 h-3.5" />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>Coverage area (goes to layer "{COVERAGE_AREA_LAYER_NAME}") — click its corners, Enter / Esc closes it; the cameras picked in its properties must see it, what they miss turns red</TooltipContent>
               </Tooltip>
             )}
 

@@ -8,7 +8,7 @@ import {
 import {CABLE_LABEL, CABLE_TYPES, defaultObjectNames, formatCables, objectTypeName} from './lv-icons';
 import {PLAN_CHANGE_BY_ID, PLAN_CHANGES} from './plan-change';
 import {statusOf} from './status';
-import {COVERAGE_FAR, COVERAGE_NEAR, COVERAGE_OPACITY, coverageCameras, coverageObstacles, coverageOf, coverageZones} from './camera-coverage';
+import {blindAreas, COVERAGE_BLIND, COVERAGE_FAR, COVERAGE_NEAR, COVERAGE_OPACITY, coverageCameras, coverageAreas, coverageObstacles, coverageOf, coverageZones, limitToAreas, type ShownZones} from './camera-coverage';
 import type {Point} from './measure';
 
 /**
@@ -53,8 +53,12 @@ const line = (pp: PlanPainter, a: Point, b: Point, color: string, width: number,
   });
 
 /** A filled polygon in plan units (drawSvgPath flips y, hence the negated page y). */
-const polygon = (pp: PlanPainter, pts: Point[], color: string, opacity: number) => {
-  const d = pts.map((p, i) => { const c = pp.at(p); return `${i ? 'L' : 'M'}${c.x.toFixed(2)} ${(-c.y).toFixed(2)}`; }).join(' ') + ' Z';
+/** Filled outline; with several rings the later ones are holes (outline first). */
+const polygon = (pp: PlanPainter, pts: Point[] | Point[][], color: string, opacity: number) => {
+  const rings = (Array.isArray(pts[0]) ? pts : [pts]) as Point[][];
+  const d = rings.map(ring =>
+    ring.map((p, i) => { const c = pp.at(p); return `${i ? 'L' : 'M'}${c.x.toFixed(2)} ${(-c.y).toFixed(2)}`; }).join(' ') + ' Z',
+  ).join(' ');
   pp.page.drawSvgPath(d, {
     x: 0, y: 0, color: hexToRgb(color), opacity,
     borderColor: hexToRgb(color), borderWidth: 0.5 * pp.k, borderOpacity: 0.6,
@@ -64,13 +68,19 @@ const polygon = (pp: PlanPainter, pts: Point[], color: string, opacity: number) 
 /** CCTV fields of view, as on screen: darker near sector, lighter far band, see-through. */
 export const drawCameraCoverage = (pp: PlanPainter, objects: EditorObject[], visibleLayerIds: Set<string>, ftPerUnit: number | null) => {
   const obstacles = coverageObstacles(objects, visibleLayerIds);
+  const areas = coverageAreas(objects, visibleLayerIds);
+  const all: ShownZones[] = [];
   for (const cam of coverageCameras(objects, visibleLayerIds)) {
     const c = coverageOf(cam, ftPerUnit);
     if (!c) continue;
-    const { near, far } = coverageZones(c, obstacles);
-    if (far) polygon(pp, far, COVERAGE_FAR, COVERAGE_OPACITY);
-    polygon(pp, near, COVERAGE_NEAR, COVERAGE_OPACITY);
+    // Cameras assigned to coverage areas stop at the areas' edges.
+    const zones = limitToAreas(cam.id, coverageZones(c, obstacles), areas);
+    all.push(zones);
+    for (const rings of zones.far) polygon(pp, rings, COVERAGE_FAR, COVERAGE_OPACITY);
+    for (const rings of zones.near) polygon(pp, rings, COVERAGE_NEAR, COVERAGE_OPACITY);
   }
+  // Red: hidden behind a blindspot and seen by no camera at all.
+  for (const rings of blindAreas(all, obstacles, areas)) polygon(pp, rings, COVERAGE_BLIND, COVERAGE_OPACITY);
 };
 
 /** Cable routes in their IDF colour, shared ones dashed grey — as on screen. */

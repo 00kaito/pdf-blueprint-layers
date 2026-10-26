@@ -1,7 +1,10 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {v4 as uuidv4} from 'uuid';
 import {useDocument, useUI} from '@/lib/editor-context';
-import {BLINDSPOT_COLOR, BLINDSPOT_ICON, coverageObstacles, obstacleSegments, toPathData, WALL_STROKE_WIDTH} from '@/core/camera-coverage';
+import {
+  AREA_STROKE_WIDTH, BLINDSPOT_COLOR, BLINDSPOT_ICON, COVERAGE_AREA_COLOR, COVERAGE_AREA_ICON, coverageAreas, coverageObstacles,
+  obstacleSegments, pathPoints, toPathData, WALL_STROKE_WIDTH,
+} from '@/core/camera-coverage';
 import {Point, segmentLength, snapToAngle45} from '@/core/measure';
 
 /** Snap distance to existing walls / blindspots, in screen px. */
@@ -29,6 +32,8 @@ const crossing = (o: Point, q: Point, a: Point, b: Point): Point | null => {
  * Straight mode keeps every run at a multiple of 45°; sticky mode snaps points to the ends, corners
  * and edges of existing walls and blindspots. Clicking the last point again, a double click, Enter
  * or Esc finishes the wall; Backspace removes the last point.
+ * Area tool: the same for a coverage area, an outline that closes itself (last point joins the
+ * first; clicking the first point also finishes). Its points also stick to other areas.
  */
 export const useWallDrawing = (containerRef: React.RefObject<HTMLDivElement>) => {
   const { state: docState, dispatch } = useDocument();
@@ -37,16 +42,20 @@ export const useWallDrawing = (containerRef: React.RefObject<HTMLDivElement>) =>
   const [hover, setHover] = useState<Point | null>(null);
   const pointsRef = useRef<Point[]>([]);
   pointsRef.current = points;
-  const active = uiState.tool === 'wall';
+  const mode = uiState.tool === 'wall' || uiState.tool === 'area' ? uiState.tool : null;
+  const active = !!mode;
 
   const targets = useMemo(() => {
     const visible = new Set(docState.layers.filter(l => l.visible).map(l => l.id));
     const obstacles = coverageObstacles(docState.objects, visible);
+    if (mode === 'area') {
+      obstacles.push(...coverageAreas(docState.objects, visible).map(o => ({ pts: pathPoints(o.pathData!), closed: true })));
+    }
     return { vertices: obstacles.flatMap(o => o.pts), segments: obstacleSegments(obstacles) };
-  }, [docState.objects, docState.layers]);
+  }, [docState.objects, docState.layers, mode]);
 
-  const latest = useRef({ scale: uiState.scale, targets, straight: uiState.wallStraight, snap: uiState.wallSnap });
-  latest.current = { scale: uiState.scale, targets, straight: uiState.wallStraight, snap: uiState.wallSnap };
+  const latest = useRef({ scale: uiState.scale, targets, straight: uiState.wallStraight, snap: uiState.wallSnap, mode });
+  latest.current = { scale: uiState.scale, targets, straight: uiState.wallStraight, snap: uiState.wallSnap, mode };
   const layerIdRef = useRef<string | null>(null);
   layerIdRef.current = uiState.activeLayerId ?? docState.layers[0]?.id ?? null;
 
@@ -81,7 +90,22 @@ export const useWallDrawing = (containerRef: React.RefObject<HTMLDivElement>) =>
 
   const finish = useCallback(() => {
     const current = pointsRef.current;
-    if (current.length >= 2 && layerIdRef.current) {
+    if (latest.current.mode === 'area') {
+      // A, B, C → A–B–C–A. Fewer than three points enclose nothing and are dropped.
+      if (current.length >= 3 && layerIdRef.current) {
+        const id = uuidv4();
+        dispatch({
+          type: 'ADD_OBJECT',
+          payload: {
+            id, type: 'path', name: '', x: 0, y: 0, width: 0, height: 0,
+            layerId: layerIdRef.current, content: COVERAGE_AREA_ICON, pathData: toPathData([...current, current[0]]),
+            color: COVERAGE_AREA_COLOR, strokeWidth: AREA_STROKE_WIDTH, rotation: 0,
+          },
+        });
+        // Selected, so its cameras can be picked at once in the properties.
+        dispatch({ type: 'SELECT_OBJECT', payload: id });
+      }
+    } else if (current.length >= 2 && layerIdRef.current) {
       dispatch({
         type: 'ADD_OBJECT',
         payload: {
@@ -105,7 +129,9 @@ export const useWallDrawing = (containerRef: React.RefObject<HTMLDivElement>) =>
     if (!p) return;
     const current = pointsRef.current;
     const prev = current[current.length - 1];
-    if (prev && segmentLength(prev, p) * latest.current.scale <= SNAP_PX) { finish(); return; }
+    const near = (q: Point) => segmentLength(q, p) * latest.current.scale <= SNAP_PX;
+    if (prev && near(prev)) { finish(); return; }
+    if (latest.current.mode === 'area' && current.length >= 3 && near(current[0])) { finish(); return; }
     setPoints([...current, resolve(p, current, e.shiftKey)]);
   }, [toCanvasPoint, resolve, finish]);
 

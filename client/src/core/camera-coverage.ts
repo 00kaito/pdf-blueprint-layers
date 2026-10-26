@@ -1,6 +1,7 @@
 import type {EditorObject} from '@/lib/types';
-import {BLINDSPOT_ICON, deviceKey} from './lv-icons';
+import {BLINDSPOT_ICON, COVERAGE_AREA_ICON, deviceKey} from './lv-icons';
 import type {Point} from './measure';
+import polygonClipping, {type Polygon} from 'polygon-clipping';
 
 /** What a CCTV camera sees: a sector in front of it, cut off behind blindspot obstacles (walls are not taken into account). */
 export const DEFAULT_CAMERA_RANGE_FT = 25;
@@ -11,10 +12,25 @@ export const COVERAGE_NEAR = '#0369a1';
 export const COVERAGE_FAR = '#38bdf8';
 /** Fill opacity: the plan stays readable under the zones. */
 export const COVERAGE_OPACITY = 0.1;
+/** Blind area: hidden behind a blindspot and seen by no other camera. Same see-through fill, in red. */
+export const COVERAGE_BLIND = '#dc2626';
 
 export const isCamera = (o: EditorObject) => deviceKey(o) === 'cctv';
 
-export {BLINDSPOT_ICON};
+export {BLINDSPOT_ICON, COVERAGE_AREA_ICON};
+
+/** Outline colour of coverage areas (dashed). */
+export const COVERAGE_AREA_COLOR = '#16a34a';
+
+/** Outline width of a new coverage area, unscaled canvas units. */
+export const AREA_STROKE_WIDTH = 1.5;
+
+/** Coverage area: a closed outline drawn with the area tool (a 'path' object, last point = first). */
+export const isCoverageArea = (o: EditorObject) => o.type === 'path' && o.content === COVERAGE_AREA_ICON && !!o.pathData;
+
+/** Coverage areas that are checked: visible layer, not being removed. */
+export const coverageAreas = (objects: EditorObject[], visibleLayerIds?: Set<string>) =>
+  objects.filter(o => isCoverageArea(o) && o.change !== 'REMOVE' && (!visibleLayerIds || visibleLayerIds.has(o.layerId)));
 /** Blindspots (shelves, columns, wall pieces) are drawn in this colour, hatched. */
 export const BLINDSPOT_COLOR = '#64748b';
 
@@ -148,11 +164,20 @@ const rayAngles = (c: Coverage, obstacles: Obstacle[], steps: number) => {
   return (full ? sorted.filter(r => r < span - 1e-9) : sorted).map(r => start + r);
 };
 
+export type CoverageZones = {
+  near: Point[];
+  far: Point[] | null;
+  /** Parts of the view hidden behind blindspots (from the obstacle out to the range), one polygon each. */
+  hidden: Point[][];
+  /** Everything the camera sees (near + far), as one outline. */
+  seen: Point[];
+};
+
 /**
  * The two zones as closed polygons: near sector (0–15 ft) and the far band (15 ft – range), both
- * cut off behind blindspot obstacles. An obstacle the camera sits inside is ignored.
+ * cut off behind blindspot obstacles, plus what the obstacles hide. An obstacle the camera sits inside is ignored.
  */
-export const coverageZones = (c: Coverage, obstacles: Obstacle[] = []): { near: Point[]; far: Point[] | null } => {
+export const coverageZones = (c: Coverage, obstacles: Obstacle[] = []): CoverageZones => {
   const full = c.half * 2 >= Math.PI * 2;
   const blocking = obstacles.filter(o => !o.closed || !insidePolygon(c.center, o.pts));
   const segments = obstacleSegments(blocking);
@@ -161,19 +186,141 @@ export const coverageZones = (c: Coverage, obstacles: Obstacle[] = []): { near: 
     return {
       near: full ? nearArc : [c.center, ...nearArc],
       far: c.farR > c.nearR ? [...arcPoints(c, c.farR), ...nearArc.slice().reverse()] : null,
+      hidden: [],
+      seen: full ? arcPoints(c, c.farR).slice(0, -1) : [c.center, ...arcPoints(c, c.farR)],
     };
   }
   const rays = rayAngles(c, blocking, 64).map(a => {
     const dx = Math.cos(a), dy = Math.sin(a);
     const hit = rayHit(c.center, dx, dy, segments);
     const at = (r: number) => ({ x: c.center.x + dx * r, y: c.center.y + dy * r });
-    return { near: at(Math.min(c.nearR, hit)), far: at(Math.min(c.farR, hit)) };
+    return { near: at(Math.min(c.nearR, hit)), far: at(Math.min(c.farR, hit)), edge: at(c.farR), blocked: hit < c.farR };
   });
   const nearArc = rays.map(r => r.near);
   return {
     near: full ? nearArc : [c.center, ...nearArc],
     far: c.farR > c.nearR ? [...rays.map(r => r.far), ...nearArc.slice().reverse()] : null,
+    hidden: blockedRuns(rays, full).map(run => [...run.map(r => r.edge), ...run.map(r => r.far).reverse()]),
+    seen: full ? rays.map(r => r.far) : [c.center, ...rays.map(r => r.far)],
   };
+};
+
+/** Runs of consecutive blocked rays; on a full circle a run across the start joins its end. */
+const blockedRuns = <R extends { blocked: boolean }>(rays: R[], full: boolean): R[][] => {
+  let seq = rays;
+  if (full) {
+    const open = rays.findIndex(r => !r.blocked);
+    if (open < 0) return [rays];
+    seq = [...rays.slice(open), ...rays.slice(0, open)];
+  }
+  const runs: R[][] = [];
+  let run: R[] = [];
+  for (const r of seq) {
+    if (r.blocked) run.push(r);
+    else if (run.length) { runs.push(run); run = []; }
+  }
+  if (run.length) runs.push(run);
+  return runs.filter(r => r.length > 1);
+};
+
+/** Ring for polygon-clipping: coordinates rounded (its sweep line dislikes near-equal points), repeats dropped. */
+const toRing = (pts: Point[]): Polygon | null => {
+  const ring: [number, number][] = [];
+  for (const p of pts) {
+    const q: [number, number] = [Math.round(p.x * 1e4) / 1e4, Math.round(p.y * 1e4) / 1e4];
+    const last = ring[ring.length - 1];
+    if (!last || last[0] !== q[0] || last[1] !== q[1]) ring.push(q);
+  }
+  if (ring.length > 1 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1]) ring.pop();
+  return ring.length >= 3 ? [ring] : null;
+};
+
+/** Slivers thinner than this (canvas units) are leftovers of the ray sampling, not real blind areas. */
+const MIN_BLIND_THICKNESS = 0.75;
+
+/** Rough thickness of a ring: area / perimeter. */
+const ringThickness = (ring: [number, number][]) => {
+  let area = 0, perimeter = 0;
+  ring.forEach(([x1, y1], i) => {
+    const [x2, y2] = ring[(i + 1) % ring.length];
+    area += x1 * y2 - x2 * y1;
+    perimeter += Math.hypot(x2 - x1, y2 - y1);
+  });
+  return perimeter ? Math.abs(area) / perimeter : 0;
+};
+
+const toRings = (polys: Point[][]) => polys.map(toRing).filter((r): r is Polygon => !!r);
+
+/** `ring` minus all of `cut`; a geometry hiccup drops only this one. */
+const subtract = (ring: Polygon | null, cut: Polygon[]): Polygon[] => {
+  if (!ring) return [];
+  try {
+    return cut.length ? polygonClipping.difference(ring, ...cut) : [ring];
+  } catch {
+    return [];
+  }
+};
+
+/** Polygons, each as rings (outline first, then holes). */
+export type ZoneShape = Point[][][];
+
+/** A camera's zones as shown: limited to its coverage areas (see `limitToAreas`). */
+export type ShownZones = { id: string; near: ZoneShape; far: ZoneShape; seen: ZoneShape; hidden: Point[][] };
+
+const toPolygon = (rings: Point[][]): Polygon | null => {
+  const out = rings.map(r => toRing(r)?.[0]);
+  return out[0] ? out.filter((r): r is [number, number][] => !!r) : null;
+};
+const toPolygons = (shape: ZoneShape) => shape.map(toPolygon).filter((p): p is Polygon => !!p);
+const fromPolygons = (polys: Polygon[]): ZoneShape => polys.map(p => p.map(r => r.map(([x, y]) => ({ x, y }))));
+
+/**
+ * A camera assigned to coverage areas sees only inside them: its zones stop at the areas' edges.
+ * A camera no area picks (areas with no cameras picked take every camera) is left as it is.
+ */
+export const limitToAreas = (id: string, zones: CoverageZones, areas: EditorObject[]): ShownZones => {
+  const shown: ShownZones = {
+    id, near: [[zones.near]], far: zones.far ? [[zones.far]] : [], seen: [[zones.seen]], hidden: zones.hidden,
+  };
+  const own = toRings(areas.filter(a => a.coverageCameraIds?.includes(id)).map(a => pathPoints(a.pathData!)));
+  if (!own.length) return shown;
+  try {
+    const inside = own.length > 1 ? polygonClipping.union(own[0], ...own.slice(1)) : own;
+    const clip = (shape: ZoneShape) => fromPolygons(toPolygons(shape).flatMap(p => polygonClipping.intersection(p, inside)));
+    return { id, near: clip(shown.near), far: clip(shown.far), seen: clip(shown.seen), hidden: [] };
+  } catch {
+    return shown;
+  }
+};
+
+/**
+ * Blind areas, red on the plan. Each result is a polygon as rings (outline first, then holes).
+ * - With coverage areas: the parts of each area its cameras (all, when none are picked) do not see.
+ * - Without: what a blindspot hides from one camera and no other camera sees.
+ * Blindspot boxes themselves never count (a shelf is not floor to watch).
+ */
+export const blindAreas = (
+  zones: Pick<ShownZones, 'id' | 'seen' | 'hidden'>[], obstacles: Obstacle[] = [], areas: EditorObject[] = [],
+): Point[][][] => {
+  const boxes = toRings(obstacles.filter(o => o.closed).map(o => o.pts));
+  let pieces: Polygon[] = [];
+  if (areas.length) {
+    for (const area of areas) {
+      const ids = area.coverageCameraIds?.length ? new Set(area.coverageCameraIds) : null;
+      const seen = zones.filter(z => !ids || ids.has(z.id)).flatMap(z => toPolygons(z.seen));
+      pieces.push(...subtract(toRing(pathPoints(area.pathData!)), [...seen, ...boxes]));
+    }
+  } else {
+    const covered = [...zones.flatMap(z => toPolygons(z.seen)), ...boxes];
+    for (const part of zones.flatMap(z => z.hidden)) pieces.push(...subtract(toRing(part), covered));
+  }
+  if (pieces.length > 1) {
+    // Shadows / areas may overlap: merge them so no spot is painted twice (darker).
+    try { pieces = polygonClipping.union(pieces[0], ...pieces.slice(1)); } catch { /* keep them separate */ }
+  }
+  return pieces
+    .filter(poly => ringThickness(poly[0] as [number, number][]) >= MIN_BLIND_THICKNESS)
+    .map(poly => poly.map(r => r.map(([x, y]) => ({ x, y }))));
 };
 
 /** Cameras whose coverage is drawn: visible layer, not being removed. */

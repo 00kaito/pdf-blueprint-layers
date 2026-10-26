@@ -286,7 +286,7 @@ export const Canvas = () => {
     // Stylus only: a finger tap does not fill or stamp (it may still deselect).
     if (state.stylusOnly && isTapTool(state.tool) && lastPointerTypeRef.current === 'touch') return;
     if (state.tool === 'route') { route.onClick(e); }
-    else if (state.tool === 'wall') { wall.onClick(e); }
+    else if (state.tool === 'wall' || state.tool === 'area') { wall.onClick(e); }
     else if (state.tool === 'fill') { handleFill(e); }
     else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
        const rect = containerRef.current?.getBoundingClientRect();
@@ -402,7 +402,7 @@ export const Canvas = () => {
 
   return (
     <div ref={scrollRef} data-canvas-scroller className={`flex-1 bg-muted/30 overflow-auto relative select-none${
-      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || state.tool === 'wall' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
+      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || state.tool === 'wall' || state.tool === 'area' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
     }`} 
       // Stroke tools suppress native Safari gestures for pen and touch. In stylus-only mode,
       // useFingerPan restores one-finger panning and usePinchZoom handles two fingers.
@@ -453,7 +453,7 @@ export const Canvas = () => {
             selectedObjectIds={state.selectedObjectIds}
             drawColor={state.drawColor}
             drawStrokeWidth={state.drawStrokeWidth}
-            clickThrough={state.tool === 'wall' || state.tool === 'route'}
+            clickThrough={state.tool === 'wall' || state.tool === 'area' || state.tool === 'route'}
           />
           <MeasureLayer
             tool={state.tool}
@@ -507,7 +507,7 @@ export const Canvas = () => {
             hover={route.hover}
             run={state.showCableRoutes || state.tool === 'route' ? selectedRun : null}
           />
-          <WallPreview points={wall.points} hover={wall.hover} scale={state.scale} />
+          <WallPreview points={wall.points} hover={wall.hover} scale={state.scale} closed={state.tool === 'area'} />
           <GuidesLayer scale={state.scale} tape={state.measureTape} ftPerUnit={feetPerUnit(state.measureCalibration)} />
 
           {state.objects.map((obj) => {

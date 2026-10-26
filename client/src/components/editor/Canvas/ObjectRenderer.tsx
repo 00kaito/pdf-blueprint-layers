@@ -478,7 +478,7 @@ export const ObjectRenderer = memo(({
         isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         // While the bucket is active, clicks go through a fill to the blueprint (re-fill = recolour).
         // Route tool: clicks reach the plan, so a route can end on a device or rack.
-        layer.locked || tool === 'route' || tool === 'wall' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
+        layer.locked || tool === 'route' || tool === 'wall' || tool === 'area' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
       )}
       // Fills sit below regular objects and drawn paths. With its action bar, the object goes above the
       // cable-run preview and its length label (z 45–46) so they never cover the bar.

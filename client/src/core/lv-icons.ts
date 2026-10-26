@@ -13,6 +13,9 @@ export const RACK_ICON = 'rack';
 /** Icon type of a camera blindspot: a resizable rectangle cameras cannot see past (see camera-coverage). */
 export const BLINDSPOT_ICON = 'blindspot';
 
+/** Content of a coverage area: a closed outline ('path' object) that given cameras must see (see camera-coverage). */
+export const COVERAGE_AREA_ICON = 'coverage-area';
+
 export const LV_ICONS: Record<string, { label: string; d: string }> = {
   'floor-box': {
     label: 'Floor Box',
@@ -78,6 +81,7 @@ export const objectTypeName = (
 ): string => {
   if (o.type === 'icon' && o.content) return LV_ICONS[o.content]?.label ?? SHAPE_LABELS[o.content] ?? 'Icon';
   if (o.type === 'path' && o.content === BLINDSPOT_ICON) return 'Blindspot wall';
+  if (o.type === 'path' && o.content === COVERAGE_AREA_ICON) return 'Coverage area';
   if (o.type === 'image') return customIcons.find(i => i.url === o.content)?.name || 'Image';
   return o.type.charAt(0).toUpperCase() + o.type.slice(1);
 };

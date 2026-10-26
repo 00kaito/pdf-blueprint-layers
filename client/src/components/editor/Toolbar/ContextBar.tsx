@@ -282,7 +282,7 @@ export const ContextBar = () => {
         <InputModeSwitch />
       </div>
     );
-  } else if (uiState.tool === 'wall') {
+  } else if (uiState.tool === 'wall' || uiState.tool === 'area') {
     const setWall = (payload: { wallStraight?: boolean; wallSnap?: boolean }) => dispatch({ type: 'SET_WALL_SETTINGS', payload });
     content = (
       <div className="flex items-center gap-2 text-xs" data-testid="wall-inline-settings">
@@ -302,13 +302,17 @@ export const ContextBar = () => {
           onPressedChange={(wallSnap) => setWall({ wallSnap })}
           size="sm"
           className="h-6 min-w-0 px-2 gap-1 text-xs border border-input"
-          title="Points stick to the ends, corners and edges of other walls and blindspots"
+          title={uiState.tool === 'area'
+            ? 'Points stick to the corners and edges of walls, blindspots and other coverage areas'
+            : 'Points stick to the ends, corners and edges of other walls and blindspots'}
           data-testid="wall-snap"
         >
           <Magnet className="w-3.5 h-3.5" />
           Sticky
         </Toggle>
-        <span className="text-muted-foreground whitespace-nowrap">· cameras cannot see past the wall</span>
+        <span className="text-muted-foreground whitespace-nowrap">
+          {uiState.tool === 'area' ? '· Enter / Esc closes the area (last point joins the first)' : '· cameras cannot see past the wall'}
+        </span>
         <InputModeSwitch />
       </div>
     );

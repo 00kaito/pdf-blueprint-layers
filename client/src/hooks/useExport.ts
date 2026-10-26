@@ -28,7 +28,7 @@ import {
   appendLvPages, drawCableRoutes, drawCameraCoverage, drawObjectLvMarks, idfColorResolver, lvIconOpacity, makePlanPainter, pdfSafeText,
 } from '@/core/pdf-lv-export';
 import {feetPerUnit} from '@/core/measure';
-import {BLINDSPOT_COLOR, BLINDSPOT_ICON} from '@/core/camera-coverage';
+import {BLINDSPOT_COLOR, BLINDSPOT_ICON, isCoverageArea} from '@/core/camera-coverage';
 import {paperSizePt} from '@/core/paper';
 import type {ExportCrop} from '@/lib/types';
 
@@ -299,6 +299,8 @@ export const useExport = () => {
        
        if (obj.type === 'path' && obj.pathData) {
           const commands = obj.pathData.split(' ');
+          // Coverage areas dashed, as on screen.
+          const dashArray = isCoverageArea(obj) ? [6 * scaleFactor, 4 * scaleFactor] : undefined;
           if (commands.length >= 3) {
              if (commands[0] === 'M') {
                  const { x, y } = getPhysicalCoords(parseFloat(commands[1]) * scaleFactor, parseFloat(commands[2]) * scaleFactor, pW, pH, pageRotation);
@@ -312,6 +314,7 @@ export const useExport = () => {
                          end: { x, y },
                          thickness: (obj.strokeWidth || 2) * scaleFactor,
                          color: obj.color ? hexToRgb(obj.color) : hexToRgb('#000000'),
+                         dashArray,
                      });
                      page.moveTo(x, y);
                  }

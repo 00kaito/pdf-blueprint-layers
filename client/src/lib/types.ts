@@ -87,6 +87,8 @@ export type EditorObject = {
   change?: PlanChange;
   /** Where the object stood when it was marked RELOCATE — drawn as a ghost with an arrow to the new spot. */
   changeOrigin?: { x: number; y: number };
+  /** Coverage area: cameras that must see it; unset / empty = every camera. */
+  coverageCameraIds?: string[];
   /** CCTV camera field of view; unset values use the defaults (25 ft, 100°). */
   camera?: { rangeFt?: number; angleDeg?: number };
   changeNote?: string;
@@ -159,8 +161,8 @@ export type UIState = {
   /** 'pan-overlay' = hand tool dragging the overlay blueprint to align it with the main one. */
   /** 'calibrate' = set the measuring scale from a known dimension; 'measure' = measuring tape. */
   /** 'route' = draw cable routes (click control points). */
-  /** 'wall' = draw a camera blindspot wall (click its corner points). */
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'route' | 'wall';
+  /** 'wall' = draw a camera blindspot wall (click its corner points); 'area' = draw a coverage area (closed outline). */
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'route' | 'wall' | 'area';
   /** Wall tool: runs at multiples of 45° only. */
   wallStraight: boolean;
   /** Wall tool: points stick to existing walls and blindspots. */

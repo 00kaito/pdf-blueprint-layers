@@ -17,8 +17,9 @@ import {PlanChangeSection} from './PlanChangeSection';
 import {CableEditor} from './CableEditor';
 import {RackSelect} from './RackSelect';
 import {CameraCoverageEditor} from './CameraCoverageEditor';
+import {CoverageAreaCameras} from './CoverageAreaCameras';
 import {ResizeByPercent} from './ResizeByPercent';
-import {isCamera} from '@/core/camera-coverage';
+import {isCamera, isCoverageArea} from '@/core/camera-coverage';
 import {isCableDevice} from '@/core/cable-routing';
 import {STATUSES, statusUpdate} from '@/core/status';
 import {useCurrentUser} from '@/hooks/useAuth';
@@ -264,6 +265,9 @@ export const PropertiesPanel = () => {
               )}
               {selectedObjects.every(isCamera) && (
                 <CameraCoverageEditor objects={selectedObjects} readOnly={isTech} />
+              )}
+              {selectedObjects.every(isCoverageArea) && (
+                <CoverageAreaCameras areas={selectedObjects} readOnly={isTech} />
               )}
             </div>
 

@@ -1,12 +1,36 @@
 import React, {createContext, ReactNode, useContext, useEffect, useMemo, useReducer} from 'react';
-import {DocumentState, EditorAction, EditorObject, EditorState, UIState} from './types';
+import {DocumentState, EditorAction, EditorObject, EditorState, Layer, UIState} from './types';
 import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 import {createInitialHistory, HistoryAction, HistoryEntry, withHistory} from './history';
 import {DEFAULT_LV_SETTINGS, deviceKey, normalizeLvSettings} from '@/core/lv-icons';
+import {isCoverageArea} from '@/core/camera-coverage';
 
 /** Every paint-bucket fill lands in this layer. */
 export const FILL_LAYER_NAME = 'Colors';
+
+/** Every coverage area lands in this layer, whichever layer is active. */
+export const COVERAGE_AREA_LAYER_NAME = 'CoverageAreas';
+
+/**
+ * The coverage-area layer, created on top when missing and made visible so a new area shows.
+ * Returns the (possibly extended) layer list and the layer id.
+ */
+const coverageAreaLayer = (layers: Layer[]): { layers: Layer[]; layerId: string } => {
+  const layer = layers.find(l => l.name.trim().toLowerCase() === COVERAGE_AREA_LAYER_NAME.toLowerCase());
+  if (!layer) {
+    const id = uuidv4();
+    const maxOrder = Math.max(...layers.map(l => l.order), -1);
+    return {
+      layers: [...layers, { id, name: COVERAGE_AREA_LAYER_NAME, visible: true, locked: false, order: maxOrder + 1, opacity: 1 }],
+      layerId: id,
+    };
+  }
+  return {
+    layers: layer.visible ? layers : layers.map(l => l.id === layer.id ? { ...l, visible: true } : l),
+    layerId: layer.id,
+  };
+};
 
 /** Two fills whose bounds differ by less than this (canvas units) are the same area. */
 const SAME_FILL_EPSILON = 0.5;
@@ -270,6 +294,10 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       };
     }
     case 'ADD_OBJECT': {
+      if (isCoverageArea(action.payload)) {
+        const { layers, layerId } = coverageAreaLayer(state.layers);
+        return { ...state, layers, objects: [...state.objects, { ...action.payload, layerId }] };
+      }
       // Every way of placing a device (icon button, stamp, library) gets its type's cables.
       const key = action.payload.cables ? null : deviceKey(action.payload);
       const defaults = key ? state.lvSettings.cableDefaults[key] : undefined;
@@ -569,8 +597,17 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
         };
       });
 
+      // Pasted coverage areas go to their own layer too.
+      let layers = state.layers;
+      if (newObjects.some(isCoverageArea)) {
+        const target = coverageAreaLayer(layers);
+        layers = target.layers;
+        for (const o of newObjects) if (isCoverageArea(o)) o.layerId = target.layerId;
+      }
+
       return {
         ...state,
+        layers,
         objects: [...state.objects, ...newObjects],
         selectedObjectIds: newObjects.map(o => o.id),
         clipboardObjects: newObjects

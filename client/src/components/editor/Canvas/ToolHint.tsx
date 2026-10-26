@@ -38,6 +38,9 @@ const hintFor = (tool: string, hasScale: boolean, touch: boolean, stylusOnly: bo
     case 'wall': return touch
       ? `${tap} the corners of the wall · tap the last point again = done`
       : 'Click the corners of the wall · Shift = any angle · double click / Enter = done · Backspace = undo point';
+    case 'area': return touch
+      ? `${tap} the corners of the area · tap the first or last point again = done (it closes itself)`
+      : 'Click the corners of the area · Shift = any angle · Enter / Esc / first point = done, last point joins the first · Backspace = undo point';
     default: return null;
   }
 };

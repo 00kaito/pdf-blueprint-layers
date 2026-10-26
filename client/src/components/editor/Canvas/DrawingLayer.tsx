@@ -1,6 +1,7 @@
 import React, {memo} from 'react';
 import {useDocumentDispatch, useUIDispatch} from '@/lib/editor-context';
 import {EditorObject, Layer} from '@/lib/types';
+import {isCoverageArea} from '@/core/camera-coverage';
 
 interface DrawingLayerProps {
   drawingPath: string | null;
@@ -40,17 +41,23 @@ export const DrawingLayer = memo(({
         {objects.map(obj => {
           const layer = layers.find(l => l.id === obj.layerId);
           if (!layer?.visible || obj.type !== 'path' || !obj.pathData) return null;
+          // Coverage area: dashed outline over a faint tint; only the outline is clickable, so the
+          // plan and devices inside stay reachable.
+          const area = isCoverageArea(obj);
           return (
             <path 
               key={obj.id} 
               d={scalePath(obj.pathData, scale)} 
               strokeWidth={(obj.strokeWidth || 2) * scale} 
-              fill="none" 
+              fill={area ? (obj.color || '#000000') : 'none'}
+              fillOpacity={area ? 0.05 : undefined}
+              strokeDasharray={area ? `${6 * scale} ${4 * scale}` : undefined}
               strokeLinecap="round" 
               strokeLinejoin="round" 
               // CSS vars only resolve in style, not in SVG presentation attributes.
               style={{
                 opacity: obj.opacity ?? 1,
+                pointerEvents: area && !clickThrough ? 'stroke' : undefined,
                 stroke: selectedObjectIds.includes(obj.id) ? 'hsl(var(--primary))' : (obj.color || '#000000'),
               }}
               className={clickThrough ? undefined : "cursor-pointer pointer-events-auto"}
