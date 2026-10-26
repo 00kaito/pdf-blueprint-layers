@@ -1,5 +1,5 @@
 import type {CableRoute, CableType, EditorObject, LvSettings, MeasureCalibration, PlanChange} from '@/lib/types';
-import {CABLE_TYPES, RACK_ICON} from './lv-icons';
+import {BLINDSPOT_ICON, CABLE_TYPES, RACK_ICON} from './lv-icons';
 import {feetPerUnit, Point, segmentLength} from './measure';
 
 /**
@@ -14,9 +14,9 @@ export const ROUTE_JOIN_TOLERANCE = 2;
 
 export const isRack = (o: EditorObject) => o.type === 'icon' && o.content === RACK_ICON && !o.isFill;
 
-/** Objects that carry cables: placed devices (icons / images), not racks, text, drawings or fills. */
+/** Objects that carry cables: placed devices (icons / images), not racks, camera blindspots, text, drawings or fills. */
 export const isCableDevice = (o: EditorObject) =>
-  !o.isFill && (o.type === 'icon' || o.type === 'image') && !isRack(o);
+  !o.isFill && (o.type === 'icon' || o.type === 'image') && !isRack(o) && o.content !== BLINDSPOT_ICON;
 
 /** True when at least one cable is assigned — devices without cables have no run to show. */
 export const hasCables = (o: EditorObject) => (o.cables ?? []).some(c => c.count > 0);
@@ -420,4 +420,23 @@ export const buildCableSummary = (
   total.patchPanels = list.reduce((n, r) => n + r.patchPanels, 0);
 
   return { racks: list, total, progress, changes, noCables, removed, hasScale: fpu !== null, runs };
+};
+
+/**
+ * Devices ordered for numbering by their IDF: grouped by rack (in plan order), nearest cable run
+ * first. Objects without a run (no rack on the plan, not a cable device) keep their order at the end.
+ */
+export const orderByIdfDistance = (
+  selected: EditorObject[], objects: EditorObject[], routes: CableRoute[],
+): EditorObject[] => {
+  const runs = computeCableRuns(objects, routes);
+  const rackIndex = new Map(getRacks(objects).map((r, i) => [r.id, i]));
+  const key = (o: EditorObject) => {
+    const run = runs.get(o.id);
+    return run ? [rackIndex.get(run.rackId) ?? 0, run.units] : [Infinity, 0];
+  };
+  return selected
+    .map((o, i) => ({ o, i, k: key(o) }))
+    .sort((a, b) => a.k[0] - b.k[0] || a.k[1] - b.k[1] || a.i - b.i)
+    .map(({ o }) => o);
 };

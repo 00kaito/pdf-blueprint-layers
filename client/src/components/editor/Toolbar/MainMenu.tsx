@@ -39,7 +39,6 @@ export const MainMenu = () => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const { handleExportProject } = useExport();
-  const [exportOpen, setExportOpen] = useState(false);
   const { handleFileImport } = useImport();
   const { handleSave, isSaving } = useManualSave();
   const dirInputRef = useRef<HTMLInputElement>(null);
@@ -208,7 +207,7 @@ export const MainMenu = () => {
           </DropdownMenuCheckboxItem>
 
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setExportOpen(true)} className="gap-2 cursor-pointer" data-testid="menu-export-pdf">
+          <DropdownMenuItem onClick={() => dispatch({ type: 'SET_EXPORT_STEP', payload: 'dialog' })} className="gap-2 cursor-pointer" data-testid="menu-export-pdf">
             <Download className="w-4 h-4 text-primary" />
             <div className="flex flex-col">
               <span>Export PDF</span>
@@ -291,7 +290,7 @@ export const MainMenu = () => {
       />
 
       <ShareProjectDialog projectId={docState.projectId} open={shareOpen} onOpenChange={setShareOpen} />
-      <ExportPdfDialog open={exportOpen} onOpenChange={setExportOpen} />
+      <ExportPdfDialog />
       <CableSummaryPanel />
 
       <Dialog open={overlayOpen} onOpenChange={setOverlayOpen}>

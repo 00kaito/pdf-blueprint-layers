@@ -12,6 +12,8 @@ interface DrawingLayerProps {
   /** Colour / stroke width (unscaled) of the stroke being drawn. */
   drawColor: string;
   drawStrokeWidth: number;
+  /** Tool that clicks through drawings onto the plan (wall / route drawing). */
+  clickThrough?: boolean;
 }
 
 /** Scales every coordinate of a stored path ("M x y L x y …", unscaled canvas units) to screen pixels. */
@@ -26,7 +28,8 @@ export const DrawingLayer = memo(({
   scale, 
   selectedObjectIds,
   drawColor,
-  drawStrokeWidth
+  drawStrokeWidth,
+  clickThrough,
 }: DrawingLayerProps) => {
   const dispatch = useDocumentDispatch();
   const uiDispatch = useUIDispatch();
@@ -50,7 +53,7 @@ export const DrawingLayer = memo(({
                 opacity: obj.opacity ?? 1,
                 stroke: selectedObjectIds.includes(obj.id) ? 'hsl(var(--primary))' : (obj.color || '#000000'),
               }}
-              className="cursor-pointer pointer-events-auto" 
+              className={clickThrough ? undefined : "cursor-pointer pointer-events-auto"}
               onClick={(e: any) => { 
                 e.stopPropagation(); 
                 if (e.ctrlKey || e.metaKey) {

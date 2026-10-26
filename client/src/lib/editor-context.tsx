@@ -144,11 +144,14 @@ const initialUIState: UIState = {
   cableSummaryOpen: false,
   objectDetailsOpen: false,
   isImporting: false,
+  exportStep: 'closed',
   fillColor: '#3b82f6',
   fillOpacity: 0.35,
   drawColor: '#000000',
   drawStrokeWidth: 2,
   drawStraight: false,
+  wallStraight: true,
+  wallSnap: true,
   ipadMode: loadIpadMode(),
   stylusOnly: loadStylusOnly(),
   showCameraCoverage: loadCameraCoverage(),
@@ -625,7 +628,11 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, showStatusColors: !state.showStatusColors };
     case 'SET_IMPORTING':
       return { ...state, isImporting: action.payload };
+    case 'SET_EXPORT_STEP':
+      return { ...state, exportStep: action.payload };
     case 'SET_FILL_SETTINGS':
+    case 'SET_WALL_SETTINGS':
+      return { ...state, ...action.payload };
     case 'SET_DRAW_SETTINGS':
       return { ...state, ...action.payload };
     case 'SET_IPAD_MODE':
@@ -742,16 +749,19 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     cableSummaryOpen: state.cableSummaryOpen,
     objectDetailsOpen: state.objectDetailsOpen,
     isImporting: state.isImporting,
+    exportStep: state.exportStep,
     fillColor: state.fillColor,
     fillOpacity: state.fillOpacity,
     drawColor: state.drawColor,
     drawStrokeWidth: state.drawStrokeWidth,
     drawStraight: state.drawStraight,
+    wallStraight: state.wallStraight,
+    wallSnap: state.wallSnap,
     ipadMode: state.ipadMode,
     stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting]);
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.wallStraight, state.wallSnap]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

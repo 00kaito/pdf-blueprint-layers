@@ -1,3 +1,12 @@
+import type {CropRect, PaperId, PaperOrientation} from '@/core/paper';
+
+/** Part of the plan exported onto a sheet of print paper (rect in unscaled canvas units, paper's aspect). */
+export type ExportCrop = {
+  paper: PaperId;
+  orientation: PaperOrientation;
+  rect: CropRect;
+};
+
 export type Layer = {
   id: string;
   name: string;
@@ -128,6 +137,10 @@ export type DocumentState = {
   };
   exportSettings: {
     labelFontSize: number;
+    /** Unset = the whole page at its own size. */
+    crop?: ExportCrop | null;
+    /** Append the cable summary, legend and device schedule pages (off unless ticked). */
+    includeCableSummary?: boolean;
   };
   /** Legacy: icons older projects kept inline. Moved into the shared icon library on open (useLegacyIconMigration). */
   customIcons: { id: string; url: string; name: string }[];
@@ -146,7 +159,12 @@ export type UIState = {
   /** 'pan-overlay' = hand tool dragging the overlay blueprint to align it with the main one. */
   /** 'calibrate' = set the measuring scale from a known dimension; 'measure' = measuring tape. */
   /** 'route' = draw cable routes (click control points). */
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'route';
+  /** 'wall' = draw a camera blindspot wall (click its corner points). */
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'route' | 'wall';
+  /** Wall tool: runs at multiples of 45° only. */
+  wallStraight: boolean;
+  /** Wall tool: points stick to existing walls and blindspots. */
+  wallSnap: boolean;
   /** Paint-bucket settings (hex colour, 0–1 opacity). */
   fillColor: string;
   fillOpacity: number;
@@ -175,6 +193,8 @@ export type UIState = {
   cableSummaryOpen: boolean;
   objectDetailsOpen: boolean;
   isImporting: boolean;
+  /** Export PDF flow: its dialog, or the crop frame being adjusted on the plan (dialog hidden). */
+  exportStep: 'closed' | 'dialog' | 'crop';
 };
 
 export type EditorState = DocumentState & UIState;
@@ -242,8 +262,10 @@ export type EditorAction =
   | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } }
   | { type: 'TOGGLE_STATUS_COLORS' }
   | { type: 'SET_IMPORTING'; payload: boolean }
+  | { type: 'SET_EXPORT_STEP'; payload: UIState['exportStep'] }
   | { type: 'RESET_EDITOR' }
   | { type: 'SET_FILL_SETTINGS'; payload: Partial<Pick<UIState, 'fillColor' | 'fillOpacity'>> }
+  | { type: 'SET_WALL_SETTINGS'; payload: Partial<Pick<UIState, 'wallStraight' | 'wallSnap'>> }
   | { type: 'SET_DRAW_SETTINGS'; payload: Partial<Pick<UIState, 'drawColor' | 'drawStrokeWidth' | 'drawStraight'>> }
   | { type: 'SET_IPAD_MODE'; payload: boolean }
   | { type: 'SET_STYLUS_ONLY'; payload: boolean }

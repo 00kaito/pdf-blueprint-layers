@@ -11,6 +11,7 @@ import {
   DEFAULT_TEXT_FONT_SIZE,
   DEFAULT_TEXT_COLOR
 } from '@/core/constants';
+import {BLINDSPOT_COLOR, BLINDSPOT_ICON} from '@/core/camera-coverage';
 
 export const useObjectCreation = () => {
   const { state: docState, dispatch } = useDocument();
@@ -66,6 +67,22 @@ export const useObjectCreation = () => {
   const handleAddIcon = useCallback((iconType: string) => {
     if (!targetLayerId) return;
     const size = DEFAULT_ICON_SIZE / uiState.scale;
+
+    if (iconType === BLINDSPOT_ICON) {
+      // Not a device: no status or numbering; starts as a wide block to resize over a shelf / column.
+      const { x, y } = getCenterPosition(size * 3, size * 1.5);
+      const id = uuidv4();
+      dispatch({
+        type: 'ADD_OBJECT',
+        payload: {
+          id, type: 'icon', name: '', x, y, width: size * 3, height: size * 1.5,
+          layerId: targetLayerId, color: BLINDSPOT_COLOR, content: BLINDSPOT_ICON, rotation: 0,
+        }
+      });
+      dispatch({ type: 'SET_TOOL', payload: 'select' });
+      dispatch({ type: 'SELECT_OBJECT', payload: id });
+      return;
+    }
 
     if (docState.autoNumbering.enabled) {
       dispatch({

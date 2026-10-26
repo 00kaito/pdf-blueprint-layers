@@ -1,10 +1,11 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {Download, Save, Loader2, Archive} from 'lucide-react';
 import {ExportPdfDialog} from '../ExportPdfDialog';
 import {Button} from '@/components/ui/button';
 import {useExport} from '@/hooks/useExport';
 import {useManualSave} from '@/hooks/useManualSave';
 import {DocumentState} from '@/lib/types';
+import {useUI} from '@/lib/editor-context';
 
 interface ProjectActionsProps {
   projectId: string | null;
@@ -21,7 +22,7 @@ export const ProjectActions = ({
   exportSettings,
 }: ProjectActionsProps) => {
   const { handleExportProject } = useExport();
-  const [exportOpen, setExportOpen] = useState(false);
+  const { dispatch } = useUI();
   const { handleSave, isSaving: isManualSaving } = useManualSave();
 
   return (
@@ -41,7 +42,7 @@ export const ProjectActions = ({
       <Button 
         variant="ghost" 
         size="sm" 
-        onClick={() => setExportOpen(true)}
+        onClick={() => dispatch({ type: 'SET_EXPORT_STEP', payload: 'dialog' })}
         className="h-10 w-10 p-0"
       >
         <Download className="w-5 h-5 text-primary" />
@@ -55,7 +56,7 @@ export const ProjectActions = ({
       >
         <Archive className="w-5 h-5 text-amber-600" />
       </Button>
-      <ExportPdfDialog open={exportOpen} onOpenChange={setExportOpen} />
+      <ExportPdfDialog />
     </div>
   );
 };

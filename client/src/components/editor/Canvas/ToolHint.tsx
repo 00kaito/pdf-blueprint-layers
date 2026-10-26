@@ -35,6 +35,9 @@ const hintFor = (tool: string, hasScale: boolean, touch: boolean, stylusOnly: bo
     case 'route': return touch
       ? `${tap} the control points of the cable route · start / end on a rack or another route · tap the last point again = done`
       : 'Click control points (runs are kept straight) · start / end on a rack or route · double click / Enter = done · Backspace = undo point';
+    case 'wall': return touch
+      ? `${tap} the corners of the wall · tap the last point again = done`
+      : 'Click the corners of the wall · Shift = any angle · double click / Enter = done · Backspace = undo point';
     default: return null;
   }
 };

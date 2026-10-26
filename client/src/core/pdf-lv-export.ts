@@ -8,7 +8,7 @@ import {
 import {CABLE_LABEL, CABLE_TYPES, defaultObjectNames, formatCables, objectTypeName} from './lv-icons';
 import {PLAN_CHANGE_BY_ID, PLAN_CHANGES} from './plan-change';
 import {statusOf} from './status';
-import {COVERAGE_FAR, COVERAGE_NEAR, COVERAGE_OPACITY, coverageCameras, coverageOf, coverageZones} from './camera-coverage';
+import {COVERAGE_FAR, COVERAGE_NEAR, COVERAGE_OPACITY, coverageCameras, coverageObstacles, coverageOf, coverageZones} from './camera-coverage';
 import type {Point} from './measure';
 
 /**
@@ -63,10 +63,11 @@ const polygon = (pp: PlanPainter, pts: Point[], color: string, opacity: number) 
 
 /** CCTV fields of view, as on screen: darker near sector, lighter far band, see-through. */
 export const drawCameraCoverage = (pp: PlanPainter, objects: EditorObject[], visibleLayerIds: Set<string>, ftPerUnit: number | null) => {
+  const obstacles = coverageObstacles(objects, visibleLayerIds);
   for (const cam of coverageCameras(objects, visibleLayerIds)) {
     const c = coverageOf(cam, ftPerUnit);
     if (!c) continue;
-    const { near, far } = coverageZones(c);
+    const { near, far } = coverageZones(c, obstacles);
     if (far) polygon(pp, far, COVERAGE_FAR, COVERAGE_OPACITY);
     polygon(pp, near, COVERAGE_NEAR, COVERAGE_OPACITY);
   }
@@ -95,6 +96,9 @@ export const lvIconOpacity = (o: EditorObject) => (o.change === 'REMOVE' ? 0.45 
  * Marks around one object: relocation ghost + arrow, strike-through when removed, plan-change
  * badge (top right) and the dot of the IDF it home-runs to (top left, with several IDFs).
  */
+/** IDF colour dot radius, unscaled canvas units: the editor's 12 px dot at the default zoom (4.1). */
+const IDF_DOT_RADIUS = 1.4;
+
 export const drawObjectLvMarks = (
   pp: PlanPainter, o: EditorObject, bold: PDFFont, idfColor: string | undefined, pageRotation: number,
 ) => {
@@ -141,10 +145,11 @@ export const drawObjectLvMarks = (
     pp.page.drawText(text, { x: start.x, y: start.y, size, font: bold, color: rgb(1, 1, 1), rotate: degrees(pageRotation) });
   }
   if (idfColor) {
+    // Fixed size like the editor's dot (12 px at the default zoom), not growing with the object.
     const c = pp.at({ x, y });
     pp.page.drawEllipse({
-      x: c.x, y: c.y, xScale: r * 0.8 * pp.k, yScale: r * 0.8 * pp.k,
-      color: hexToRgb(idfColor), borderColor: rgb(1, 1, 1), borderWidth: 0.8 * pp.k,
+      x: c.x, y: c.y, xScale: IDF_DOT_RADIUS * pp.k, yScale: IDF_DOT_RADIUS * pp.k,
+      color: hexToRgb(idfColor), borderColor: rgb(1, 1, 1), borderWidth: IDF_DOT_RADIUS * 0.3 * pp.k,
     });
   }
 };

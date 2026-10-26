@@ -25,7 +25,10 @@ import {GuidesLayer} from './Canvas/GuidesLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import {RouteLayer} from './Canvas/RouteLayer';
 import {CoverageLayer} from './Canvas/CoverageLayer';
+import {CropLayer} from './Canvas/CropLayer';
 import {useRouteDrawing} from '@/hooks/useRouteDrawing';
+import {useWallDrawing} from '@/hooks/useWallDrawing';
+import {WallPreview} from './Canvas/WallPreview';
 import {
   computeCableRuns, getRacks, hasCables, isCableDevice, rackColorMap, rackLabel, runFeet, SHARED_ROUTE_COLOR,
 } from '@/core/cable-routing';
@@ -45,6 +48,7 @@ export const TOOL_SHORTCUTS: Record<string, UIState['tool']> = {
   m: 'measure',
   k: 'calibrate',
   r: 'route',
+  w: 'wall',
 };
 
 /** Shift-drag moves objects in steps of this many feet. */
@@ -69,6 +73,7 @@ export const Canvas = () => {
   const measure = useMeasure(containerRef as React.RefObject<HTMLDivElement>);
   const marquee = useMarquee(containerRef as React.RefObject<HTMLDivElement>);
   const route = useRouteDrawing(containerRef as React.RefObject<HTMLDivElement>);
+  const wall = useWallDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const spacePan = useSpacePan(scrollRef as React.RefObject<HTMLDivElement>);
   const { lastPointerTypeRef } = useStylusGuidance(scrollRef as React.RefObject<HTMLDivElement>);
   const shortcutStateRef = useRef({ tool: uiState.tool, hasCalibration: !!docState.measureCalibration });
@@ -281,6 +286,7 @@ export const Canvas = () => {
     // Stylus only: a finger tap does not fill or stamp (it may still deselect).
     if (state.stylusOnly && isTapTool(state.tool) && lastPointerTypeRef.current === 'touch') return;
     if (state.tool === 'route') { route.onClick(e); }
+    else if (state.tool === 'wall') { wall.onClick(e); }
     else if (state.tool === 'fill') { handleFill(e); }
     else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
        const rect = containerRef.current?.getBoundingClientRect();
@@ -396,7 +402,7 @@ export const Canvas = () => {
 
   return (
     <div ref={scrollRef} data-canvas-scroller className={`flex-1 bg-muted/30 overflow-auto relative select-none${
-      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
+      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || state.tool === 'wall' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
     }`} 
       // Stroke tools suppress native Safari gestures for pen and touch. In stylus-only mode,
       // useFingerPan restores one-finger panning and usePinchZoom handles two fingers.
@@ -447,6 +453,7 @@ export const Canvas = () => {
             selectedObjectIds={state.selectedObjectIds}
             drawColor={state.drawColor}
             drawStrokeWidth={state.drawStrokeWidth}
+            clickThrough={state.tool === 'wall' || state.tool === 'route'}
           />
           <MeasureLayer
             tool={state.tool}
@@ -500,6 +507,7 @@ export const Canvas = () => {
             hover={route.hover}
             run={state.showCableRoutes || state.tool === 'route' ? selectedRun : null}
           />
+          <WallPreview points={wall.points} hover={wall.hover} scale={state.scale} />
           <GuidesLayer scale={state.scale} tape={state.measureTape} ftPerUnit={feetPerUnit(state.measureCalibration)} />
 
           {state.objects.map((obj) => {
@@ -528,6 +536,17 @@ export const Canvas = () => {
               />
             );
           })}
+          {uiState.exportStep === 'crop' && docState.exportSettings.crop && (
+            <CropLayer
+              crop={docState.exportSettings.crop}
+              scale={state.scale}
+              pageW={CANVAS_BASE_WIDTH}
+              pageH={docState.pdfCanvasHeight}
+              touchLayout={state.ipadMode || isMobile}
+              onChange={(crop) => dispatch({ type: 'SET_EXPORT_SETTINGS', payload: { crop } })}
+              onDone={() => dispatch({ type: 'SET_EXPORT_STEP', payload: 'dialog' })}
+            />
+          )}
         </div>
       </div>
     </div>

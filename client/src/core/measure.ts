@@ -16,6 +16,16 @@ export const feetPerUnit = (cal: MeasureCalibration | null): number | null => {
 export const snapToAxis = (start: Point, p: Point): Point =>
   Math.abs(p.x - start.x) > Math.abs(p.y - start.y) ? { x: p.x, y: start.y } : { x: start.x, y: p.y };
 
+/** `p` moved onto the nearest line from `start` at a multiple of 45° (0 / 45 / 90 / 135…). */
+export const snapToAngle45 = (start: Point, p: Point): Point => {
+  const dx = p.x - start.x, dy = p.y - start.y;
+  const step = Math.PI / 4;
+  const a = Math.round(Math.atan2(dy, dx) / step) * step;
+  const ux = Math.cos(a), uy = Math.sin(a);
+  const len = dx * ux + dy * uy;
+  return { x: start.x + ux * len, y: start.y + uy * len };
+};
+
 /** 12.354 → `12' 4 1/4"` (rounded to the nearest 1/4 inch). */
 export const formatFeetInches = (feet: number): string => {
   const quarters = Math.round(Math.abs(feet) * 48); // 1/4" steps

@@ -13,6 +13,8 @@ import {statusOf} from '@/core/status';
 import {dragStore} from '@/lib/drag-store';
 import {LV_ICONS} from '@/core/lv-icons';
 import {LvIcon} from '@/components/editor/LvIcon';
+import {BlindspotShape} from '@/components/editor/BlindspotShape';
+import {BLINDSPOT_ICON} from '@/core/camera-coverage';
 import {PLAN_CHANGE_BY_ID} from '@/core/plan-change';
 import {v4 as uuidv4} from 'uuid';
 
@@ -85,6 +87,8 @@ const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min)
 const IconRenderer = ({ iconType, color }: { iconType: string, color?: string }) => {
   const props = { className: "w-full h-full", style: { color } };
   if (LV_ICONS[iconType]) return <LvIcon type={iconType} {...props} />;
+  // Fills its whole box (any proportions), unlike the square icons.
+  if (iconType === BLINDSPOT_ICON) return <BlindspotShape className="w-full h-full" color={color} />;
   switch (iconType) {
     case 'circle': return <Circle {...props} />;
     case 'triangle': return <Triangle {...props} />;
@@ -474,7 +478,7 @@ export const ObjectRenderer = memo(({
         isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         // While the bucket is active, clicks go through a fill to the blueprint (re-fill = recolour).
         // Route tool: clicks reach the plan, so a route can end on a device or rack.
-        layer.locked || tool === 'route' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
+        layer.locked || tool === 'route' || tool === 'wall' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
       )}
       // Fills sit below regular objects and drawn paths. With its action bar, the object goes above the
       // cable-run preview and its length label (z 45–46) so they never cover the bar.

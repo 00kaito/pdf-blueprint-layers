@@ -6,6 +6,7 @@ import {
   COVERAGE_NEAR,
   COVERAGE_OPACITY,
   coverageCameras,
+  coverageObstacles,
   coverageOf,
   coverageZones,
 } from '@/core/camera-coverage';
@@ -24,9 +25,10 @@ export const CoverageLayer = memo(({ objects, layers, scale, ftPerUnit, visible 
   const zones = useMemo(() => {
     if (!visible || !ftPerUnit) return [];
     const shown = new Set(layers.filter(l => l.visible).map(l => l.id));
+    const obstacles = coverageObstacles(objects, shown);
     return coverageCameras(objects, shown).flatMap(o => {
       const c = coverageOf(o, ftPerUnit);
-      return c ? [{ id: o.id, ...coverageZones(c) }] : [];
+      return c ? [{ id: o.id, ...coverageZones(c, obstacles) }] : [];
     });
   }, [objects, layers, ftPerUnit, visible]);
 

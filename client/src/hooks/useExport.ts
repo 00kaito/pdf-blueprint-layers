@@ -6,6 +6,7 @@ import {
     degrees,
     LineCapStyle,
     PDFDocument,
+    PDFPage,
     PDFName,
     PDFStream,
     popGraphicsState,
@@ -27,9 +28,60 @@ import {
   appendLvPages, drawCableRoutes, drawCameraCoverage, drawObjectLvMarks, idfColorResolver, lvIconOpacity, makePlanPainter, pdfSafeText,
 } from '@/core/pdf-lv-export';
 import {feetPerUnit} from '@/core/measure';
+import {BLINDSPOT_COLOR, BLINDSPOT_ICON} from '@/core/camera-coverage';
+import {paperSizePt} from '@/core/paper';
+import type {ExportCrop} from '@/lib/types';
 
 const toSafeFileName = (name: string) =>
   name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\.(pdf|zip)$/i, '').trim();
+
+/**
+ * Replaces the finished plan page with a sheet of the crop's paper showing only the cropped area,
+ * scaled to fill it (still vector). The sheet keeps the page's rotation, so it reads the same way.
+ */
+const cropPageToPaper = async (pdfDoc: PDFDocument, pageIndex: number, crop: ExportCrop) => {
+  const page = pdfDoc.getPage(pageIndex);
+  const { width: pW, height: pH } = page.getSize();
+  const rotation = page.getRotation().angle;
+  const k = getVisualDimensions(pW, pH, rotation).vW / CANVAS_BASE_WIDTH;
+  const { x, y, width, height } = crop.rect;
+  const a = getPhysicalCoords(x * k, y * k, pW, pH, rotation);
+  const b = getPhysicalCoords((x + width) * k, (y + height) * k, pW, pH, rotation);
+  const box = {
+    left: Math.max(0, Math.min(a.x, b.x)), right: Math.min(pW, Math.max(a.x, b.x)),
+    bottom: Math.max(0, Math.min(a.y, b.y)), top: Math.min(pH, Math.max(a.y, b.y)),
+  };
+  const embedded = await pdfDoc.embedPage(page, box);
+  await embedded.embed();
+
+  const paper = paperSizePt(crop.paper, crop.orientation);
+  const sideways = rotation === 90 || rotation === 270;
+  const sheetW = sideways ? paper.height : paper.width;
+  const sheetH = sideways ? paper.width : paper.height;
+  const s = Math.min(sheetW / embedded.width, sheetH / embedded.height);
+  const sheet = pdfDoc.insertPage(pageIndex, [sheetW, sheetH]);
+  sheet.setRotation(degrees(rotation));
+  sheet.drawPage(embedded, {
+    x: (sheetW - embedded.width * s) / 2,
+    y: (sheetH - embedded.height * s) / 2,
+    width: embedded.width * s,
+    height: embedded.height * s,
+  });
+  pdfDoc.removePage(pageIndex + 1);
+};
+
+/** Camera blindspot, as on screen: see-through box with a border and 45° hatching (local coords, origin bottom-left). */
+const drawBlindspot = (page: PDFPage, w: number, h: number, color: string, opacity: number, k: number) => {
+  const c = hexToRgb(color);
+  page.drawRectangle({ x: 0, y: 0, width: w, height: h, color: c, opacity: 0.15 * opacity, borderColor: c, borderWidth: 1.5 * k, borderOpacity: opacity });
+  const step = 7 * k;
+  for (let d = step; d < w + h; d += step) {
+    // Line x + y = d inside the box (the screen's 45° hatching, with y up).
+    const start = { x: Math.max(0, d - h), y: Math.min(h, d) };
+    const end = { x: Math.min(w, d), y: Math.max(0, d - w) };
+    page.drawLine({ start, end, thickness: 0.75 * k, color: c, opacity: 0.6 * opacity });
+  }
+};
 
 export const useExport = () => {
   const { state: docState } = useDocument();
@@ -312,7 +364,9 @@ export const useExport = () => {
           const offY = (scaledHeight - minSide) / 2;
 
           const lvIcon = LV_ICONS[obj.content || ''];
-          if (lvIcon) {
+          if (obj.content === BLINDSPOT_ICON) {
+             drawBlindspot(page, scaledWidth, scaledHeight, obj.color || BLINDSPOT_COLOR, (obj.opacity ?? 1) * (layer.opacity ?? 1), scaleFactor);
+          } else if (lvIcon) {
              // SVG grid (y down) scaled into the square box; pdf-lib flips y, so the origin is the box's top-left.
              // Line width is in grid units, keeping the on-screen stroke proportion.
              page.drawSvgPath(lvIcon.d, {
@@ -439,10 +493,16 @@ export const useExport = () => {
        });
     }
 
-    appendLvPages(pdfDoc, { regular: helveticaFont, bold: helveticaBoldFont }, {
-      projectName, objects: docState.objects, routes: docState.cableRoutes,
-      calibration: docState.measureCalibration, settings: docState.lvSettings, customIcons: docState.customIcons,
-    });
+    if (docState.exportSettings.crop) {
+      await cropPageToPaper(pdfDoc, uiState.currentPage - 1, docState.exportSettings.crop);
+    }
+
+    if (docState.exportSettings.includeCableSummary) {
+      appendLvPages(pdfDoc, { regular: helveticaFont, bold: helveticaBoldFont }, {
+        projectName, objects: docState.objects, routes: docState.cableRoutes,
+        calibration: docState.measureCalibration, settings: docState.lvSettings, customIcons: docState.customIcons,
+      });
+    }
 
     const pdfBytes = await pdfDoc.save();
     const name = toSafeFileName(fileName ?? '') || projectName || 'edited-document';

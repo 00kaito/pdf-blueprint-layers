@@ -10,6 +10,9 @@ export const LV_ICON_GRID = 24;
 /** Icon type of a rack / IDF: the point that devices home-run their cables to. */
 export const RACK_ICON = 'rack';
 
+/** Icon type of a camera blindspot: a resizable rectangle cameras cannot see past (see camera-coverage). */
+export const BLINDSPOT_ICON = 'blindspot';
+
 export const LV_ICONS: Record<string, { label: string; d: string }> = {
   'floor-box': {
     label: 'Floor Box',
@@ -62,7 +65,7 @@ export const LV_ICON_TYPES = Object.keys(LV_ICONS);
 /** Names of the plain shape icons. */
 const SHAPE_LABELS: Record<string, string> = {
   square: 'Square', circle: 'Circle', triangle: 'Triangle', star: 'Star', heart: 'Heart',
-  hexagon: 'Hexagon', 'arrow-right': 'Arrow', camera: 'Camera',
+  hexagon: 'Hexagon', 'arrow-right': 'Arrow', camera: 'Camera', [BLINDSPOT_ICON]: 'Camera blindspot',
 };
 
 /**
@@ -74,6 +77,7 @@ export const objectTypeName = (
   customIcons: { url: string; name: string }[] = [],
 ): string => {
   if (o.type === 'icon' && o.content) return LV_ICONS[o.content]?.label ?? SHAPE_LABELS[o.content] ?? 'Icon';
+  if (o.type === 'path' && o.content === BLINDSPOT_ICON) return 'Blindspot wall';
   if (o.type === 'image') return customIcons.find(i => i.url === o.content)?.name || 'Image';
   return o.type.charAt(0).toUpperCase() + o.type.slice(1);
 };
