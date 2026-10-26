@@ -22,13 +22,17 @@ const toPath = (pts: Point[], scale: number) =>
 /** Every ring of every polygon in one path (drawn with evenodd, so holes stay open). */
 const shapePath = (shape: ZoneShape, scale: number) => shape.flat().map(r => toPath(r, scale)).join(' ');
 
-/** CCTV fields of view under the devices: darker near zone, lighter far band, see-through. */
-export const CoverageLayer = memo(({ objects, layers, scale, ftPerUnit, visible }: {
+/**
+ * CCTV fields of view under the devices: darker near zone, lighter far band, see-through.
+ * `solid`: the whole field of view in one colour, without the 15 ft split.
+ */
+export const CoverageLayer = memo(({ objects, layers, scale, ftPerUnit, visible, solid }: {
   objects: EditorObject[];
   layers: Layer[];
   scale: number;
   ftPerUnit: number | null;
   visible: boolean;
+  solid: boolean;
 }) => {
   const { zones, blind } = useMemo(() => {
     if (!visible || !ftPerUnit) return { zones: [], blind: [] };
@@ -51,6 +55,10 @@ export const CoverageLayer = memo(({ objects, layers, scale, ftPerUnit, visible 
     >
       {zones.map(z => (
         <g key={z.id} data-camera-id={z.id}>
+          {solid ? z.seen.length > 0 && (
+            <path d={shapePath(z.seen, scale)} fillRule="evenodd" fill={COVERAGE_NEAR} fillOpacity={COVERAGE_OPACITY}
+              stroke={COVERAGE_NEAR} strokeOpacity={0.6} strokeWidth={1} data-zone="seen" />
+          ) : <>
           {z.far.length > 0 && (
             <path d={shapePath(z.far, scale)} fillRule="evenodd" fill={COVERAGE_FAR} fillOpacity={COVERAGE_OPACITY}
               stroke={COVERAGE_FAR} strokeOpacity={0.6} strokeWidth={1} data-zone="far" />
@@ -59,6 +67,7 @@ export const CoverageLayer = memo(({ objects, layers, scale, ftPerUnit, visible 
             <path d={shapePath(z.near, scale)} fillRule="evenodd" fill={COVERAGE_NEAR} fillOpacity={COVERAGE_OPACITY}
               stroke={COVERAGE_NEAR} strokeOpacity={0.6} strokeWidth={1} data-zone="near" />
           )}
+          </>}
         </g>
       ))}
       {/* Red: hidden behind a blindspot and seen by no camera at all. */}

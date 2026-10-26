@@ -205,6 +205,20 @@ export const MainMenu = () => {
             <Video className="w-4 h-4 mr-2" />
             Show camera coverage
           </DropdownMenuCheckboxItem>
+          {uiState.showCameraCoverage && (
+            <DropdownMenuCheckboxItem
+              checked={uiState.coverageSolid}
+              onCheckedChange={() => dispatch({ type: 'TOGGLE_COVERAGE_SOLID' })}
+              onSelect={(e) => e.preventDefault()}
+              className="cursor-pointer pl-14"
+              data-testid="menu-coverage-solid"
+            >
+              <div className="flex flex-col">
+                <span>One colour</span>
+                <span className="text-[10px] text-muted-foreground">No 15 ft ring, plain field of view</span>
+              </div>
+            </DropdownMenuCheckboxItem>
+          )}
 
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => dispatch({ type: 'SET_EXPORT_STEP', payload: 'dialog' })} className="gap-2 cursor-pointer" data-testid="menu-export-pdf">

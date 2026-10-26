@@ -282,7 +282,7 @@ export const useExport = () => {
     const planPainter = makePlanPainter(page, vW / CANVAS_BASE_WIDTH, pW, pH, pageRotation);
     if (uiState.showCameraCoverage) {
       const shown = new Set(docState.layers.filter(l => l.visible).map(l => l.id));
-      drawCameraCoverage(planPainter, docState.objects, shown, feetPerUnit(docState.measureCalibration));
+      drawCameraCoverage(planPainter, docState.objects, shown, feetPerUnit(docState.measureCalibration), uiState.coverageSolid);
     }
     if (uiState.showCableRoutes) drawCableRoutes(planPainter, docState.cableRoutes, docState.objects);
     const idfColorOf = idfColorResolver(docState.objects, docState.cableRoutes);
@@ -510,7 +510,7 @@ export const useExport = () => {
     const pdfBytes = await pdfDoc.save();
     const name = toSafeFileName(fileName ?? '') || projectName || 'edited-document';
     saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), `${name}.pdf`);
-  }, [docState, uiState.currentPage, uiState.showCableRoutes, uiState.showCameraCoverage, projectName]);
+  }, [docState, uiState.currentPage, uiState.showCableRoutes, uiState.showCameraCoverage, uiState.coverageSolid, projectName]);
 
   return { handleExportProject, handleFlattenAndDownload, projectName };
 };

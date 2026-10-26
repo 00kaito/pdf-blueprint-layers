@@ -117,6 +117,16 @@ const saveCameraCoverage = (value: boolean) => {
   try { localStorage.setItem(CAMERA_COVERAGE_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
 };
 
+const COVERAGE_SOLID_STORAGE_KEY = 'editor.coverageSolid';
+
+const loadCoverageSolid = (): boolean => {
+  try { return localStorage.getItem(COVERAGE_SOLID_STORAGE_KEY) === 'true'; } catch { return false; }
+};
+
+const saveCoverageSolid = (value: boolean) => {
+  try { localStorage.setItem(COVERAGE_SOLID_STORAGE_KEY, String(value)); } catch { /* storage unavailable */ }
+};
+
 const SNAP_STORAGE_KEY = 'editor.snapEnabled';
 
 const loadSnapEnabled = (): boolean => {
@@ -179,6 +189,7 @@ const initialUIState: UIState = {
   ipadMode: loadIpadMode(),
   stylusOnly: loadStylusOnly(),
   showCameraCoverage: loadCameraCoverage(),
+  coverageSolid: loadCoverageSolid(),
   measureTape: null,
   snapEnabled: loadSnapEnabled()
 };
@@ -462,6 +473,8 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, showCableRoutes: !state.showCableRoutes };
     case 'TOGGLE_CAMERA_COVERAGE':
       return { ...state, showCameraCoverage: !state.showCameraCoverage };
+    case 'TOGGLE_COVERAGE_SOLID':
+      return { ...state, coverageSolid: !state.coverageSolid };
     case 'SET_CABLE_SUMMARY_OPEN':
       return { ...state, cableSummaryOpen: action.payload };
     case 'SET_MEASURE_CALIBRATION':
@@ -738,6 +751,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => saveIpadMode(state.ipadMode), [state.ipadMode]);
   useEffect(() => saveStylusOnly(state.stylusOnly), [state.stylusOnly]);
   useEffect(() => saveCameraCoverage(state.showCameraCoverage), [state.showCameraCoverage]);
+  useEffect(() => saveCoverageSolid(state.coverageSolid), [state.coverageSolid]);
   useEffect(() => saveSnapEnabled(state.snapEnabled), [state.snapEnabled]);
   useEffect(() => {
     if (state.layers.length === 0 || state.layers.some(layer => layer.id === state.activeLayerId)) return;
@@ -781,6 +795,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     showStatusColors: state.showStatusColors,
     showCableRoutes: state.showCableRoutes,
     showCameraCoverage: state.showCameraCoverage,
+    coverageSolid: state.coverageSolid,
     selectedRouteId: state.selectedRouteId,
     routeRackId: state.routeRackId,
     cableSummaryOpen: state.cableSummaryOpen,
@@ -798,7 +813,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.wallStraight, state.wallSnap]);
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.wallStraight, state.wallSnap]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

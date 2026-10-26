@@ -490,6 +490,7 @@ export const Canvas = () => {
             scale={state.scale}
             ftPerUnit={ftPerUnitValue}
             visible={uiState.showCameraCoverage}
+            solid={uiState.coverageSolid}
           />
           <RouteLayer
             routes={state.cableRoutes}

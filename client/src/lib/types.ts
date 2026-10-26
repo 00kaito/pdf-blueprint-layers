@@ -188,6 +188,8 @@ export type UIState = {
   showCableRoutes: boolean;
   /** CCTV fields of view drawn on the plan (and exported). Remembered per device. */
   showCameraCoverage: boolean;
+  /** Coverage in one colour, without the 15 ft near / far split (also exported). Remembered per device. */
+  coverageSolid: boolean;
   /** Cable route selected for deleting / extending. */
   selectedRouteId: string | null;
   /** IDF the route tool draws for: a rack id, 'shared', or null = the first rack. */
@@ -254,6 +256,7 @@ export type EditorAction =
   | { type: 'SELECT_CABLE_ROUTE'; payload: string | null }
   | { type: 'TOGGLE_CABLE_ROUTES' }
   | { type: 'TOGGLE_CAMERA_COVERAGE' }
+  | { type: 'TOGGLE_COVERAGE_SOLID' }
   | { type: 'SET_CABLE_SUMMARY_OPEN'; payload: boolean }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }

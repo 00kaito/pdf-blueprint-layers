@@ -66,7 +66,10 @@ const polygon = (pp: PlanPainter, pts: Point[] | Point[][], color: string, opaci
 };
 
 /** CCTV fields of view, as on screen: darker near sector, lighter far band, see-through. */
-export const drawCameraCoverage = (pp: PlanPainter, objects: EditorObject[], visibleLayerIds: Set<string>, ftPerUnit: number | null) => {
+/** `solid`: each field of view in one colour, without the 15 ft near / far split. */
+export const drawCameraCoverage = (
+  pp: PlanPainter, objects: EditorObject[], visibleLayerIds: Set<string>, ftPerUnit: number | null, solid = false,
+) => {
   const obstacles = coverageObstacles(objects, visibleLayerIds);
   const areas = coverageAreas(objects, visibleLayerIds);
   const all: ShownZones[] = [];
@@ -76,6 +79,10 @@ export const drawCameraCoverage = (pp: PlanPainter, objects: EditorObject[], vis
     // Cameras assigned to coverage areas stop at the areas' edges.
     const zones = limitToAreas(cam.id, coverageZones(c, obstacles), areas);
     all.push(zones);
+    if (solid) {
+      for (const rings of zones.seen) polygon(pp, rings, COVERAGE_NEAR, COVERAGE_OPACITY);
+      continue;
+    }
     for (const rings of zones.far) polygon(pp, rings, COVERAGE_FAR, COVERAGE_OPACITY);
     for (const rings of zones.near) polygon(pp, rings, COVERAGE_NEAR, COVERAGE_OPACITY);
   }
