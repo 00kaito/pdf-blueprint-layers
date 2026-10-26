@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Video} from 'lucide-react';
 import {useDocumentDispatch} from '@/lib/editor-context';
 import {EditorObject} from '@/lib/types';
-import {DEFAULT_CAMERA_ANGLE_DEG, DEFAULT_CAMERA_RANGE_FT} from '@/core/camera-coverage';
+import {cameraDefaults} from '@/core/camera-coverage';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {cn} from '@/lib/utils';
@@ -15,11 +15,14 @@ const LIMITS: Record<Field, [number, number]> = { rangeFt: [1, 200], angleDeg: [
  * One number of the camera's field of view. Committed on blur / Enter (clamping on every keystroke
  * would turn "6" of "60" into the minimum); empty = back to the default.
  */
-const SpecInput = ({ objects, field, placeholder, readOnly, large }: {
-  objects: EditorObject[]; field: Field; placeholder: number; readOnly: boolean; large: boolean;
+const SpecInput = ({ objects, field, readOnly, large }: {
+  objects: EditorObject[]; field: Field; readOnly: boolean; large: boolean;
 }) => {
   const dispatch = useDocumentDispatch();
   const values = new Set(objects.map(o => o.camera?.[field] ?? null));
+  // The type's default (regular / 360°); a mix of types has no single one.
+  const defaults = new Set(objects.map(o => cameraDefaults(o)[field]));
+  const placeholder = values.size > 1 || defaults.size > 1 ? 'Mixed' : String(defaults.values().next().value);
   const shown = values.size === 1 ? (objects[0].camera?.[field] ?? '') : '';
   const [draft, setDraft] = useState<string>(String(shown));
   useEffect(() => setDraft(String(shown)), [shown]);
@@ -40,7 +43,7 @@ const SpecInput = ({ objects, field, placeholder, readOnly, large }: {
       type="number"
       inputMode="decimal"
       value={draft}
-      placeholder={values.size > 1 ? 'Mixed' : String(placeholder)}
+      placeholder={placeholder}
       disabled={readOnly}
       onChange={e => setDraft(e.target.value)}
       onBlur={commit}
@@ -51,7 +54,7 @@ const SpecInput = ({ objects, field, placeholder, readOnly, large }: {
   );
 };
 
-/** Field of view of the selected CCTV cameras: range in feet and view angle (defaults 25 ft / 100°). */
+/** Field of view of the selected CCTV cameras: range in feet and view angle (defaults per type, see `cameraDefaults`). */
 export const CameraCoverageEditor = ({ objects, readOnly = false, large = false }: {
   objects: EditorObject[]; readOnly?: boolean; large?: boolean;
 }) => (
@@ -63,11 +66,11 @@ export const CameraCoverageEditor = ({ objects, readOnly = false, large = false 
     <div className="grid grid-cols-2 gap-2">
       <div className="space-y-1">
         <span className="text-[10px] text-muted-foreground">Range (ft)</span>
-        <SpecInput objects={objects} field="rangeFt" placeholder={DEFAULT_CAMERA_RANGE_FT} readOnly={readOnly} large={large} />
+        <SpecInput objects={objects} field="rangeFt" readOnly={readOnly} large={large} />
       </div>
       <div className="space-y-1">
         <span className="text-[10px] text-muted-foreground">View angle (°)</span>
-        <SpecInput objects={objects} field="angleDeg" placeholder={DEFAULT_CAMERA_ANGLE_DEG} readOnly={readOnly} large={large} />
+        <SpecInput objects={objects} field="angleDeg" readOnly={readOnly} large={large} />
       </div>
     </div>
   </div>

@@ -89,7 +89,7 @@ export type EditorObject = {
   changeOrigin?: { x: number; y: number };
   /** Coverage area: cameras that must see it; unset / empty = every camera. */
   coverageCameraIds?: string[];
-  /** CCTV camera field of view; unset values use the defaults (25 ft, 100°). */
+  /** CCTV camera field of view; unset values use the type's defaults (30 ft / 110°, 360° camera 18 ft / 360°). */
   camera?: { rangeFt?: number; angleDeg?: number };
   changeNote?: string;
   changeUpdatedAt?: string;

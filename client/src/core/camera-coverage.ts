@@ -1,11 +1,14 @@
 import type {EditorObject} from '@/lib/types';
-import {BLINDSPOT_ICON, COVERAGE_AREA_ICON, deviceKey} from './lv-icons';
+import {BLINDSPOT_ICON, CAMERA_360_ICON, COVERAGE_AREA_ICON, deviceKey} from './lv-icons';
 import type {Point} from './measure';
 import polygonClipping, {type Polygon} from 'polygon-clipping';
 
 /** What a CCTV camera sees: a sector in front of it, cut off behind blindspot obstacles (walls are not taken into account). */
-export const DEFAULT_CAMERA_RANGE_FT = 25;
-export const DEFAULT_CAMERA_ANGLE_DEG = 100;
+export const DEFAULT_CAMERA_RANGE_FT = 30;
+export const DEFAULT_CAMERA_ANGLE_DEG = 110;
+/** 360° (fisheye) camera defaults: all around, 18 ft. */
+export const CAMERA_360_RANGE_FT = 18;
+export const CAMERA_360_ANGLE_DEG = 360;
 /** Up to here the picture is sharp (darker zone); beyond it, up to the range, lighter. */
 export const CAMERA_NEAR_FT = 15;
 export const COVERAGE_NEAR = '#0369a1';
@@ -15,9 +18,14 @@ export const COVERAGE_OPACITY = 0.1;
 /** Blind area: hidden behind a blindspot and seen by no other camera. Same see-through fill, in red. */
 export const COVERAGE_BLIND = '#dc2626';
 
-export const isCamera = (o: EditorObject) => deviceKey(o) === 'cctv';
+export const isCamera = (o: EditorObject) => {
+  const key = deviceKey(o);
+  return key === 'cctv' || key === CAMERA_360_ICON;
+};
 
-export {BLINDSPOT_ICON, COVERAGE_AREA_ICON};
+export const isCamera360 = (o: EditorObject) => deviceKey(o) === CAMERA_360_ICON;
+
+export {BLINDSPOT_ICON, CAMERA_360_ICON, COVERAGE_AREA_ICON};
 
 /** Outline colour of coverage areas (dashed). */
 export const COVERAGE_AREA_COLOR = '#16a34a';
@@ -80,10 +88,18 @@ export const obstacleSegments = (obstacles: Obstacle[]): [Point, Point][] =>
     return Array.from({ length: Math.max(0, n) }, (_, i) => [pts[i], pts[(i + 1) % pts.length]] as [Point, Point]);
   });
 
-export const cameraSpec = (o: EditorObject) => ({
-  rangeFt: o.camera?.rangeFt || DEFAULT_CAMERA_RANGE_FT,
-  angleDeg: o.camera?.angleDeg || DEFAULT_CAMERA_ANGLE_DEG,
-});
+/** Field of view a camera of this type has when nothing is set: regular or 360°. */
+export const cameraDefaults = (o: EditorObject) => isCamera360(o)
+  ? { rangeFt: CAMERA_360_RANGE_FT, angleDeg: CAMERA_360_ANGLE_DEG }
+  : { rangeFt: DEFAULT_CAMERA_RANGE_FT, angleDeg: DEFAULT_CAMERA_ANGLE_DEG };
+
+export const cameraSpec = (o: EditorObject) => {
+  const defaults = cameraDefaults(o);
+  return {
+    rangeFt: o.camera?.rangeFt || defaults.rangeFt,
+    angleDeg: o.camera?.angleDeg || defaults.angleDeg,
+  };
+};
 
 export type Coverage = {
   center: Point;

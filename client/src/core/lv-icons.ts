@@ -13,6 +13,9 @@ export const RACK_ICON = 'rack';
 /** Icon type of a camera blindspot: a resizable rectangle cameras cannot see past (see camera-coverage). */
 export const BLINDSPOT_ICON = 'blindspot';
 
+/** Icon type of a 360° (fisheye) CCTV camera; the regular one is 'cctv'. */
+export const CAMERA_360_ICON = 'cctv-360';
+
 /** Content of a coverage area: a closed outline ('path' object) that given cameras must see (see camera-coverage). */
 export const COVERAGE_AREA_ICON = 'coverage-area';
 
@@ -48,6 +51,10 @@ export const LV_ICONS: Record<string, { label: string; d: string }> = {
   cctv: {
     label: 'CCTV Camera',
     d: 'M2 8h13v8H2z M15 10l6-3v10l-6-3',
+  },
+  [CAMERA_360_ICON]: {
+    label: 'CCTV 360° Camera',
+    d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M12 2v3 M12 19v3 M2 12h3 M19 12h3',
   },
   scheduler: {
     label: 'Scheduler',
@@ -128,6 +135,7 @@ export const DEFAULT_LV_SETTINGS: LvSettings = {
     speaker: [{ type: 'SPEAKER', count: 1 }],
     'ceiling-speaker': [{ type: 'SPEAKER', count: 1 }],
     cctv: [{ type: 'CAT6', count: 2 }],
+    [CAMERA_360_ICON]: [{ type: 'CAT6', count: 2 }],
     // Access control needs 24 V, so it is the only device with a power cable.
     'access-control': [{ type: 'CAT6', count: 1 }, { type: 'POWER', count: 1 }],
     data: [{ type: 'CAT6', count: 1 }],
