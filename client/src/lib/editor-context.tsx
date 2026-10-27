@@ -179,6 +179,7 @@ const initialUIState: UIState = {
   objectDetailsOpen: false,
   isImporting: false,
   exportStep: 'closed',
+  placement: null,
   fillColor: '#3b82f6',
   fillOpacity: 0.35,
   drawColor: '#000000',
@@ -680,6 +681,29 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
       return { ...state, isImporting: action.payload };
     case 'SET_EXPORT_STEP':
       return { ...state, exportStep: action.payload };
+    case 'SET_PLACEMENT':
+      return { ...state, placement: action.payload };
+    case 'APPLY_CAMERA_PLACEMENT': {
+      const { cameras, areaCameras, removeIds } = action.payload;
+      const removed = new Set(removeIds);
+      const objects = state.objects
+        .filter(o => !removed.has(o.id))
+        .map(o => {
+          if (areaCameras[o.id]) return { ...o, coverageCameraIds: areaCameras[o.id] };
+          // Other areas must not keep pointing at removed cameras.
+          if (removed.size && o.coverageCameraIds?.some(id => removed.has(id))) {
+            const ids = o.coverageCameraIds.filter(id => !removed.has(id));
+            return { ...o, coverageCameraIds: ids.length ? ids : undefined };
+          }
+          return o;
+        });
+      return {
+        ...state,
+        objects: [...objects, ...cameras],
+        placement: null,
+        selectedObjectIds: cameras.map(c => c.id),
+      };
+    }
     case 'SET_FILL_SETTINGS':
     case 'SET_WALL_SETTINGS':
       return { ...state, ...action.payload };
@@ -802,6 +826,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     objectDetailsOpen: state.objectDetailsOpen,
     isImporting: state.isImporting,
     exportStep: state.exportStep,
+    placement: state.placement,
     fillColor: state.fillColor,
     fillOpacity: state.fillOpacity,
     drawColor: state.drawColor,
@@ -813,7 +838,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.wallStraight, state.wallSnap]);
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.wallStraight, state.wallSnap]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

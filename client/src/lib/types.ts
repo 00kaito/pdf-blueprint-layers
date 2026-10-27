@@ -1,4 +1,17 @@
 import type {CropRect, PaperId, PaperOrientation} from '@/core/paper';
+import type {CameraType, PlacementResult} from '@/core/camera-placement';
+
+/** Automatic camera placement in progress: the settings dialog, then the proposal shown on the plan. */
+export type CameraPlacement = {
+  step: 'dialog' | 'preview';
+  /** Coverage areas to fill with cameras. */
+  areaIds: string[];
+  /** Camera types the proposal was computed with (its cameras refer to them by id). */
+  types: CameraType[];
+  result: PlacementResult | null;
+  /** Applying also deletes the cameras already standing in those areas. */
+  removeExisting: boolean;
+};
 
 /** Part of the plan exported onto a sheet of print paper (rect in unscaled canvas units, paper's aspect). */
 export type ExportCrop = {
@@ -199,6 +212,7 @@ export type UIState = {
   isImporting: boolean;
   /** Export PDF flow: its dialog, or the crop frame being adjusted on the plan (dialog hidden). */
   exportStep: 'closed' | 'dialog' | 'crop';
+  placement: CameraPlacement | null;
 };
 
 export type EditorState = DocumentState & UIState;
@@ -268,6 +282,9 @@ export type EditorAction =
   | { type: 'TOGGLE_STATUS_COLORS' }
   | { type: 'SET_IMPORTING'; payload: boolean }
   | { type: 'SET_EXPORT_STEP'; payload: UIState['exportStep'] }
+  | { type: 'SET_PLACEMENT'; payload: CameraPlacement | null }
+  /** Auto-placed cameras in one undo step: adds them, sets the areas' cameras, removes replaced ones. */
+  | { type: 'APPLY_CAMERA_PLACEMENT'; payload: { cameras: EditorObject[]; areaCameras: Record<string, string[]>; removeIds: string[] } }
   | { type: 'RESET_EDITOR' }
   | { type: 'SET_FILL_SETTINGS'; payload: Partial<Pick<UIState, 'fillColor' | 'fillOpacity'>> }
   | { type: 'SET_WALL_SETTINGS'; payload: Partial<Pick<UIState, 'wallStraight' | 'wallSnap'>> }

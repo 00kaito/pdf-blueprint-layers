@@ -25,6 +25,8 @@ import {GuidesLayer} from './Canvas/GuidesLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import {RouteLayer} from './Canvas/RouteLayer';
 import {CoverageLayer} from './Canvas/CoverageLayer';
+import {PlacementPreview, previewCoverageObjects, usePlacementProposal} from './Canvas/PlacementPreview';
+import {AutoPlaceCamerasDialog} from './AutoPlaceCamerasDialog';
 import {CropLayer} from './Canvas/CropLayer';
 import {useRouteDrawing} from '@/hooks/useRouteDrawing';
 import {useWallDrawing} from '@/hooks/useWallDrawing';
@@ -74,6 +76,13 @@ export const Canvas = () => {
   const marquee = useMarquee(containerRef as React.RefObject<HTMLDivElement>);
   const route = useRouteDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const wall = useWallDrawing(containerRef as React.RefObject<HTMLDivElement>);
+  // Auto-placement proposal: drawn instead of the plan's own cameras until applied / cancelled.
+  const placementProposal = usePlacementProposal();
+  const placementPreview = placementProposal.preview;
+  const coverageObjects = useMemo(
+    () => (placementPreview ? previewCoverageObjects(docState.objects, placementPreview) : docState.objects),
+    [placementPreview, docState.objects],
+  );
   const spacePan = useSpacePan(scrollRef as React.RefObject<HTMLDivElement>);
   const { lastPointerTypeRef } = useStylusGuidance(scrollRef as React.RefObject<HTMLDivElement>);
   const shortcutStateRef = useRef({ tool: uiState.tool, hasCalibration: !!docState.measureCalibration });
@@ -485,11 +494,11 @@ export const Canvas = () => {
             />
           )}
           <CoverageLayer
-            objects={docState.objects}
+            objects={coverageObjects}
             layers={docState.layers}
             scale={state.scale}
             ftPerUnit={ftPerUnitValue}
-            visible={uiState.showCameraCoverage}
+            visible={uiState.showCameraCoverage || !!placementPreview}
             solid={uiState.coverageSolid}
           />
           <RouteLayer
@@ -537,6 +546,9 @@ export const Canvas = () => {
               />
             );
           })}
+          {placementPreview && (
+            <PlacementPreview cameras={placementPreview.cameras} scale={state.scale} onApply={placementProposal.apply} />
+          )}
           {uiState.exportStep === 'crop' && docState.exportSettings.crop && (
             <CropLayer
               crop={docState.exportSettings.crop}
@@ -550,6 +562,7 @@ export const Canvas = () => {
           )}
         </div>
       </div>
+      <AutoPlaceCamerasDialog />
     </div>
   );
 };

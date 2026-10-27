@@ -1,11 +1,12 @@
 import React from 'react';
-import {Video} from 'lucide-react';
-import {useDocument} from '@/lib/editor-context';
+import {Sparkles, Video} from 'lucide-react';
+import {useDocument, useUIDispatch} from '@/lib/editor-context';
 import {EditorObject} from '@/lib/types';
 import {isCamera} from '@/core/camera-coverage';
 import {defaultObjectNames} from '@/core/lv-icons';
 import {Checkbox} from '@/components/ui/checkbox';
 import {Label} from '@/components/ui/label';
+import {Button} from '@/components/ui/button';
 
 /**
  * Cameras that must see the selected coverage area(s). None ticked = every camera counts; the parts
@@ -13,6 +14,8 @@ import {Label} from '@/components/ui/label';
  */
 export const CoverageAreaCameras = ({ areas, readOnly }: { areas: EditorObject[]; readOnly: boolean }) => {
   const { state: docState, dispatch } = useDocument();
+  const uiDispatch = useUIDispatch();
+  const hasScale = !!docState.measureCalibration;
   const cameras = docState.objects.filter(isCamera);
   const names = defaultObjectNames(docState.objects, docState.customIcons);
   const ticked = (id: string) => areas.every(a => a.coverageCameraIds?.includes(id));
@@ -56,6 +59,20 @@ export const CoverageAreaCameras = ({ areas, readOnly }: { areas: EditorObject[]
           ? 'Parts of the area the ticked cameras do not see are red.'
           : 'None ticked: any camera counts. Parts of the area no camera sees are red.'}
       </p>
+      {!readOnly && (
+        <Button
+          variant="outline" size="sm" className="w-full gap-1.5 text-xs"
+          disabled={!hasScale}
+          title={hasScale ? 'Propose as few cameras as possible covering the selected areas' : 'Set the scale first (measure tool)'}
+          onClick={() => uiDispatch({
+            type: 'SET_PLACEMENT',
+            payload: { step: 'dialog', areaIds: areas.map(a => a.id), types: [], result: null, removeExisting: false },
+          })}
+          data-testid="auto-place-cameras"
+        >
+          <Sparkles className="w-3.5 h-3.5" /> Auto-place cameras…
+        </Button>
+      )}
     </div>
   );
 };

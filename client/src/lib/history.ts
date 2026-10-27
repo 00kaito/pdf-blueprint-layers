@@ -142,6 +142,7 @@ const describe = (action: EditorAction, prev: EditorState): string => {
     case 'ADD_CABLE_ROUTE': return `Draw cable route (${action.payload.points.length} points)`;
     case 'DELETE_CABLE_ROUTE': return 'Delete cable route';
     case 'SET_CABLE_ROUTE_RACK': return 'Change IDF of cable route';
+    case 'APPLY_CAMERA_PLACEMENT': return `Auto-place ${plural(action.payload.cameras.length, 'camera')}`;
     case 'ADD_OBJECT_PHOTO': return `Add photo to ${objName(action.payload.id)}`;
     case 'REMOVE_OBJECT_PHOTO': return `Remove photo from ${objName(action.payload.id)}`;
     default: return action.type;

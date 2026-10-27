@@ -135,7 +135,7 @@ export const arcPoints = (c: Coverage, r: number, steps = 32): Point[] =>
     return { x: c.center.x + r * Math.cos(a), y: c.center.y + r * Math.sin(a) };
   });
 
-const insidePolygon = (p: Point, poly: Point[]) => {
+export const insidePolygon = (p: Point, poly: Point[]) => {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const a = poly[i], b = poly[j];
@@ -145,7 +145,7 @@ const insidePolygon = (p: Point, poly: Point[]) => {
 };
 
 /** Distance along the ray from `o` in direction (dx, dy) to the nearest obstacle edge (Infinity = none). */
-const rayHit = (o: Point, dx: number, dy: number, segments: [Point, Point][]) => {
+export const rayHit = (o: Point, dx: number, dy: number, segments: [Point, Point][]) => {
   let best = Infinity;
   for (const [a, b] of segments) {
     const ex = b.x - a.x, ey = b.y - a.y;
