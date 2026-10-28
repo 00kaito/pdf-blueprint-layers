@@ -144,6 +144,30 @@ export const insidePolygon = (p: Point, poly: Point[]) => {
   return inside;
 };
 
+/** Coverage areas the camera is ticked in ("must be covered by"). */
+export const areasOfCamera = (objects: EditorObject[], cameraId: string) =>
+  objects.filter(o => isCoverageArea(o) && o.coverageCameraIds?.includes(cameraId));
+
+/**
+ * Drag-and-drop assignment: each of the given cameras that belongs to no area yet and whose centre
+ * lies inside a coverage area (topmost one wins) gets ticked in that area. Returns `objects` unchanged
+ * when nothing was assigned.
+ */
+export const assignDroppedCameras = (objects: EditorObject[], cameraIds: string[], visibleLayerIds?: Set<string>) => {
+  const areas = coverageAreas(objects, visibleLayerIds).reverse();
+  if (!areas.length) return objects;
+  const add = new Map<string, string[]>();
+  for (const id of cameraIds) {
+    const cam = objects.find(o => o.id === id);
+    if (!cam || !isCamera(cam) || cam.change === 'REMOVE' || areasOfCamera(objects, id).length) continue;
+    const center = { x: cam.x + cam.width / 2, y: cam.y + cam.height / 2 };
+    const area = areas.find(a => insidePolygon(center, pathPoints(a.pathData!)));
+    if (area) add.set(area.id, [...(add.get(area.id) ?? []), id]);
+  }
+  if (!add.size) return objects;
+  return objects.map(o => add.has(o.id) ? { ...o, coverageCameraIds: [...(o.coverageCameraIds ?? []), ...add.get(o.id)!] } : o);
+};
+
 /** Distance along the ray from `o` in direction (dx, dy) to the nearest obstacle edge (Infinity = none). */
 export const rayHit = (o: Point, dx: number, dy: number, segments: [Point, Point][]) => {
   let best = Infinity;

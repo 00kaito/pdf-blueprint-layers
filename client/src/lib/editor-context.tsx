@@ -4,7 +4,7 @@ import {v4 as uuidv4} from 'uuid';
 import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 import {createInitialHistory, HistoryAction, HistoryEntry, withHistory} from './history';
 import {DEFAULT_LV_SETTINGS, deviceKey, normalizeLvSettings} from '@/core/lv-icons';
-import {isCoverageArea} from '@/core/camera-coverage';
+import {assignDroppedCameras, isCamera, isCoverageArea} from '@/core/camera-coverage';
 
 /** Every paint-bucket fill lands in this layer. */
 export const FILL_LAYER_NAME = 'Colors';
@@ -200,7 +200,7 @@ const initialState: EditorState = {
   ...initialUIState
 };
 
-const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
+const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
   switch (action.type) {
     case 'SET_PROJECT_ID':
       return { ...state, projectId: action.payload };
@@ -749,6 +749,25 @@ const editorReducer = (state: EditorState, action: EditorAction): EditorState =>
     default:
       return state;
   }
+};
+
+/** Actions that place or move objects: a camera dropped into a coverage area gets assigned to it. */
+const PLACING_ACTIONS = new Set<EditorAction['type']>(['ADD_OBJECT', 'DUPLICATE_OBJECT', 'PASTE_OBJECT', 'UPDATE_OBJECT', 'UPDATE_OBJECTS']);
+
+const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
+  const next = baseReducer(state, action);
+  if (next.objects === state.objects || !PLACING_ACTIONS.has(action.type)) return next;
+  const before = new Map(state.objects.map(o => [o.id, o]));
+  const placed = next.objects
+    .filter(o => {
+      const old = before.get(o.id);
+      return isCamera(o) && (!old || old.x !== o.x || old.y !== o.y);
+    })
+    .map(o => o.id);
+  if (!placed.length) return next;
+  const visible = new Set(next.layers.filter(l => l.visible).map(l => l.id));
+  const objects = assignDroppedCameras(next.objects, placed, visible);
+  return objects === next.objects ? next : { ...next, objects };
 };
 
 const historyReducer = withHistory(editorReducer);

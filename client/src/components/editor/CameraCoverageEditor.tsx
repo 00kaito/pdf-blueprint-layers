@@ -1,8 +1,10 @@
 import React, {useEffect, useState} from 'react';
-import {Video} from 'lucide-react';
-import {useDocumentDispatch} from '@/lib/editor-context';
+import {MapPin, Video, X} from 'lucide-react';
+import {useDocument, useDocumentDispatch} from '@/lib/editor-context';
 import {EditorObject} from '@/lib/types';
-import {cameraDefaults} from '@/core/camera-coverage';
+import {cameraDefaults, isCoverageArea} from '@/core/camera-coverage';
+import {defaultObjectNames} from '@/core/lv-icons';
+import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {cn} from '@/lib/utils';
@@ -54,6 +56,48 @@ const SpecInput = ({ objects, field, readOnly, large }: {
   );
 };
 
+/**
+ * Coverage areas the selected cameras are assigned to ("must be covered by"). Removing the assignment
+ * lets the camera be dropped into another area, which assigns it there.
+ */
+const AssignedAreas = ({ objects, readOnly, large }: { objects: EditorObject[]; readOnly: boolean; large: boolean }) => {
+  const { state: docState, dispatch } = useDocument();
+  const ids = new Set(objects.map(o => o.id));
+  const areas = docState.objects.filter(a => isCoverageArea(a) && a.coverageCameraIds?.some(id => ids.has(id)));
+  const names = defaultObjectNames(docState.objects, docState.customIcons);
+
+  const unassign = (area: EditorObject) => {
+    const next = (area.coverageCameraIds ?? []).filter(id => !ids.has(id));
+    dispatch({ type: 'UPDATE_OBJECT', payload: { id: area.id, updates: { coverageCameraIds: next.length ? next : undefined } } });
+  };
+
+  return (
+    <div className="space-y-1" data-testid="camera-assigned-areas">
+      <span className="text-[10px] text-muted-foreground">Coverage area</span>
+      {areas.length === 0 ? (
+        <p className="text-[10px] text-muted-foreground leading-snug">
+          Not assigned — drag the camera into a coverage area to assign it.
+        </p>
+      ) : areas.map(area => (
+        <div key={area.id} className="flex items-center gap-1.5">
+          <MapPin className="w-3 h-3 shrink-0 text-green-600" />
+          <span className={cn("flex-1 truncate", large ? "text-sm" : "text-xs")}>{area.name || names.get(area.id)}</span>
+          {!readOnly && (
+            <Button
+              variant="ghost" size="icon" className={large ? "h-8 w-8" : "h-6 w-6"}
+              title="Remove from this area (then drop the camera into another one)"
+              onClick={() => unassign(area)}
+              data-testid={`camera-unassign-area-${area.id}`}
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 /** Field of view of the selected CCTV cameras: range in feet and view angle (defaults per type, see `cameraDefaults`). */
 export const CameraCoverageEditor = ({ objects, readOnly = false, large = false }: {
   objects: EditorObject[]; readOnly?: boolean; large?: boolean;
@@ -73,5 +117,6 @@ export const CameraCoverageEditor = ({ objects, readOnly = false, large = false 
         <SpecInput objects={objects} field="angleDeg" readOnly={readOnly} large={large} />
       </div>
     </div>
+    <AssignedAreas objects={objects} readOnly={readOnly} large={large} />
   </div>
 );
