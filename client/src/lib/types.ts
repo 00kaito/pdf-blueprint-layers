@@ -42,8 +42,12 @@ export type LvSettings = {
   portsPerPanel: 24 | 48;
   /** Service loop left in the rack, per cable (ft). */
   serviceLoopFt: number;
-  /** Slack at the device incl. the drop from the ceiling, per cable (ft). */
+  /** Slack at the device, per cable (ft); also covers the drop from the ceiling while `ceilingHeightFt` is unset. */
   deviceSlackFt: number;
+  /** Ceiling height (ft): cables then also get the drop from the ceiling to each device's mount height. */
+  ceilingHeightFt?: number;
+  /** Top of the racks (ft above the floor): with a ceiling height, the drop down to the rack per cable. */
+  rackHeightFt?: number;
   /** Cable sold per box / reel (ft). */
   boxLengthFt: number;
 };
@@ -102,6 +106,11 @@ export type EditorObject = {
   changeOrigin?: { x: number; y: number };
   /** Coverage area: cameras that must see it; unset / empty = every camera. */
   coverageCameraIds?: string[];
+  /**
+   * Height of the device / its box above the finished floor, inches; unset = the type's default
+   * (see `mountHeightIn`), `MOUNT_CEILING` = in the ceiling, whatever its height.
+   */
+  mountHeightIn?: number;
   /** CCTV camera field of view; unset values use the type's defaults (30 ft / 110°, 360° camera 18 ft / 360°). */
   camera?: { rangeFt?: number; angleDeg?: number };
   changeNote?: string;
@@ -203,6 +212,8 @@ export type UIState = {
   showCameraCoverage: boolean;
   /** Coverage in one colour, without the 15 ft near / far split (also exported). Remembered per device. */
   coverageSolid: boolean;
+  /** Mount heights next to device labels, on the plan and in the exported PDF. Remembered per device. */
+  showMountHeights: boolean;
   /** Cable route selected for deleting / extending. */
   selectedRouteId: string | null;
   /** IDF the route tool draws for: a rack id, 'shared', or null = the first rack. */
@@ -271,6 +282,7 @@ export type EditorAction =
   | { type: 'TOGGLE_CABLE_ROUTES' }
   | { type: 'TOGGLE_CAMERA_COVERAGE' }
   | { type: 'TOGGLE_COVERAGE_SOLID' }
+  | { type: 'TOGGLE_MOUNT_HEIGHTS' }
   | { type: 'SET_CABLE_SUMMARY_OPEN'; payload: boolean }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }

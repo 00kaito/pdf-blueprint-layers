@@ -2,14 +2,20 @@ import {degrees, LineCapStyle, PDFDocument, PDFFont, PDFPage, rgb} from 'pdf-lib
 import type {CableRoute, CableType, EditorObject, LvSettings, MeasureCalibration} from '@/lib/types';
 import {getPhysicalCoords, hexToRgb} from './pdf-math';
 import {
-  buildCableSummary, computeCableRuns, getRacks, hasCables, isCableDevice, rackColorMap, rackLabel, routeColor, runFeet,
+  buildCableSummary, computeCableRuns, getRacks, hasCables, isCableDevice, lengthNote, rackColorMap, rackLabel, routeColor, runFeet,
   SHARED_ROUTE_COLOR,
 } from './cable-routing';
-import {CABLE_LABEL, CABLE_TYPES, defaultObjectNames, formatCables, objectTypeName} from './lv-icons';
+import {CABLE_LABEL, CABLE_TYPES, defaultObjectNames, formatCables, formatMountHeight, mountHeightIn, objectTypeName} from './lv-icons';
 import {PLAN_CHANGE_BY_ID, PLAN_CHANGES} from './plan-change';
 import {statusOf} from './status';
 import {blindAreas, COVERAGE_BLIND, COVERAGE_FAR, COVERAGE_NEAR, COVERAGE_OPACITY, coverageCameras, coverageAreas, coverageObstacles, coverageOf, coverageZones, limitToAreas, type ShownZones} from './camera-coverage';
 import type {Point} from './measure';
+
+/** Mount height for the device schedule: "60\"", "Ceiling", or "-" when unknown. */
+const mountCell = (o: EditorObject) => {
+  const h = mountHeightIn(o);
+  return h === undefined ? '-' : formatMountHeight(h);
+};
 
 /**
  * Low-voltage information in the flattened PDF: cable routes, IDF colours and plan-change marks on
@@ -269,7 +275,7 @@ export const appendLvPages = (
   text(`${data.projectName || 'Project'}  ·  ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`, M, { color: MUTED });
   y -= 12;
   text(summary.hasScale
-    ? `Lengths include ${settings.deviceSlackFt} ft device slack and ${settings.serviceLoopFt} ft service loop per cable · ${settings.portsPerPanel}-port patch panels · ${settings.boxLengthFt} ft Cat6 boxes`
+    ? `${lengthNote(settings)} · ${settings.portsPerPanel}-port patch panels · ${settings.boxLengthFt} ft Cat6 boxes`
     : 'No measuring scale set on the plan, so cable lengths are not calculated.', M, { size: 8, color: MUTED });
   y -= 6;
 
@@ -356,19 +362,19 @@ export const appendLvPages = (
   const rackOrder = new Map(racks.map((r, i) => [r.id, i]));
   const devices = objects.filter(isCableDevice).map(o => {
     const run = summary.runs.get(o.id);
-    const feet = run && hasCables(o) ? runFeet(run, calibration, settings) : null;
+    const feet = run && hasCables(o) ? runFeet(run, o, calibration, settings) : null;
     return { o, name: o.name || names.get(o.id) || '', run, feet };
   }).sort((a, b) =>
     (rackOrder.get(a.run?.rackId ?? '') ?? 99) - (rackOrder.get(b.run?.rackId ?? '') ?? 99)
     || a.name.localeCompare(b.name, undefined, { numeric: true }));
   table(
     [
-      { title: 'Device', w: 120 }, { title: 'Type', w: 120 }, { title: 'IDF', w: 80 }, { title: 'Cables', w: 140 },
+      { title: 'Device', w: 120 }, { title: 'Type', w: 95 }, { title: 'Mount', w: 45 }, { title: 'IDF', w: 80 }, { title: 'Cables', w: 120 },
       { title: 'Run / cable', w: 75, align: 'right' }, { title: '', w: 15 }, { title: 'Status', w: 85 }, { title: 'Plan change', w: PAGE[0] - 2 * M - 635 },
     ],
     devices.map(({ o, name, run, feet }) => ({
       cells: [
-        name, objectTypeName(o, data.customIcons), run ? rackLabel(racks, run.rackId) : '-',
+        name, objectTypeName(o, data.customIcons), mountCell(o), run ? rackLabel(racks, run.rackId) : '-',
         formatCables(o.cables).replace(/×/g, 'x'),
         feet !== null ? ft(feet) + (run && !run.routed ? ' est.' : '') : '-', '',
         statusOf(o.status ?? 'PLANNED')?.label ?? o.status ?? '', o.change ? PLAN_CHANGE_BY_ID[o.change].label : '',

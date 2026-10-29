@@ -20,7 +20,7 @@ import {getPhysicalCoords, getVisualDimensions, hexToRgb} from '@/core/pdf-math'
 import {svgToPng} from '@/core/svg-utils';
 import {tintImage} from '@/core/flood-fill';
 import {buildIconPath} from '@/core/icon-shapes';
-import {LV_ICON_GRID, LV_ICONS} from '@/core/lv-icons';
+import {LV_ICON_GRID, LV_ICONS, objectLabel} from '@/core/lv-icons';
 import {DEFAULT_LABEL_POSITION, getLabelAnchor, getLeaderLine} from '@/core/label-position';
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {useProjectList} from '@/hooks/useProjects';
@@ -392,7 +392,8 @@ export const useExport = () => {
           drawObjectLvMarks(planPainter, obj, helveticaBoldFont, idfColorOf(obj), pageRotation);
        }
 
-       const labelText = obj.name ? pdfSafeText(helveticaFont, obj.name) : '';
+       const label = objectLabel(obj, uiState.showMountHeights);
+       const labelText = label ? pdfSafeText(helveticaFont, label) : '';
        if (labelText) {
           const labelFontSize = docState.exportSettings.labelFontSize * scaleFactor;
           const textWidth = helveticaFont.widthOfTextAtSize(labelText, labelFontSize);
@@ -510,7 +511,7 @@ export const useExport = () => {
     const pdfBytes = await pdfDoc.save();
     const name = toSafeFileName(fileName ?? '') || projectName || 'edited-document';
     saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), `${name}.pdf`);
-  }, [docState, uiState.currentPage, uiState.showCableRoutes, uiState.showCameraCoverage, uiState.coverageSolid, projectName]);
+  }, [docState, uiState.currentPage, uiState.showCableRoutes, uiState.showCameraCoverage, uiState.coverageSolid, uiState.showMountHeights, projectName]);
 
   return { handleExportProject, handleFlattenAndDownload, projectName };
 };

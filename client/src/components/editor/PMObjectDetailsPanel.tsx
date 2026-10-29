@@ -8,6 +8,7 @@ import { ObjectPhotoGallery } from './ObjectPhotoGallery';
 import { PlanChangeSection } from './PlanChangeSection';
 import { CableEditor } from './CableEditor';
 import { CameraCoverageEditor } from './CameraCoverageEditor';
+import { MountHeightEditor } from './MountHeightEditor';
 import { isCamera } from '@/core/camera-coverage';
 import { isCableDevice } from '@/core/cable-routing';
 import { cn } from '@/lib/utils';
@@ -96,6 +97,9 @@ export const PMObjectDetailsPanel: React.FC = () => {
         </div>
 
         {selectedObject.type !== 'text' && <PlanChangeSection objects={[selectedObject]} large />}
+        {isCableDevice(selectedObject) && (
+          <MountHeightEditor objects={[selectedObject]} readOnly={user?.role === 'TECH'} large />
+        )}
         {isCableDevice(selectedObject) && (
           <CableEditor objects={[selectedObject]} readOnly={user?.role === 'TECH'} large />
         )}

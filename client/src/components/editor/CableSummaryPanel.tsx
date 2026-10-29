@@ -2,8 +2,8 @@ import React, {useMemo, useState} from 'react';
 import {AlertTriangle} from 'lucide-react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {CableType, EditorObject} from '@/lib/types';
-import {buildCableSummary, isCableDevice, ProgressBucket, rackColorMap, RackSummary} from '@/core/cable-routing';
-import {CABLE_LABEL, CABLE_TYPES, deviceKey, objectTypeName} from '@/core/lv-icons';
+import {buildCableSummary, isCableDevice, lengthNote, ProgressBucket, rackColorMap, RackSummary} from '@/core/cable-routing';
+import {CABLE_LABEL, CABLE_TYPES, DEFAULT_RACK_HEIGHT_FT, deviceKey, objectTypeName} from '@/core/lv-icons';
 import {PLAN_CHANGES} from '@/core/plan-change';
 import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '@/components/ui/dialog';
 import {Input} from '@/components/ui/input';
@@ -35,6 +35,25 @@ const NumberSetting = ({ label, value, onChange, disabled }: {
     <Input
       type="number" min={0} value={value} disabled={disabled}
       onChange={(e) => { const n = parseFloat(e.target.value); if (n >= 0) onChange(n); }}
+      className="h-8 text-xs"
+    />
+  </div>
+);
+
+/** A number that may be left empty (= not set). */
+const OptionalNumberSetting = ({ label, value, onChange, disabled, placeholder, title }: {
+  label: string; value: number | undefined; onChange: (v: number | undefined) => void;
+  disabled?: boolean; placeholder?: string; title?: string;
+}) => (
+  <div className="space-y-1" title={title}>
+    <Label className="text-[10px] uppercase text-muted-foreground">{label}</Label>
+    <Input
+      type="number" min={0} value={value ?? ''} disabled={disabled} placeholder={placeholder}
+      onChange={(e) => {
+        const n = parseFloat(e.target.value);
+        if (e.target.value.trim() === '') onChange(undefined);
+        else if (n > 0) onChange(n);
+      }}
       className="h-8 text-xs"
     />
   </div>
@@ -136,7 +155,7 @@ export const CableSummaryPanel = () => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
             <Label className="text-[10px] uppercase text-muted-foreground">Ports / patch panel</Label>
             <Select
@@ -152,8 +171,20 @@ export const CableSummaryPanel = () => {
           </div>
           <NumberSetting label="Rack service loop (ft)" value={s.serviceLoopFt} disabled={readOnly}
             onChange={(v) => dispatch({ type: 'SET_LV_SETTINGS', payload: { serviceLoopFt: v } })} />
-          <NumberSetting label="Device slack + drop (ft)" value={s.deviceSlackFt} disabled={readOnly}
+          <NumberSetting label={s.ceilingHeightFt ? 'Device slack (ft)' : 'Device slack + drop (ft)'} value={s.deviceSlackFt} disabled={readOnly}
             onChange={(v) => dispatch({ type: 'SET_LV_SETTINGS', payload: { deviceSlackFt: v } })} />
+          <OptionalNumberSetting
+            label="Ceiling height (ft)" value={s.ceilingHeightFt} disabled={readOnly} placeholder="Not set"
+            title="With a ceiling height, each cable also gets the drop from the ceiling to the device's mount height and down to the rack; the device slack then no longer has to include the drop"
+            onChange={(v) => dispatch({ type: 'SET_LV_SETTINGS', payload: { ceilingHeightFt: v } })}
+          />
+          {!!s.ceilingHeightFt && (
+            <OptionalNumberSetting
+              label="Rack top (ft)" value={s.rackHeightFt} disabled={readOnly} placeholder={String(DEFAULT_RACK_HEIGHT_FT)}
+              title="Height of the top of the racks: cables drop from the ceiling down to it"
+              onChange={(v) => dispatch({ type: 'SET_LV_SETTINGS', payload: { rackHeightFt: v } })}
+            />
+          )}
           <NumberSetting label="Cat6 box (ft)" value={s.boxLengthFt} disabled={readOnly}
             onChange={(v) => v > 0 && dispatch({ type: 'SET_LV_SETTINGS', payload: { boxLengthFt: v } })} />
         </div>
@@ -214,7 +245,7 @@ export const CableSummaryPanel = () => {
               {summary.total.cables.CAT6.count > 0 && (
                 <p className="text-[10px] text-muted-foreground">
                   Switch ports: {summary.total.cables.CAT6.count} (≈ {Math.ceil(summary.total.cables.CAT6.count / 48)}× 48-port
-                  or {Math.ceil(summary.total.cables.CAT6.count / 24)}× 24-port). Lengths include {s.deviceSlackFt} ft at the device and {s.serviceLoopFt} ft in the rack per cable.
+                  or {Math.ceil(summary.total.cables.CAT6.count / 24)}× 24-port). {lengthNote(s)}.
                 </p>
               )}
             </section>

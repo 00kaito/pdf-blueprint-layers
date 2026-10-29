@@ -1,5 +1,5 @@
 import type {CableRoute, CableType, EditorObject, LvSettings, MeasureCalibration, PlanChange} from '@/lib/types';
-import {BLINDSPOT_ICON, CABLE_TYPES, RACK_ICON} from './lv-icons';
+import {BLINDSPOT_ICON, CABLE_TYPES, DEFAULT_RACK_HEIGHT_FT, MOUNT_CEILING, mountHeightIn, RACK_ICON} from './lv-icons';
 import {feetPerUnit, Point, segmentLength} from './measure';
 
 /**
@@ -310,10 +310,29 @@ export const computeCableRuns = (objects: EditorObject[], routes: CableRoute[]):
   return runs;
 };
 
-/** Feet of one cable on this run, slack at both ends included; null without a measuring scale. */
-export const runFeet = (run: CableRun, calibration: MeasureCalibration | null, s: LvSettings): number | null => {
+/**
+ * Feet a cable needs beyond the run along the ceiling, per cable: at the device the slack, plus — with a
+ * ceiling height set — the drop to the device's mount height (none for ceiling devices or unknown heights);
+ * at the rack the service loop, plus the drop from the ceiling to the rack top.
+ */
+export const endsFeet = (device: EditorObject, s: LvSettings): number => {
+  const ceiling = s.ceilingHeightFt;
+  if (!ceiling) return s.deviceSlackFt + s.serviceLoopFt;
+  const h = mountHeightIn(device);
+  const deviceDrop = h === undefined || h === MOUNT_CEILING ? 0 : Math.max(0, ceiling - h / 12);
+  const rackDrop = Math.max(0, ceiling - (s.rackHeightFt ?? DEFAULT_RACK_HEIGHT_FT));
+  return deviceDrop + s.deviceSlackFt + rackDrop + s.serviceLoopFt;
+};
+
+/** What the cable lengths include beyond the runs, in a sentence (summary dialog and PDF). */
+export const lengthNote = (s: LvSettings): string => s.ceilingHeightFt
+  ? `Lengths include the drop from the ${s.ceilingHeightFt} ft ceiling to each device's mount height and down to the rack (top at ${s.rackHeightFt ?? DEFAULT_RACK_HEIGHT_FT} ft), ${s.deviceSlackFt} ft slack at the device and ${s.serviceLoopFt} ft service loop per cable`
+  : `Lengths include ${s.deviceSlackFt} ft at the device (slack and drop) and ${s.serviceLoopFt} ft service loop in the rack per cable`;
+
+/** Feet of one cable from `device` on this run, both ends included; null without a measuring scale. */
+export const runFeet = (run: CableRun, device: EditorObject, calibration: MeasureCalibration | null, s: LvSettings): number | null => {
   const fpu = feetPerUnit(calibration);
-  return fpu === null ? null : run.units * fpu + s.deviceSlackFt + s.serviceLoopFt;
+  return fpu === null ? null : run.units * fpu + endsFeet(device, s);
 };
 
 // --- Summary (bill of materials) ---
@@ -402,7 +421,7 @@ export const buildCableSummary = (
       rack = emptyRack(null, 'No rack');
       byRack.set(null, rack);
     }
-    const feetEach = run && fpu !== null ? run.units * fpu + settings.deviceSlackFt + settings.serviceLoopFt : 0;
+    const feetEach = run && fpu !== null ? run.units * fpu + endsFeet(o, settings) : 0;
     for (const target of [rack, total]) {
       target.devices += 1;
       if (run && !run.routed) target.estimated += 1;

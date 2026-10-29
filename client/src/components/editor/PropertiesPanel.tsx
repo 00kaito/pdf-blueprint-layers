@@ -17,6 +17,7 @@ import {PlanChangeSection} from './PlanChangeSection';
 import {CableEditor} from './CableEditor';
 import {RackSelect} from './RackSelect';
 import {CameraCoverageEditor} from './CameraCoverageEditor';
+import {MountHeightEditor} from './MountHeightEditor';
 import {CoverageAreaCameras} from './CoverageAreaCameras';
 import {ResizeByPercent} from './ResizeByPercent';
 import {isCamera, isCoverageArea} from '@/core/camera-coverage';
@@ -259,6 +260,7 @@ export const PropertiesPanel = () => {
 
               {isDeviceSelection && (
                 <>
+                  <MountHeightEditor objects={selectedObjects} readOnly={isTech} />
                   <CableEditor objects={selectedObjects} readOnly={isTech} />
                   <RackSelect objects={selectedObjects} readOnly={isTech} />
                 </>

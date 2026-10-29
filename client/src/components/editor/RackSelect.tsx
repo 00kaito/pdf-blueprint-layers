@@ -29,7 +29,7 @@ export const RackSelect = ({ objects, readOnly = false }: { objects: EditorObjec
   const first = objects[0];
   const picked = objects.every(o => o.metadata?.rackId === first.metadata?.rackId) ? (first.metadata?.rackId || AUTO) : '';
   const single = objects.length === 1 && hasCables(first) ? runs.get(first.id) : undefined;
-  const feet = single ? runFeet(single, docState.measureCalibration, docState.lvSettings) : null;
+  const feet = single ? runFeet(single, first, docState.measureCalibration, docState.lvSettings) : null;
 
   return (
     <div className="space-y-1.5">

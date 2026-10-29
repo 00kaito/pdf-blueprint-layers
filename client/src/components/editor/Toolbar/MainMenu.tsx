@@ -1,6 +1,6 @@
 import React, {useRef, useState} from 'react';
 import {
-  Archive, Cable, ChevronLeft, Copy, Download, FileUp, FolderOpen, Loader2, LogOut, Menu, PenTool, Save, Share2, Spline, Tablet, User, Video,
+  Archive, Cable, ChevronLeft, Copy, Download, FileUp, FolderOpen, Loader2, LogOut, Menu, Ruler, Save, Share2, Tablet, User,
 } from 'lucide-react';
 import {CableSummaryPanel} from '../CableSummaryPanel';
 import {Button} from '@/components/ui/button';
@@ -182,44 +182,17 @@ export const MainMenu = () => {
             </div>
           </DropdownMenuItem>
           <DropdownMenuCheckboxItem
-            checked={uiState.showCableRoutes}
-            onCheckedChange={() => dispatch({ type: 'TOGGLE_CABLE_ROUTES' })}
+            checked={uiState.showMountHeights}
+            onCheckedChange={() => dispatch({ type: 'TOGGLE_MOUNT_HEIGHTS' })}
             className="cursor-pointer"
-            data-testid="menu-show-routes"
+            data-testid="menu-mount-heights"
           >
-            <Spline className="w-4 h-4 mr-2" />
-            Show cable routes
+            <Ruler className="w-4 h-4 mr-2" />
+            <div className="flex flex-col">
+              <span>Show mount heights</span>
+              <span className="text-[10px] text-muted-foreground">Next to device labels, on the plan and in the PDF</span>
+            </div>
           </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={uiState.showCameraCoverage}
-            onCheckedChange={() => {
-              // Coverage is drawn in feet: without the measuring scale there is nothing to draw yet.
-              if (!uiState.showCameraCoverage && !docState.measureCalibration) {
-                toast({ title: 'Set the scale first', description: 'Camera coverage appears once the plan is calibrated (measure tool).' });
-              }
-              dispatch({ type: 'TOGGLE_CAMERA_COVERAGE' });
-            }}
-            className="cursor-pointer"
-            data-testid="menu-camera-coverage"
-          >
-            <Video className="w-4 h-4 mr-2" />
-            Show camera coverage
-          </DropdownMenuCheckboxItem>
-          {uiState.showCameraCoverage && (
-            <DropdownMenuCheckboxItem
-              checked={uiState.coverageSolid}
-              onCheckedChange={() => dispatch({ type: 'TOGGLE_COVERAGE_SOLID' })}
-              onSelect={(e) => e.preventDefault()}
-              className="cursor-pointer pl-14"
-              data-testid="menu-coverage-solid"
-            >
-              <div className="flex flex-col">
-                <span>One colour</span>
-                <span className="text-[10px] text-muted-foreground">No 15 ft ring, plain field of view</span>
-              </div>
-            </DropdownMenuCheckboxItem>
-          )}
-
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => dispatch({ type: 'SET_EXPORT_STEP', payload: 'dialog' })} className="gap-2 cursor-pointer" data-testid="menu-export-pdf">
             <Download className="w-4 h-4 text-primary" />
@@ -259,18 +232,6 @@ export const MainMenu = () => {
             <div className="flex flex-col">
               <span>Touch layout</span>
               <span className="text-[10px] text-muted-foreground">Bigger buttons, gesture hints</span>
-            </div>
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={uiState.stylusOnly}
-            onCheckedChange={(checked) => dispatch({ type: 'SET_STYLUS_ONLY', payload: !!checked })}
-            className="cursor-pointer"
-            data-testid="menu-stylus-only"
-          >
-            <PenTool className="w-4 h-4 mr-2" />
-            <div className="flex flex-col">
-              <span>Stylus only</span>
-              <span className="text-[10px] text-muted-foreground">The stylus uses the tools; fingers pan, zoom and tap</span>
             </div>
           </DropdownMenuCheckboxItem>
 

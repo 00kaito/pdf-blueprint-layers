@@ -11,7 +11,7 @@ import {Box, Guide, SNAP_DISTANCE_PX, snapBox, stepPoint} from '@/core/snapping'
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {statusOf} from '@/core/status';
 import {dragStore} from '@/lib/drag-store';
-import {LV_ICONS} from '@/core/lv-icons';
+import {LV_ICONS, objectLabel} from '@/core/lv-icons';
 import {LvIcon} from '@/components/editor/LvIcon';
 import {BlindspotShape} from '@/components/editor/BlindspotShape';
 import {BLINDSPOT_ICON} from '@/core/camera-coverage';
@@ -54,6 +54,8 @@ interface ObjectRendererProps {
   tool: string;
   selectedObjectIds: string[];
   showStatusColors: boolean;
+  /** Mount height next to the label ("TV 1 · 60″"). */
+  showMountHeight?: boolean;
   disableMovement?: boolean;
   /** Snap to nearby objects while dragging (Ctrl / ⌘ / Alt disables it for one drag move). */
   snapEnabled?: boolean;
@@ -120,6 +122,7 @@ export const ObjectRenderer = memo(({
   tool, 
   selectedObjectIds, 
   showStatusColors,
+  showMountHeight = false,
   disableMovement,
   snapEnabled = true,
   getSnapTargets,
@@ -237,13 +240,14 @@ export const ObjectRenderer = memo(({
     pointerId: number; startX: number; startY: number; origin: { x: number; y: number }; moved: boolean;
   } | null>(null);
   const labelOffset = dragLabelOffset ?? obj.labelOffset ?? null;
+  const labelText = objectLabel(obj, showMountHeight);
   const canMoveLabel = !isTech && !disableMovement && !layer.locked && tool === 'select';
 
   useLayoutEffect(() => {
     const el = labelRef.current;
     if (!el) return;
     setLabelSize(s => (s.w === el.offsetWidth && s.h === el.offsetHeight ? s : { w: el.offsetWidth, h: el.offsetHeight }));
-  }, [obj.name, labelOffset !== null]);
+  }, [obj.name, obj.mountHeightIn, showMountHeight, labelOffset !== null]);
 
   const handleLabelPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!canMoveLabel || e.button !== 0) return;
@@ -670,7 +674,7 @@ export const ObjectRenderer = memo(({
           "object-label absolute whitespace-nowrap border border-border px-1.5 py-0.5 rounded font-medium shadow-sm touch-none",
           // A detached label is opaque so the leader line visibly ends at its border.
           labelCenter ? "bg-white -translate-x-1/2 -translate-y-1/2" : cn("bg-white/80", LABEL_POSITION_CLASSES[obj.labelPosition ?? DEFAULT_LABEL_POSITION]),
-          canMoveLabel && obj.name ? "pointer-events-auto cursor-move" : "pointer-events-none",
+          canMoveLabel && labelText ? "pointer-events-auto cursor-move" : "pointer-events-none",
           dragLabelOffset && "ring-1 ring-primary"
         )}
         style={{
@@ -678,7 +682,7 @@ export const ObjectRenderer = memo(({
           // Same size relative to the plan as in the printed PDF, so overlaps show before printing.
           fontSize: Math.max(LABEL_MIN_PX, labelFontSize * scale),
         }}
-        title={canMoveLabel && obj.name ? 'Drag to move the label' : undefined}
+        title={canMoveLabel && labelText ? 'Drag to move the label' : undefined}
         onPointerDown={handleLabelPointerDown}
         onPointerMove={handleLabelPointerMove}
         onPointerUp={handleLabelPointerUp}
@@ -686,7 +690,7 @@ export const ObjectRenderer = memo(({
         onMouseDown={(e) => { if (canMoveLabel) e.stopPropagation(); }}
         onClick={(e) => e.stopPropagation()}
       >
-        {obj.name}
+        {labelText}
       </div>}
     </Rnd>
   );

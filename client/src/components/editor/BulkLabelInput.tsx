@@ -84,7 +84,10 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
         className={cn(className, isPattern && 'text-primary')}
         value={draft}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyPattern(); } }}
+        // Enter / Esc finish editing (leaving the field applies a pattern) and give the keys back to the plan.
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.currentTarget.blur(); }
+        }}
         onBlur={() => applyPattern()}
         placeholder={isMulti ? 'Mixed… (CAM %1 = numbering)' : 'No label'}
         title={isMulti ? PATTERN_HINT : undefined}

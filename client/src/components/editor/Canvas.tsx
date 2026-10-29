@@ -131,7 +131,7 @@ export const Canvas = () => {
     if (!selectedDevice || !hasCables(selectedDevice)) return null;
     const run = cableRuns.get(selectedDevice.id);
     if (!run) return null;
-    const feet = runFeet(run, docState.measureCalibration, docState.lvSettings);
+    const feet = runFeet(run, selectedDevice, docState.measureCalibration, docState.lvSettings);
     return {
       path: run.path,
       estimated: !run.routed,
@@ -236,6 +236,22 @@ export const Canvas = () => {
       }
 
       if (isTech) return;
+
+      // Typing with objects selected edits their label: the key moves into the label field (text
+      // selected, so it is replaced) and the browser types the character there. Takes over the
+      // one-letter tool shortcuts while something is selected; Space stays for panning.
+      if (
+        state.selectedObjectIds.length > 0 && e.key.length === 1 && e.key !== ' ' &&
+        !e.ctrlKey && !e.metaKey && !e.altKey
+      ) {
+        const field = document.querySelector<HTMLInputElement>('[data-testid="context-bar"] [data-testid="bulk-label-input"]')
+          ?? document.querySelector<HTMLInputElement>('[data-testid="bulk-label-input"]');
+        if (field) {
+          field.focus();
+          field.select();
+          return;
+        }
+      }
 
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const { tool, hasCalibration } = shortcutStateRef.current;
@@ -420,7 +436,8 @@ export const Canvas = () => {
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
     >
       <div className="min-w-full min-h-full flex p-8">
-        <div ref={containerRef} data-canvas-page className="relative shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: docState.pdfCanvasHeight * state.scale }}>
+        {/* shrink-0: the page keeps its zoomed width at once — flex would squeeze it to the view until the PDF canvas re-renders, and the scroll set after a zoom would be clamped. */}
+        <div ref={containerRef} data-canvas-page className="relative shrink-0 shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: docState.pdfCanvasHeight * state.scale }}>
           {state.pdfFile ? (
             <Document file={state.pdfFile} onLoadSuccess={({numPages}) => setNumPages(numPages)} className="border border-border bg-white">
               <Page 
@@ -534,6 +551,7 @@ export const Canvas = () => {
                 tool={state.tool}
                 selectedObjectIds={state.selectedObjectIds}
                 showStatusColors={state.showStatusColors}
+                showMountHeight={state.showMountHeights}
                 disableMovement={disableMovement}
                 snapEnabled={state.snapEnabled}
                 getSnapTargets={getSnapTargets}

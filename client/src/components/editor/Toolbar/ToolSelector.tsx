@@ -1,17 +1,14 @@
 import React from 'react';
-import {BrickWall} from 'lucide-react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {v4 as uuidv4} from 'uuid';
 import {
     ArrowRight,
     Camera,
     Circle,
-    Hash,
     Heart,
     Hexagon,
     Image as ImageIcon,
     Loader2,
-    Magnet,
     MoveHorizontal,
     MousePointer2,
     PaintBucket,
@@ -19,7 +16,6 @@ import {
     Plus,
     Ruler,
     Settings2,
-    Spline,
     Square,
     Star,
     Triangle,
@@ -31,18 +27,17 @@ import {Separator} from '@/components/ui/separator';
 import {Toggle} from '@/components/ui/toggle';
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip';
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
-import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Slider} from "@/components/ui/slider";
 import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
-import {COVERAGE_AREA_LAYER_NAME, FILL_LAYER_NAME} from '@/lib/editor-context';
+import {FILL_LAYER_NAME} from '@/lib/editor-context';
 import {useToast} from '@/hooks/use-toast';
 import {LV_ICON_TYPES, LV_ICONS} from '@/core/lv-icons';
 import {LvIcon} from '@/components/editor/LvIcon';
-import {BlindspotShape, CoverageAreaShape} from '@/components/editor/BlindspotShape';
-import {BLINDSPOT_ICON, isBlindspot, isBlindspotWall, isCamera, isCoverageArea} from '@/core/camera-coverage';
 import {DEFAULT_ICON_SIZE} from '@/core/constants';
+import {CablingTools} from './CablingTools';
+import {CctvTools} from './CctvTools';
 
 const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
 const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
@@ -93,9 +88,6 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
   };
   const { toast } = useToast();
   const calibration = docState.measureCalibration;
-  // Blindspot tools are offered only around cameras: a camera or blindspot (box / wall) is selected, or walls are being drawn.
-  const showBlindspot = uiState.tool === 'wall' || uiState.tool === 'area' || docState.objects.some(o =>
-    uiState.selectedObjectIds.includes(o.id) && (isCamera(o) || isBlindspot(o) || isBlindspotWall(o) || isCoverageArea(o)));
 
   const selectMeasure = (pressed: boolean) => {
     if (pressed && !calibration) {
@@ -113,8 +105,8 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
   };
 
   return (
-    <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-lg border border-border/50">
-      <TooltipProvider>
+    <TooltipProvider>
+      <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-lg border border-border/50 shrink-0">
         <Tooltip>
           <TooltipTrigger asChild>
             <Toggle 
@@ -130,27 +122,9 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
         </Tooltip>
 
         {!isTech && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Toggle
-                pressed={uiState.snapEnabled}
-                onPressedChange={(p) => dispatch({ type: 'SET_SNAP_ENABLED', payload: p })}
-                size="sm"
-                className="h-8 w-8"
-                data-testid="snap-toggle"
-              >
-                <Magnet className="w-4 h-4" />
-              </Toggle>
-            </TooltipTrigger>
-            <TooltipContent>
-              Snap to objects {uiState.snapEnabled ? 'on' : 'off'} — aligns edges and centres while dragging (hold Ctrl or Alt to drop it exactly where you want, Shift to move in 0.5 ft steps)
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-
-        {!isTech && (
           <>
+            <Separator orientation="vertical" className="h-6 mx-1" />
+
             <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -308,71 +282,6 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               <TooltipContent>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'} <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">M</kbd></TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Toggle
-                  pressed={uiState.tool === 'route'}
-                  onPressedChange={(pressed) => dispatch({ type: 'SET_TOOL', payload: pressed ? 'route' : 'select' })}
-                  size="sm"
-                  className="h-8 w-8"
-                  data-testid="tool-route"
-                >
-                  <Spline className="w-4 h-4" />
-                </Toggle>
-              </TooltipTrigger>
-              <TooltipContent>Cable route — control points the cables follow to the rack <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">R</kbd></TooltipContent>
-            </Tooltip>
-
-            {showBlindspot && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Toggle
-                  pressed={uiState.tool === 'wall'}
-                  onPressedChange={(pressed) => dispatch({ type: 'SET_TOOL', payload: pressed ? 'wall' : 'select' })}
-                  size="sm"
-                  className="h-8 w-8"
-                  data-testid="tool-wall"
-                >
-                  <BrickWall className="w-4 h-4" />
-                </Toggle>
-              </TooltipTrigger>
-              <TooltipContent>Blindspot wall — click its corners; cameras cannot see past it <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">W</kbd></TooltipContent>
-            </Tooltip>
-            )}
-
-            {showBlindspot && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost" size="sm" className="h-8 w-8 p-0"
-                    onClick={() => handleAddIcon(BLINDSPOT_ICON)}
-                    aria-label="Camera blindspot"
-                    data-testid="add-blindspot"
-                  >
-                    <BlindspotShape className="w-5 h-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Camera blindspot — a box cameras cannot see past; resize it over a shelf or column</TooltipContent>
-              </Tooltip>
-            )}
-            {showBlindspot && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Toggle
-                    pressed={uiState.tool === 'area'}
-                    onPressedChange={(pressed) => dispatch({ type: 'SET_TOOL', payload: pressed ? 'area' : 'select' })}
-                    size="sm"
-                    className="h-8 w-8"
-                    aria-label="Coverage area"
-                    data-testid="tool-area"
-                  >
-                    <CoverageAreaShape className="w-5 h-3.5" />
-                  </Toggle>
-                </TooltipTrigger>
-                <TooltipContent>Coverage area (goes to layer "{COVERAGE_AREA_LAYER_NAME}") — click its corners, Enter / Esc closes it; the cameras picked in its properties must see it, what they miss turns red</TooltipContent>
-              </Tooltip>
-            )}
-
             <Separator orientation="vertical" className="h-6 mx-1" />
 
             <Tooltip>
@@ -496,48 +405,12 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                 </div>
               </PopoverContent>
             </Popover>
-
-            <Separator orientation="vertical" className="h-6 mx-1" />
-
-            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Toggle pressed={docState.autoNumbering.enabled}
-                    onPressedChange={(p) => {
-                       dispatch({ type: 'SET_AUTO_NUMBERING', payload: { enabled: p } });
-                       if (!p && uiState.tool === 'stamp') dispatch({ type: 'SET_TOOL', payload: 'select' });
-                    }} size="sm" className="h-8 w-8 rounded-none border-none">
-                    <Hash className="w-4 h-4" />
-                  </Toggle>
-                </TooltipTrigger>
-                <TooltipContent>Auto-Numbering</TooltipContent>
-              </Tooltip>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-6 rounded-none px-0 border-l border-input hover:bg-muted">
-                     <Settings2 className="w-3 h-3" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72" side="bottom" align="center">
-                  <div className="space-y-4">
-                     <h4 className="font-medium leading-none">Auto-Numbering Settings</h4>
-                     <div className="grid gap-2">
-                        <div className="grid grid-cols-3 items-center gap-4">
-                          <Label>Prefix</Label>
-                          <Input value={docState.autoNumbering.prefix} onChange={(e) => dispatch({ type: 'SET_AUTO_NUMBERING', payload: { prefix: e.target.value } })} className="col-span-2 h-8" />
-                        </div>
-                        <div className="grid grid-cols-3 items-center gap-4">
-                          <Label>Start #</Label>
-                          <Input type="number" value={docState.autoNumbering.counter} onChange={(e) => dispatch({ type: 'SET_AUTO_NUMBERING', payload: { counter: parseInt(e.target.value) || 1 } })} className="col-span-2 h-8" />
-                        </div>
-                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
           </>
         )}
-      </TooltipProvider>
-    </div>
+      </div>
+      {/* Domain tools: own labelled groups, always after the universal ones. */}
+      <CablingTools isTech={isTech} />
+      <CctvTools isTech={isTech} />
+    </TooltipProvider>
   );
 };

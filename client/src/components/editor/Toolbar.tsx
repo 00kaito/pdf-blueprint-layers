@@ -8,6 +8,7 @@ import {ProjectActions} from './Toolbar/ProjectActions';
 import {ToolSelector} from './Toolbar/ToolSelector';
 import {MainMenu} from './Toolbar/MainMenu';
 import {ContextBar} from './Toolbar/ContextBar';
+import {DraftingAids} from './Toolbar/DraftingAids';
 import {useIsMobile} from '@/hooks/use-mobile';
 import {ProjectName} from './Toolbar/ProjectName';
 import {cn} from '@/lib/utils';
@@ -61,6 +62,12 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
         <div className="flex items-center gap-3 shrink-0">
           {/* TECH has no context bar, which shows the name for everyone else. */}
           {isTech && <ProjectName className="max-w-[9rem] xl:max-w-[16rem]" />}
+          {!isTech && (
+            <>
+              <DraftingAids />
+              <Separator orientation="vertical" className="h-6" />
+            </>
+          )}
           <HistoryControls />
           <Separator orientation="vertical" className="h-6" />
           <ZoomControls scale={uiState.scale} />

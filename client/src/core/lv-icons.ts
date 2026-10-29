@@ -72,6 +72,45 @@ export const LV_ICONS: Record<string, { label: string; d: string }> = {
 
 export const LV_ICON_TYPES = Object.keys(LV_ICONS);
 
+/** `EditorObject.mountHeightIn` of a device mounted in the ceiling (its height follows the ceiling). */
+export const MOUNT_CEILING = -1;
+
+/** Default rack top when a ceiling height is set (ft). */
+export const DEFAULT_RACK_HEIGHT_FT = 7;
+
+/** Usual mount height per device type, inches above the floor (box / device centre); MOUNT_CEILING = in the ceiling. */
+export const DEFAULT_MOUNT_HEIGHT_IN: Record<string, number> = {
+  data: 18,
+  'floor-box': 0,
+  tv: 60,
+  'access-control': 48,
+  'control-panel': 48,
+  scheduler: 48,
+  speaker: 84,
+  cctv: MOUNT_CEILING,
+  [CAMERA_360_ICON]: MOUNT_CEILING,
+  wap: MOUNT_CEILING,
+  'ceiling-speaker': MOUNT_CEILING,
+};
+
+/** Mount height of a device: its own, else its type's default; undefined = not known (other icons). */
+export const mountHeightIn = (o: { mountHeightIn?: number; type: string; content?: string }): number | undefined =>
+  o.mountHeightIn ?? (o.type === 'icon' && o.content ? DEFAULT_MOUNT_HEIGHT_IN[o.content] : undefined);
+
+/** Label text of an object: its name, plus the mount height when shown (`TV 1 · 60"`); not for ceiling devices. */
+export const objectLabel = (o: { name?: string; mountHeightIn?: number; type: string; content?: string }, showHeight: boolean): string => {
+  const h = showHeight ? mountHeightIn(o) : undefined;
+  const height = h === undefined || h === MOUNT_CEILING ? '' : formatMountHeight(h);
+  return [o.name, height].filter(Boolean).join(' · ');
+};
+
+/** `60"`, `7' 0"`, `Ceiling` (plain quotes: the PDF fonts have no ″). */
+export const formatMountHeight = (inches: number): string => {
+  if (inches === MOUNT_CEILING) return 'Ceiling';
+  const ft = Math.floor(inches / 12), rest = Math.round((inches - ft * 12) * 10) / 10;
+  return inches < 72 ? `${Math.round(inches * 10) / 10}"` : `${ft}' ${rest}"`;
+};
+
 /** Names of the plain shape icons. */
 const SHAPE_LABELS: Record<string, string> = {
   square: 'Square', circle: 'Circle', triangle: 'Triangle', star: 'Star', heart: 'Heart',
