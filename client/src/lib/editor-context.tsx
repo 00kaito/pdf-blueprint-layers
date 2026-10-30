@@ -5,6 +5,7 @@ import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH} from '@/core/constants';
 import {createInitialHistory, HistoryAction, HistoryEntry, withHistory} from './history';
 import {DEFAULT_LV_SETTINGS, deviceKey, normalizeLvSettings} from '@/core/lv-icons';
 import {assignDroppedCameras, isCamera, isCoverageArea} from '@/core/camera-coverage';
+import {withServerOwned} from './server-owned';
 
 /** Every paint-bucket fill lands in this layer. */
 export const FILL_LAYER_NAME = 'Colors';
@@ -190,6 +191,7 @@ const initialUIState: UIState = {
   isImporting: false,
   exportStep: 'closed',
   placement: null,
+  techRequestDraft: null,
   fillColor: '#3b82f6',
   fillOpacity: 0.35,
   drawColor: '#000000',
@@ -209,6 +211,35 @@ const initialUIState: UIState = {
 const initialState: EditorState = {
   ...initialDocumentState,
   ...initialUIState
+};
+
+const applyRemote = (state: EditorState, { mode, objects, doc }: Extract<EditorAction, { type: 'APPLY_REMOTE' }>['payload']): EditorState => {
+  if (mode === 'sync') {
+    const ids = new Set(objects.map(o => o.id));
+    return {
+      ...state, ...doc, objects,
+      lvSettings: doc?.lvSettings ? normalizeLvSettings(doc.lvSettings) : state.lvSettings,
+      selectedObjectIds: state.selectedObjectIds.filter(id => ids.has(id)),
+      techRequestDraft: state.techRequestDraft && ids.has(state.techRequestDraft.objectId) ? state.techRequestDraft : null,
+    };
+  }
+  const remote = new Map(objects.map(o => [o.id, o]));
+  let changed = false;
+  const next = state.objects.map(o => {
+    const r = remote.get(o.id);
+    if (!r) return o;
+    changed = true;
+    if (mode === 'patch') return r;
+    let merged = withServerOwned(o, r);
+    if ((r.statusUpdatedAt ?? '') > (o.statusUpdatedAt ?? '')) {
+      merged = { ...merged, status: r.status, statusUpdatedAt: r.statusUpdatedAt, statusUpdatedBy: r.statusUpdatedBy, issueDescription: r.issueDescription };
+    }
+    if ((r.labelUpdatedAt ?? '') > (o.labelUpdatedAt ?? '')) {
+      merged = { ...merged, labelPosition: r.labelPosition, labelOffset: r.labelOffset, labelUpdatedAt: r.labelUpdatedAt };
+    }
+    return merged;
+  });
+  return changed ? { ...state, objects: next } : state;
 };
 
 const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
@@ -347,7 +378,8 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       if (!source || source.isFill || source.type === 'path') return state;
       // Same device settings as copy / paste: no photos, comments or notes of the original.
       const {
-        photos, comments, notes, issueDescription, statusUpdatedAt, statusUpdatedBy,
+        photos, photoBy, comments, notes, issueDescription, statusUpdatedAt, statusUpdatedBy,
+        techRequest, requestResult, labelUpdatedAt,
         change, changeOrigin, changeNote, changeUpdatedAt, changeUpdatedBy, ...rest
       } = source;
       // Right of the original; to its left / below when that runs off the page.
@@ -487,6 +519,10 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       return { ...state, showCameraCoverage: !state.showCameraCoverage };
     case 'TOGGLE_COVERAGE_SOLID':
       return { ...state, coverageSolid: !state.coverageSolid };
+    case 'SET_TECH_REQUEST_DRAFT':
+      return { ...state, techRequestDraft: action.payload };
+    case 'APPLY_REMOTE':
+      return applyRemote(state, action.payload);
     case 'TOGGLE_MOUNT_HEIGHTS':
       return { ...state, showMountHeights: !state.showMountHeights };
     case 'SET_CABLE_SUMMARY_OPEN':
@@ -861,6 +897,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     isImporting: state.isImporting,
     exportStep: state.exportStep,
     placement: state.placement,
+    techRequestDraft: state.techRequestDraft,
     fillColor: state.fillColor,
     fillOpacity: state.fillOpacity,
     drawColor: state.drawColor,
@@ -872,7 +909,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.showMountHeights, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.wallStraight, state.wallSnap]);
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.showMountHeights, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.techRequestDraft, state.wallStraight, state.wallSnap]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

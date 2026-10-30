@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Blueprint sheet -->
+  <rect width="32" height="32" rx="6" fill="#2563eb"/>
+  <path d="M8 0V32M16 0V32M24 0V32M0 8H32M0 16H32M0 24H32" stroke="#fff" stroke-opacity=".14" stroke-width="1"/>
+  <!-- Floor plan: outer walls with a doorway, one inner wall -->
+  <path d="M6.5 12V25.5H25.5V6.5H13M16 25.5V18H20" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Placed device -->
+  <circle cx="20" cy="12" r="3.4" fill="#f59e0b" stroke="#fff" stroke-width="1.6"/>
+</svg>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDocument, useUI } from "@/lib/editor-context";
 import { useSaveProject, useUploadFile } from "./useProjects";
 import { buildProjectState, isAbortError } from "@/lib/project-state";
+import { useCurrentUser } from "./useAuth";
 
 export function useAutoSave() {
   const { state: docState, dispatch } = useDocument();
@@ -15,6 +16,9 @@ export function useAutoSave() {
   const filesRef = useRef({ overlay: docState.overlayPdfFile, pdfFileId: docState.pdfFileId, projectId: docState.projectId });
   filesRef.current = { overlay: docState.overlayPdfFile, pdfFileId: docState.pdfFileId, projectId: docState.projectId };
   const [isSaving, setIsSaving] = useState(false);
+  const { data: user } = useCurrentUser();
+  // Technicians never save the whole plan: their changes go to the server as ops (useFieldActions).
+  const canSave = !!user && user.role !== 'TECH';
   const timeoutRef = useRef<any>(null);
   const lastStateRef = useRef<string>("");
   const activeSaveRef = useRef<boolean>(false);
@@ -22,7 +26,7 @@ export function useAutoSave() {
   const lastCalibrationRef = useRef({ projectId: docState.projectId, calibration: docState.measureCalibration });
 
   const doSave = async (retryCount = 0) => {
-    if (!docState.projectId) return;
+    if (!docState.projectId || !canSave) return;
     if (activeSaveRef.current && retryCount === 0) {
       // Don't drop this change — try again once the running save is done.
       timeoutRef.current = setTimeout(() => doSave(), 500);

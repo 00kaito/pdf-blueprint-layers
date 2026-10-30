@@ -3,6 +3,7 @@ import {useDocument, useUI} from '@/lib/editor-context';
 import {PDFUploader} from '@/components/editor/PDFUploader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useLiveSync } from '@/hooks/useLiveSync';
 import { useLegacyIconMigration } from '@/hooks/useLegacyIconMigration';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { Loader2, PanelLeftOpen } from "lucide-react";
@@ -14,6 +15,7 @@ const Toolbar = lazy(() => import('@/components/editor/Toolbar').then(module => 
 const LayerPanel = lazy(() => import('@/components/editor/LayerPanel').then(module => ({ default: module.LayerPanel })));
 const PropertiesPanel = lazy(() => import('@/components/editor/PropertiesPanel').then(module => ({ default: module.PropertiesPanel })));
 const ToolHint = lazy(() => import('@/components/editor/Canvas/ToolHint').then(module => ({ default: module.ToolHint })));
+const TechRequestDialog = lazy(() => import('@/components/editor/TechRequests').then(module => ({ default: module.TechRequestDialog })));
 const MobileBottomBar = lazy(() => import('@/components/editor/MobileBottomBar').then(module => ({ default: module.MobileBottomBar })));
 
 const SHOW_LAYERS_STORAGE_KEY = 'editor.showLayers';
@@ -23,6 +25,7 @@ const Home = () => {
   const { state: uiState } = useUI();
   const isMobile = useIsMobile();
   const { isSaving } = useAutoSave();
+  useLiveSync();
   useLegacyIconMigration();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -64,6 +67,7 @@ const Home = () => {
           <Toolbar isSaving={isSaving} />
           <Canvas />
           <MobileBottomBar />
+          <TechRequestDialog />
         </div>
       </Suspense>
     );
@@ -80,6 +84,7 @@ const Home = () => {
       )}
       <div className="flex flex-col h-screen overflow-hidden bg-background">
         <Toolbar isSaving={isSaving} />
+        <TechRequestDialog />
         <div className="flex flex-1 overflow-hidden relative">
           {/* Left Sidebar (collapsible, to give the canvas room on a tablet) */}
           {showLayers && (

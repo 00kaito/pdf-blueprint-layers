@@ -24,12 +24,15 @@ import {isCamera, isCoverageArea} from '@/core/camera-coverage';
 import {isCableDevice} from '@/core/cable-routing';
 import {STATUSES, statusUpdate} from '@/core/status';
 import {useCurrentUser} from '@/hooks/useAuth';
+import {useFieldActions} from '@/hooks/useFieldActions';
+import {TechLabelInput, TechRequestSection} from './TechRequests';
 
 export const PropertiesPanel = () => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
   const { state: docState, dispatch } = useDocument();
   const { state: uiState, dispatch: uiDispatch } = useUI();
+  const field = useFieldActions();
 
   const selectedObjects = docState.objects.filter((o) => uiState.selectedObjectIds.includes(o.id));
   const isMultiSelect = selectedObjects.length > 1;
@@ -45,32 +48,13 @@ export const PropertiesPanel = () => {
   }
 
   const handleUpdate = (updates: Partial<typeof firstObject>) => {
-    // If user is TECH, we only allow updating status and issueDescription
-    if (isTech) {
-      const allowedKeys: (keyof typeof firstObject)[] = ['status', 'issueDescription'];
-      const filteredUpdates: Partial<typeof firstObject> = {};
-      let hasAllowed = false;
-      
-      allowedKeys.forEach(key => {
-        if (key in updates) {
-          (filteredUpdates as any)[key] = updates[key];
-          hasAllowed = true;
-        }
-      });
-      
-      if (!hasAllowed) return;
-      updates = filteredUpdates;
-    }
-
-    const finalUpdates = updates.status ? { ...updates, ...statusUpdate(updates.status, user?.username) } : updates;
-
-    dispatch({
-      type: 'UPDATE_OBJECTS',
-      payload: {
-        ids: selectedObjects.map(o => o.id),
-        updates: finalUpdates
-      }
-    });
+    const ids = selectedObjects.map(o => o.id);
+    // What technicians may change too (sent to the server for them, see useFieldActions).
+    if (updates.status) return field.setStatus(ids, updates.status);
+    if ('issueDescription' in updates) return field.setIssue(ids, updates.issueDescription ?? '');
+    if ('labelPosition' in updates || 'labelOffset' in updates) return field.setLabelPosition(ids, updates);
+    if (isTech) return;
+    dispatch({ type: 'UPDATE_OBJECTS', payload: { ids, updates } });
   };
 
   const handleMetadataChange = (key: string, value: string) => {
@@ -159,7 +143,18 @@ export const PropertiesPanel = () => {
               </div>
               
               {isTech ? (
-                <ReadOnlyField label={`Label ${isMultiSelect ? '(Bulk)' : '(Visible)'}`} value={isMultiSelect ? (getCommonValue('name')) : (firstObject.name || '')} />
+                <div className="space-y-1.5">
+                  {isMultiSelect
+                    ? <ReadOnlyField label="Label (Bulk)" value={getCommonValue('name')} />
+                    : <>
+                        <Label className="text-xs font-medium">Label (Visible)</Label>
+                        <TechLabelInput obj={firstObject} className="h-8 text-xs" />
+                      </>}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-muted-foreground">Label position</span>
+                    <LabelPositionPicker objects={selectedObjects} onChange={(updates) => handleUpdate(updates)} />
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-1.5">
                   <Label htmlFor="obj-label" className="text-xs font-medium">Label {isMultiSelect ? '(Bulk)' : '(Visible)'}</Label>
@@ -206,6 +201,7 @@ export const PropertiesPanel = () => {
                         placeholder="Describe the issue..."
                         value={selectedObjects.every(o => o.issueDescription === firstObject.issueDescription) ? (firstObject.issueDescription || '') : ''}
                         onChange={(e) => handleUpdate({ issueDescription: e.target.value })}
+                        onBlur={(e) => field.commitIssue(selectedObjects, e.target.value)}
                         className="text-xs min-h-[60px]"
                       />
                     </div>
@@ -217,6 +213,7 @@ export const PropertiesPanel = () => {
                     </div>
                   )}
 
+                  {!isMultiSelect && <TechRequestSection obj={firstObject} />}
                   <PlanChangeSection objects={selectedObjects} />
                 </>
               )}
@@ -262,7 +259,7 @@ export const PropertiesPanel = () => {
                 <>
                   <MountHeightEditor objects={selectedObjects} readOnly={isTech} />
                   <CableEditor objects={selectedObjects} readOnly={isTech} />
-                  <RackSelect objects={selectedObjects} readOnly={isTech} />
+                  <RackSelect objects={selectedObjects} readOnly={isTech && isMultiSelect} asRequest={isTech} />
                 </>
               )}
               {selectedObjects.every(isCamera) && (
@@ -380,6 +377,7 @@ export const PropertiesPanel = () => {
                 <ObjectPhotoGallery
                   objectId={firstObject.id}
                   photos={firstObject.photos ?? []}
+                  photoBy={firstObject.photoBy}
                 />
                 <Separator />
                 <ObjectComments

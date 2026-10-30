@@ -6,6 +6,7 @@ import {computeCableRuns, getRacks, hasCables, rackColorMap, rackLabel, runFeet}
 import {formatFeet} from '@/core/measure';
 import {Label} from '@/components/ui/label';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
+import {useFieldActions} from '@/hooks/useFieldActions';
 
 const AUTO = '__auto__';
 
@@ -16,8 +17,13 @@ const Dot = ({ color }: { color?: string }) =>
  * IDF / rack the selected devices home-run to (nearest by cable run unless picked), with the run
  * length. The cable then follows only that IDF's routes.
  */
-export const RackSelect = ({ objects, readOnly = false }: { objects: EditorObject[]; readOnly?: boolean }) => {
+export const RackSelect = ({ objects, readOnly = false, asRequest = false }: {
+  objects: EditorObject[]; readOnly?: boolean;
+  /** A technician's pick: a change request for the PM (one object), not an edit. */
+  asRequest?: boolean;
+}) => {
   const { state: docState, dispatch } = useDocument();
+  const { requestChange } = useFieldActions();
   const racks = useMemo(() => getRacks(docState.objects), [docState.objects]);
   const colors = useMemo(() => rackColorMap(docState.objects), [docState.objects]);
   const runs = useMemo(
@@ -27,7 +33,9 @@ export const RackSelect = ({ objects, readOnly = false }: { objects: EditorObjec
   if (racks.length === 0 || objects.length === 0) return null;
 
   const first = objects[0];
-  const picked = objects.every(o => o.metadata?.rackId === first.metadata?.rackId) ? (first.metadata?.rackId || AUTO) : '';
+  // A technician sees the IDF they asked for while the request waits.
+  const rackOf = (o: EditorObject) => (asRequest && o.techRequest?.changes.rackId !== undefined ? o.techRequest.changes.rackId : o.metadata?.rackId) || AUTO;
+  const picked = objects.every(o => rackOf(o) === rackOf(first)) ? rackOf(first) : '';
   const single = objects.length === 1 && hasCables(first) ? runs.get(first.id) : undefined;
   const feet = single ? runFeet(single, first, docState.measureCalibration, docState.lvSettings) : null;
 
@@ -41,6 +49,10 @@ export const RackSelect = ({ objects, readOnly = false }: { objects: EditorObjec
         value={picked}
         disabled={readOnly}
         onValueChange={(v) => {
+          if (asRequest) {
+            requestChange(first.id, { rackId: v === AUTO ? null : v });
+            return;
+          }
           for (const o of objects) {
             dispatch({
               type: 'UPDATE_OBJECT',

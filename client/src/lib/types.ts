@@ -1,5 +1,6 @@
 import type {CropRect, PaperId, PaperOrientation} from '@/core/paper';
 import type {CameraType, PlacementResult} from '@/core/camera-placement';
+import type {ObjectComment, RequestChanges, RequestResult, TechRequest} from '@shared/tech-ops';
 
 /** Automatic camera placement in progress: the settings dialog, then the proposal shown on the plan. */
 export type CameraPlacement = {
@@ -96,6 +97,8 @@ export type EditorObject = {
   opacity?: number;
   rotation?: number; // Rotation in degrees
   photos?: string[];
+  /** Who added each photo (user id), by URL — a technician may remove only their own. */
+  photoBy?: Record<string, string>;
   status?: 'PLANNED' | 'CABLE_PULLED' | 'TERMINATED' | 'TESTED' | 'APPROVED' | 'ISSUE';
   statusUpdatedAt?: string;
   statusUpdatedBy?: string;
@@ -118,7 +121,14 @@ export type EditorObject = {
   changeUpdatedBy?: string;
   /** Cables home-run from this point to its rack. */
   cables?: CableSpec[];
-  comments?: string[];
+  /** Comment threads (plain strings in older projects, see `normalizeComments`). */
+  comments?: ObjectComment[];
+  /** A technician's change request waiting for the PM (move / rename / IDF). */
+  techRequest?: TechRequest;
+  /** The PM's decision on the last request. */
+  requestResult?: RequestResult;
+  /** When a technician last set the label position (a PM's save keeps a newer one). */
+  labelUpdatedAt?: string;
   notes?: string;
   /** Area filled with the paint-bucket tool (content = colour PNG mask); lives in the Colors layer. */
   isFill?: boolean;
@@ -224,6 +234,8 @@ export type UIState = {
   /** Export PDF flow: its dialog, or the crop frame being adjusted on the plan (dialog hidden). */
   exportStep: 'closed' | 'dialog' | 'crop';
   placement: CameraPlacement | null;
+  /** A technician's change waiting for "send as request?" (the object stays put meanwhile). */
+  techRequestDraft: { objectId: string; changes: RequestChanges } | null;
 };
 
 export type EditorState = DocumentState & UIState;
@@ -283,6 +295,13 @@ export type EditorAction =
   | { type: 'TOGGLE_CAMERA_COVERAGE' }
   | { type: 'TOGGLE_COVERAGE_SOLID' }
   | { type: 'TOGGLE_MOUNT_HEIGHTS' }
+  | { type: 'SET_TECH_REQUEST_DRAFT'; payload: { objectId: string; changes: RequestChanges } | null }
+  /**
+   * Changes from the server, not undoable: 'patch' replaces the given objects (an op's result),
+   * 'fieldwork' takes only comments / photos / requests and newer statuses / label positions
+   * (a PM's poll), 'sync' takes the whole plan (a technician's poll — they never save it).
+   */
+  | { type: 'APPLY_REMOTE'; payload: { mode: 'patch' | 'fieldwork' | 'sync'; objects: EditorObject[]; doc?: Partial<Pick<DocumentState, 'layers' | 'cableRoutes' | 'lvSettings' | 'measureCalibration' | 'exportSettings'>> } }
   | { type: 'SET_CABLE_SUMMARY_OPEN'; payload: boolean }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }

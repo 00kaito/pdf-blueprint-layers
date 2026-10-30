@@ -3,9 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { useDocument, useUI } from '@/lib/editor-context';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { useUploadFile } from '@/hooks/useProjects';
+import { useFieldActions } from '@/hooks/useFieldActions';
 import { useObjectCreation } from '@/hooks/useObjectCreation';
 import { compressImageToFile } from '@/core/image-compress';
-import { STATUSES, statusUpdate, type ObjectStatus } from '@/core/status';
+import { STATUSES, type ObjectStatus } from '@/core/status';
 import { CANVAS_BASE_WIDTH } from '@/core/constants';
 import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames } from '@/core/lv-icons';
 import { Camera, Circle, CopyPlus, Images, Info, Loader2, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
@@ -83,6 +84,9 @@ export const MobileBottomBar: React.FC = () => {
   const layerLocked = !!docState.layers.find(l => l.id === selectedObject?.layerId)?.locked;
   const canEdit = !isTech && !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path';
   const canDelete = !isTech && !!selectedObject && !layerLocked;
+  /** Technicians move too — as a change request for the PM. */
+  const canMove = !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path';
+  const field = useFieldActions();
   const name = selectedObject
     ? selectedObject.name || defaultObjectNames(docState.objects, docState.customIcons).get(selectedObject.id) || 'Object'
     : '';
@@ -103,7 +107,8 @@ export const MobileBottomBar: React.FC = () => {
       const py = (e.clientY - rect.top) / uiState.scale;
       const x = Math.max(0, Math.min(CANVAS_BASE_WIDTH - selectedObject.width, px - selectedObject.width / 2));
       const y = Math.max(0, Math.min(docState.pdfCanvasHeight - selectedObject.height, py - selectedObject.height / 2));
-      docDispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { x, y } } });
+      if (isTech) field.requestChange(selectedObject.id, { x, y });
+      else docDispatch({ type: 'UPDATE_OBJECT', payload: { id: selectedObject.id, updates: { x, y } } });
       setMoving(false);
     };
     document.addEventListener('click', onClick, true);
@@ -122,11 +127,8 @@ export const MobileBottomBar: React.FC = () => {
           projectId: docState.projectId || undefined
         });
 
-        // Saved with the project by autosave.
-        docDispatch({
-          type: 'ADD_OBJECT_PHOTO',
-          payload: { id: selectedObjectId, photoDataUrl: result.url },
-        });
+        // Attached on the server right away (it records who added it).
+        await field.send([{ type: 'addPhoto', objectId: selectedObjectId, url: result.url }]);
       }
     } catch (error) {
       console.error('Error uploading photos:', error);
@@ -140,7 +142,7 @@ export const MobileBottomBar: React.FC = () => {
 
   const setStatus = (status: ObjectStatus) => {
     if (!selectedObject) return;
-    docDispatch({ type: 'UPDATE_OBJECTS', payload: { ids: [selectedObject.id], updates: statusUpdate(status, user?.username) } });
+    field.setStatus([selectedObject.id], status);
   };
 
   const duplicate = () => {
@@ -233,7 +235,7 @@ export const MobileBottomBar: React.FC = () => {
               />
               <ActionButton icon={Images} label={`Photos (${photoCount})`} onClick={() => setIsGalleryOpen(true)} testId="mobile-gallery" />
               {canEdit && <ActionButton icon={CopyPlus} label="Copy" onClick={duplicate} testId="mobile-duplicate" />}
-              {canEdit && <ActionButton icon={Move} label="Move" onClick={() => setMoving(true)} testId="mobile-move" />}
+              {canMove && <ActionButton icon={Move} label={isTech ? 'Request move' : 'Move'} onClick={() => setMoving(true)} testId="mobile-move" />}
               {!isTech && <ActionButton icon={Plus} label="Add" onClick={() => setIsAddOpen(true)} testId="mobile-add" />}
             </div>
           </>
@@ -346,6 +348,7 @@ export const MobileBottomBar: React.FC = () => {
               <ObjectPhotoGallery
                 objectId={selectedObject.id}
                 photos={selectedObject.photos || []}
+                photoBy={selectedObject.photoBy}
               />
             )}
           </div>

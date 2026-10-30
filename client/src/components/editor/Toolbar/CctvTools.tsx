@@ -37,6 +37,13 @@ export const CctvTools = ({ isTech }: { isTech: boolean }) => {
       toast({ title: 'Set the scale first', description: 'Camera coverage appears once the plan is calibrated (measure tool).' });
     }
     dispatch({ type: 'TOGGLE_CAMERA_COVERAGE' });
+    // Coverage areas belong to the coverage view: shown and hidden with it (the layer can still be
+    // turned on by itself in the layer panel).
+    const show = !uiState.showCameraCoverage;
+    const areaLayer = docState.layers.find(l => l.name.trim().toLowerCase() === COVERAGE_AREA_LAYER_NAME.toLowerCase());
+    if (areaLayer && areaLayer.visible !== show) {
+      dispatch({ type: 'UPDATE_LAYER', payload: { id: areaLayer.id, updates: { visible: show } } });
+    }
   };
 
   return (

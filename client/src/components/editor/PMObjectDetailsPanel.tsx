@@ -13,13 +13,19 @@ import { isCamera } from '@/core/camera-coverage';
 import { isCableDevice } from '@/core/cable-routing';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/useAuth';
-import { STATUSES, statusUpdate } from '@/core/status';
+import { STATUSES } from '@/core/status';
+import { useFieldActions } from '@/hooks/useFieldActions';
+import { TechLabelInput, TechRequestSection } from './TechRequests';
+import { ObjectComments } from './ObjectComments';
+import { RackSelect } from './RackSelect';
 
 export const PMObjectDetailsPanel: React.FC = () => {
   const { state: uiState } = useUI();
   const { state: documentState } = useDocument();
   const dispatch = useDocumentDispatch();
   const { data: user } = useCurrentUser();
+  const field = useFieldActions();
+  const isTech = user?.role === 'TECH';
 
   const selectedObject = documentState.objects.find(
     obj => obj.id === uiState.selectedObjectIds[0]
@@ -51,13 +57,17 @@ export const PMObjectDetailsPanel: React.FC = () => {
           <label htmlFor="object-label" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Label
           </label>
-          <Input
-            id="object-label"
-            type="text"
-            value={selectedObject.name || ''}
-            onChange={handleLabelChange}
-            className="mt-1"
-          />
+          {isTech ? (
+            <TechLabelInput obj={selectedObject} className="mt-1" />
+          ) : (
+            <Input
+              id="object-label"
+              type="text"
+              value={selectedObject.name || ''}
+              onChange={handleLabelChange}
+              className="mt-1"
+            />
+          )}
         </div>
         <div>
           <label htmlFor="object-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -67,6 +77,7 @@ export const PMObjectDetailsPanel: React.FC = () => {
             id="object-notes"
             value={selectedObject.notes || ''}
             onChange={handleNoteChange}
+            readOnly={isTech}
             className="mt-1"
             rows={4}
           />
@@ -84,10 +95,7 @@ export const PMObjectDetailsPanel: React.FC = () => {
                   "h-14 text-[13px] px-4 justify-start gap-3 font-black uppercase tracking-tight shadow-md transition-all",
                   selectedObject.status === s.id ? "ring-2 ring-primary ring-offset-2 bg-primary text-primary-foreground scale-[1.02]" : "bg-background border-border/60"
                 )}
-                onClick={() => dispatch({
-                  type: 'UPDATE_OBJECTS',
-                  payload: { ids: [selectedObject.id], updates: statusUpdate(s.id, user?.username) },
-                })}
+                onClick={() => field.setStatus([selectedObject.id], s.id)}
               >
                 <div className={cn("w-3 h-3 rounded-full", s.dot)} />
                 {s.label}
@@ -96,7 +104,9 @@ export const PMObjectDetailsPanel: React.FC = () => {
           </div>
         </div>
 
+        <TechRequestSection obj={selectedObject} />
         {selectedObject.type !== 'text' && <PlanChangeSection objects={[selectedObject]} large />}
+        {isCableDevice(selectedObject) && <RackSelect objects={[selectedObject]} asRequest={isTech} />}
         {isCableDevice(selectedObject) && (
           <MountHeightEditor objects={[selectedObject]} readOnly={user?.role === 'TECH'} large />
         )}
@@ -109,8 +119,9 @@ export const PMObjectDetailsPanel: React.FC = () => {
 
         <div>
           <h4 className="text-md font-semibold mb-2">Photos</h4>
-          <ObjectPhotoGallery objectId={selectedObject.id} photos={selectedObject.photos || []} />
+          <ObjectPhotoGallery objectId={selectedObject.id} photos={selectedObject.photos || []} photoBy={selectedObject.photoBy} />
         </div>
+        <ObjectComments objectId={selectedObject.id} comments={selectedObject.comments ?? []} />
       </div>
       <Button onClick={() => dispatch({ type: 'SET_SELECTION', payload: [] })} className="mt-4 w-full">
         Close

@@ -122,6 +122,11 @@ export const Canvas = () => {
     [docState.objects, docState.cableRoutes],
   );
   /** With several IDFs every device shows the colour of the IDF its cables go to. */
+  /** A technician's move waiting for "send as request?", shown on its object. */
+  const draftMove = (objId: string) => {
+    const c = state.techRequestDraft?.objectId === objId ? state.techRequestDraft.changes : null;
+    return c && c.x !== undefined && c.y !== undefined ? { x: c.x, y: c.y } : undefined;
+  };
   const idfColorOf = (objId: string) => {
     if (racks.length < 2) return undefined;
     const rackId = rackColors.has(objId) ? objId : cableRuns.get(objId)?.rackId;
@@ -221,7 +226,7 @@ export const Canvas = () => {
         return;
       }
 
-      if (e.ctrlKey || e.metaKey) {
+      if ((e.ctrlKey || e.metaKey) && !isTech) {
         const key = e.key.toLowerCase();
         if (key === 'z' && !e.shiftKey) {
           e.preventDefault();
@@ -552,6 +557,7 @@ export const Canvas = () => {
                 selectedObjectIds={state.selectedObjectIds}
                 showStatusColors={state.showStatusColors}
                 showMountHeight={state.showMountHeights}
+                draftMove={draftMove(obj.id)}
                 disableMovement={disableMovement}
                 snapEnabled={state.snapEnabled}
                 getSnapTargets={getSnapTargets}

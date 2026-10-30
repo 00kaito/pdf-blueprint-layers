@@ -6,7 +6,25 @@ import passport from "passport";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import { createHash } from "crypto";
-import { insertUserSchema, projectStateSchema, updateUserRoleSchema, updateUserPasswordSchema } from "@shared/schema";
+import { insertUserSchema, createUserSchema, projectStateSchema, updateUserRoleSchema, updateUserPasswordSchema, type Project } from "@shared/schema";
+import { applyOps, mergeManagerSave, OpError, type TechOp } from "@shared/tech-ops";
+
+const canAccess = (project: Project, userId: string) => project.ownerId === userId || project.sharedWith.includes(userId);
+
+/** File id of a project file URL ("/api/files/<id>"). */
+const fileIdOf = (url: string) => /^\/api\/files\/([\w-]+)$/.exec(url)?.[1];
+
+/**
+ * One state write at a time per project: ops and saves read the stored state, change it and write it
+ * back, so two at once would lose one of them.
+ */
+const projectLocks = new Map<string, Promise<unknown>>();
+const withProjectLock = <T>(id: string, fn: () => Promise<T>): Promise<T> => {
+  const run = (projectLocks.get(id) ?? Promise.resolve()).catch(() => undefined).then(fn);
+  projectLocks.set(id, run);
+  run.finally(() => { if (projectLocks.get(id) === run) projectLocks.delete(id); }).catch(() => undefined);
+  return run;
+};
 
 const upload = multer({ storage: multer.memoryStorage() });
 /** Icon library uploads: images only, small. */
@@ -117,8 +135,61 @@ export async function registerRoutes(
       return res.status(400).json(parsed.error);
     }
     console.log(`[Project] Saving state for project ${req.params.id} by user ${req.user!.username}`);
-    await storage.saveProjectState(req.params.id, parsed.data);
-    res.sendStatus(200);
+    const revision = await withProjectLock(req.params.id, async () => {
+      const stored = await storage.getProjectState(req.params.id);
+      // Technicians' comments, photos, requests (and newer statuses) stay, even if this plan has not picked them up yet.
+      const objects = mergeManagerSave(stored?.objects, parsed.data.objects);
+      const revision = (stored?.revision ?? 0) + 1;
+      await storage.saveProjectState(req.params.id, { ...parsed.data, objects, revision });
+      return revision;
+    });
+    res.json({ revision });
+  });
+
+  // Field work (technicians) and comments / photos / request decisions (everyone): small checked changes.
+  app.post("/api/projects/:id/ops", requireAuth, async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    const ops = req.body?.ops as TechOp[] | undefined;
+    if (!Array.isArray(ops) || ops.length === 0 || ops.length > 500) return res.status(400).json({ message: "No operations" });
+
+    // Who uploaded each added photo, from the files table (an op cannot claim someone else's file).
+    const photoOwners: Record<string, string | undefined> = {};
+    for (const op of ops) {
+      if (op?.type !== 'addPhoto') continue;
+      const fileId = fileIdOf(op.url);
+      const meta = fileId ? await storage.getFileMeta(fileId) : undefined;
+      photoOwners[op.url] = meta && meta.projectId === project.id ? meta.ownerId : undefined;
+    }
+
+    try {
+      const result = await withProjectLock(project.id, async () => {
+        const stored = await storage.getProjectState(project.id);
+        if (!stored) throw new OpError("Project has no saved plan yet", 409);
+        const { objects, changedIds } = applyOps(stored.objects ?? [], ops, req.user!, photoOwners);
+        const revision = (stored.revision ?? 0) + 1;
+        if (changedIds.length) await storage.saveProjectState(project.id, { ...stored, objects, revision });
+        const changed = new Set(changedIds);
+        return { revision: changedIds.length ? revision : (stored.revision ?? 0), objects: objects.filter(o => changed.has(o.id)) };
+      });
+      console.log(`[Ops] ${ops.map(o => o.type).join(', ')} on project ${project.id} by ${req.user!.username}`);
+      res.json(result);
+    } catch (e) {
+      if (e instanceof OpError) return res.status(e.status).json({ message: e.message });
+      throw e;
+    }
+  });
+
+  // Open plans poll this: the state only when the revision moved on.
+  app.get("/api/projects/:id/live", requireAuth, async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    const state = await storage.getProjectState(req.params.id);
+    const revision = state?.revision ?? 0;
+    if (String(revision) === req.query.rev) return res.json({ revision });
+    res.json({ revision, state: state ?? {} });
   });
 
   app.delete("/api/projects/:id", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
@@ -169,10 +240,17 @@ export async function registerRoutes(
   });
 
   // File Routes
-  app.post("/api/files", requireAuth, requireRole('PM', 'admin'), upload.single("file"), async (req, res) => {
+  app.post("/api/files", requireAuth, upload.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
     const { originalname, mimetype, buffer } = req.file;
     const { projectId } = req.body;
+    // Technicians upload only photos, into a project they work on.
+    if (req.user!.role === 'TECH') {
+      const project = projectId ? await storage.getProject(projectId) : undefined;
+      if (!project || !canAccess(project, req.user!.id) || !mimetype.startsWith("image/")) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    }
     console.log(`[File] Uploading: ${originalname} (${mimetype}, ${buffer.length} bytes) for project: ${projectId || 'none'} by user: ${req.user!.username}`);
     const meta = await storage.saveFile(buffer, originalname, mimetype, req.user!.id, projectId);
     console.log(`[File] Saved with ID: ${meta.id}`);
@@ -249,6 +327,20 @@ export async function registerRoutes(
     res.json(users.map(({ passwordHash, email, ...rest }) => rest));
   });
 
+  app.post("/api/admin/users", requireAuth, requireRole('admin'), async (req, res) => {
+    const parsed = createUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid user" });
+    }
+    const { username, password, role } = parsed.data;
+    if (await storage.getUserByUsername(username)) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    const { passwordHash: _hash, email: _email, ...created } = await storage.createUser({ username, passwordHash, role });
+    res.status(201).json(created);
+  });
+
   app.put("/api/admin/users/:id/role", requireAuth, requireRole('admin'), async (req, res) => {
     if (req.params.id === req.user!.id) {
       return res.status(400).json({ message: "Cannot change your own role" });
@@ -269,6 +361,12 @@ export async function registerRoutes(
     const passwordHash = await bcrypt.hash(parsed.data.password, 10);
     await storage.updateUserPassword(req.params.id, passwordHash);
     res.sendStatus(200);
+  });
+
+  // An unknown API path is an error, not the app page (which the catch-all would answer with 200, so a
+  // call to a route this server does not have yet looked like it worked).
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ message: "API route not found" });
   });
 
   return httpServer;

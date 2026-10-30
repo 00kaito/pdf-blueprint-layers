@@ -1,5 +1,6 @@
 import {DocumentState, EditorAction, EditorState} from './types';
 import {objectTypeName} from '@/core/lv-icons';
+import {withServerOwned} from './server-owned';
 
 /** Maximum number of undo steps kept in memory. */
 export const HISTORY_LIMIT = 100;
@@ -73,8 +74,13 @@ const snapshotChanged = (a: EditorState, b: EditorState) =>
   a.lvSettings !== b.lvSettings ||
   a.cableRoutes !== b.cableRoutes;
 
-/** Applies a snapshot, keeping selection / active layer consistent with the restored document. */
+/**
+ * Applies a snapshot, keeping selection / active layer consistent with the restored document.
+ * Comments, photos and requests live on the server (see shared/tech-ops): undo does not bring back old ones.
+ */
 const applySnapshot = (s: EditorState, snap: Snapshot, selection: string[]): EditorState => {
+  const current = new Map(s.objects.map(o => [o.id, o]));
+  snap = { ...snap, objects: snap.objects.map(o => { const c = current.get(o.id); return c ? withServerOwned(o, c) : o; }) };
   const objectIds = new Set(snap.objects.map(o => o.id));
   const activeLayerId = snap.layers.some(l => l.id === s.activeLayerId)
     ? s.activeLayerId
@@ -259,8 +265,8 @@ export const withHistory = (reducer: (s: EditorState, a: EditorAction) => Editor
       return createInitialHistory(editor);
     }
 
-    // UI-only changes (selection, zoom, tool…) are not recorded.
-    if (!snapshotChanged(prev, editor)) {
+    // UI-only changes (selection, zoom, tool…) and changes from the server are not recorded.
+    if (!snapshotChanged(prev, editor) || action.type === 'APPLY_REMOTE') {
       return { ...state, editor };
     }
 

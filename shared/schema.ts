@@ -80,6 +80,8 @@ export const projectStateSchema = z.object({
   pdfFileId: z.string().optional().nullable(),
   overlayPdfFileId: z.string().optional().nullable(),
   activeLayerId: z.string().optional().nullable(),
+  /** Bumped on every save / op, so open plans fetch the project only when it changed. */
+  revision: z.number().optional(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -96,8 +98,17 @@ export const insertUserSchema = z.object({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
+export const USER_ROLES = ["admin", "PM", "TECH"] as const;
+
 export const updateUserRoleSchema = z.object({
-  role: z.enum(["admin", "PM", "TECH"]),
+  role: z.enum(USER_ROLES),
+});
+
+/** An account created by an admin (User Management), with its role. */
+export const createUserSchema = z.object({
+  username: z.string().trim().min(1, "Username is required").transform(val => val.toLowerCase()),
+  password: z.string().min(1, "Password is required"),
+  role: z.enum(USER_ROLES),
 });
 
 export const updateUserPasswordSchema = z.object({

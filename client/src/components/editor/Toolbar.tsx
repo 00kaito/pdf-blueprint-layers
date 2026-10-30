@@ -9,6 +9,7 @@ import {ToolSelector} from './Toolbar/ToolSelector';
 import {MainMenu} from './Toolbar/MainMenu';
 import {ContextBar} from './Toolbar/ContextBar';
 import {DraftingAids} from './Toolbar/DraftingAids';
+import {RequestsButton} from './TechRequests';
 import {useIsMobile} from '@/hooks/use-mobile';
 import {ProjectName} from './Toolbar/ProjectName';
 import {cn} from '@/lib/utils';
@@ -39,6 +40,7 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
     return (
       <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-between gap-3 shrink-0">
         <ProjectName className="min-w-0" />
+        <RequestsButton />
         <ProjectActions
           projectId={docState.projectId}
           pdfFile={docState.pdfFile}
@@ -62,14 +64,19 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
         <div className="flex items-center gap-3 shrink-0">
           {/* TECH has no context bar, which shows the name for everyone else. */}
           {isTech && <ProjectName className="max-w-[9rem] xl:max-w-[16rem]" />}
+          <RequestsButton />
           {!isTech && (
             <>
               <DraftingAids />
               <Separator orientation="vertical" className="h-6" />
             </>
           )}
-          <HistoryControls />
-          <Separator orientation="vertical" className="h-6" />
+          {!isTech && (
+            <>
+              <HistoryControls />
+              <Separator orientation="vertical" className="h-6" />
+            </>
+          )}
           <ZoomControls scale={uiState.scale} />
           {isSaving !== undefined && docState.projectId && !isTech && <SaveStatus isSaving={isSaving} />}
         </div>

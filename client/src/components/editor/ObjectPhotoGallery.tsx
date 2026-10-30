@@ -22,10 +22,14 @@ import { compressImageToFile } from '@/core/image-compress';
 import { useUploadFile } from '@/hooks/useProjects';
 import { Progress } from '@/components/ui/progress';
 import { useCurrentUser } from '@/hooks/useAuth';
+import { useProjectOps } from '@/hooks/useProjectOps';
+import { isManager } from '@shared/tech-ops';
 
 interface ObjectPhotoGalleryProps {
   objectId: string;
   photos: string[];
+  /** Who added each photo (user id, by URL): a technician removes only their own. */
+  photoBy?: Record<string, string>;
 }
 
 interface UploadStatus {
@@ -35,10 +39,12 @@ interface UploadStatus {
   error?: string;
 }
 
-export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId, photos }) => {
-  const { state, dispatch } = useDocument();
+export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId, photos, photoBy = {} }) => {
+  const { state } = useDocument();
   const { data: user } = useCurrentUser();
-  const isTech = user?.role === 'TECH';
+  const send = useProjectOps();
+  /** PMs remove any photo, technicians only the ones they added. */
+  const canRemove = (index: number) => isManager(user?.role) || (!!user && photoBy[photos[index]] === user.id);
   const uploadFile = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -75,11 +81,8 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
           [uploadId]: { ...prev[uploadId], progress: 80, status: 'done' }
         }));
 
-        // Saved with the project by autosave.
-        dispatch({
-          type: 'ADD_OBJECT_PHOTO',
-          payload: { id: objectId, photoDataUrl: result.url },
-        });
+        // Attached on the server right away (it records who added it).
+        if (!(await send([{ type: 'addPhoto', objectId, url: result.url }]))) throw new Error('Could not attach the photo');
 
         setUploadQueue(prev => ({
           ...prev,
@@ -120,10 +123,8 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
   const removePhoto = () => {
     if (photoToDelete === null) return;
 
-    dispatch({
-      type: 'REMOVE_OBJECT_PHOTO',
-      payload: { id: objectId, index: photoToDelete },
-    });
+    const url = photos[photoToDelete];
+    if (url) send([{ type: 'removePhoto', objectId, url }]);
     
     if (lightboxIndex === photoToDelete) {
       setLightboxIndex(null);
@@ -243,6 +244,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
               alt={`Photo ${index + 1}`}
               className="h-full w-full object-cover"
             />
+            {canRemove(index) && (
             <button
               className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-md opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
               onClick={(e) => {
@@ -252,6 +254,7 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
             >
               <Trash2 className="h-3 w-3" />
             </button>
+            )}
           </div>
         ))}
         {photos.length === 0 && !isUploading && (
@@ -308,12 +311,14 @@ export const ObjectPhotoGallery: React.FC<ObjectPhotoGalleryProps> = ({ objectId
                   <X className="h-8 w-8" />
                 </Button>
 
+                {canRemove(lightboxIndex) && (
                 <button
                   className="absolute top-4 right-16 p-2 bg-black/50 text-white rounded-full hover:bg-red-500/80 transition-colors"
                   onClick={() => confirmDelete(lightboxIndex)}
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
+                )}
               </>
             )}
           </div>

@@ -47,6 +47,9 @@ const ACTION_BAR_MARGIN_PX = 8;
 /** Pointer travel (px) before a press on the label counts as a drag rather than a click. */
 const LABEL_DRAG_THRESHOLD = 3;
 
+/** Colour of technicians' change requests on the plan. */
+export const REQUEST_COLOR = '#d97706';
+
 interface ObjectRendererProps {
   obj: EditorObject;
   layer: Layer;
@@ -54,6 +57,8 @@ interface ObjectRendererProps {
   tool: string;
   selectedObjectIds: string[];
   showStatusColors: boolean;
+  /** A technician's move not sent yet ("send as request?" is open): shown like a pending request. */
+  draftMove?: { x: number; y: number };
   /** Mount height next to the label ("TV 1 · 60″"). */
   showMountHeight?: boolean;
   disableMovement?: boolean;
@@ -123,6 +128,7 @@ export const ObjectRenderer = memo(({
   selectedObjectIds, 
   showStatusColors,
   showMountHeight = false,
+  draftMove,
   disableMovement,
   snapEnabled = true,
   getSnapTargets,
@@ -317,6 +323,20 @@ export const ObjectRenderer = memo(({
     return { x: gx, y: gy, arrowEnd: { x: boxW / 2 + gx * t, y: boxH / 2 + gy * t } };
   })();
 
+  /**
+   * Requested move (a technician's pending request, or their draft): a dashed amber box at the
+   * proposed spot, with an arrow from the object to it. The object stays put until the PM approves.
+   */
+  const requestedMove = (() => {
+    const c = draftMove ?? obj.techRequest?.changes;
+    if (!c || c.x === undefined || c.y === undefined) return null;
+    const gx = (c.x - obj.x) * scale, gy = (c.y - obj.y) * scale;
+    if (Math.hypot(gx, gy) < 1) return null;
+    const t = Math.min(boxW / 2 / Math.abs(gx || 1e-9), boxH / 2 / Math.abs(gy || 1e-9));
+    const start = { x: boxW / 2 + gx * Math.min(1, t), y: boxH / 2 + gy * Math.min(1, t) };
+    return { x: gx, y: gy, start, draft: !!draftMove };
+  })();
+
   /** Next 45° step (from whatever angle the object has now). */
   const rotateByStep = () => {
     const next = ((Math.round((obj.rotation || 0) / 45) + 1) * 45) % 360;
@@ -430,7 +450,12 @@ export const ObjectRenderer = memo(({
         setDragPos(null);
         dragStore.set(null);
         // No movement (a plain click) or movement not allowed: nothing to save.
-        if (!pos || isTech || disableMovement || (start && pos.x === start.x && pos.y === start.y)) return;
+        if (!pos || disableMovement || (start && pos.x === start.x && pos.y === start.y)) return;
+        // A technician's move is a request: the object goes back, "send as request?" shows the proposal.
+        if (isTech) {
+          uiDispatch({ type: 'SET_TECH_REQUEST_DRAFT', payload: { objectId: obj.id, changes: { x: pos.x, y: pos.y } } });
+          return;
+        }
         dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: pos.x, y: pos.y } } });
       }}
       onResizeStop={(e: any, dir, ref, delta, pos) => {
@@ -463,7 +488,7 @@ export const ObjectRenderer = memo(({
       // Not drag handles: react-draggable cancels their touchstart, which would swallow the button's click.
       cancel=".object-label, .object-action"
       bounds="parent"
-      disableDragging={lockGeometry || isTech || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
+      disableDragging={lockGeometry || (isTech && obj.type === 'path') || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
       // Touch: no resize handles — they took most of a small icon and turned moves into resizes.
       enableResizing={isTech || lockGeometry || touchLayout ? {} : (!layer.locked && isSelected)}
       // re-resizable sizes the corner handles inline (20 px) — keep that as the grab area and draw a
@@ -657,6 +682,33 @@ export const ObjectRenderer = memo(({
             stroke={planChange!.color} strokeWidth={1.5} strokeDasharray="4 3" markerEnd={`url(#reloc-${obj.id})`}
           />
         </svg>
+      )}
+
+      {requestedMove && (
+        <svg className="absolute left-0 top-0 overflow-visible pointer-events-none" width={boxW} height={boxH} data-testid="requested-move">
+          <defs>
+            <marker id={`req-${obj.id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M0 0L10 5L0 10z" fill={REQUEST_COLOR} />
+            </marker>
+          </defs>
+          <rect x={requestedMove.x} y={requestedMove.y} width={boxW} height={boxH} rx={3}
+            fill={REQUEST_COLOR} fillOpacity={0.12} stroke={REQUEST_COLOR} strokeWidth={1.5}
+            strokeDasharray={requestedMove.draft ? '2 2' : '5 3'} />
+          <line
+            x1={requestedMove.start.x} y1={requestedMove.start.y} x2={requestedMove.x + boxW / 2} y2={requestedMove.y + boxH / 2}
+            stroke={REQUEST_COLOR} strokeWidth={1.5} strokeDasharray="4 3" markerEnd={`url(#req-${obj.id})`}
+          />
+        </svg>
+      )}
+      {obj.techRequest && (
+        <span
+          className="absolute -top-2 -left-2 z-10 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white shadow ring-1 ring-white pointer-events-none"
+          style={{ backgroundColor: REQUEST_COLOR }}
+          title={`Change request by ${obj.techRequest.byName}`}
+          data-testid="request-badge"
+        >
+          R
+        </span>
       )}
 
       {!isFill && leader && (

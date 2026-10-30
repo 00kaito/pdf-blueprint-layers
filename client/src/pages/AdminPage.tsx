@@ -1,13 +1,83 @@
 import React, { useState } from 'react';
-import { useCurrentUser, useAdminUsers, useUpdateUserRole, useUpdateUserPassword } from '@/hooks/useAuth';
+import { useCurrentUser, useAdminUsers, useCreateUser, useUpdateUserRole, useUpdateUserPassword } from '@/hooks/useAuth';
 import { Redirect, Link } from 'wouter';
-import { Loader2, ChevronLeft, Shield, User as UserIcon, Key } from 'lucide-react';
+import { Loader2, ChevronLeft, Shield, User as UserIcon, Key, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+
+/** Error text from apiRequest ("400: {\"message\":\"...\"}") → just the message. */
+const errorMessage = (e: unknown) => {
+  const text = e instanceof Error ? e.message : String(e);
+  try { return JSON.parse(text.replace(/^\d+:\s*/, '')).message ?? text; } catch { return text; }
+};
+
+/** Admin adds an account with its role; the person signs in with this username and password. */
+const AddUserForm = () => {
+  const createUser = useCreateUser();
+  const { toast } = useToast();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("TECH");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password) return;
+    try {
+      await createUser.mutateAsync({ username: username.trim(), password, role });
+      toast({ title: "User added", description: `${username.trim().toLowerCase()} can now sign in as ${role}.` });
+      setUsername("");
+      setPassword("");
+    } catch (err) {
+      toast({ variant: "destructive", title: "Could not add user", description: errorMessage(err) });
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="bg-card rounded-lg border shadow-sm p-4 space-y-3" data-testid="add-user-form">
+      <h2 className="text-sm font-semibold flex items-center gap-2">
+        <UserPlus className="h-4 w-4 text-primary" />
+        Add user
+      </h2>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Input
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          autoComplete="off"
+          className="h-9 sm:flex-1"
+          data-testid="add-user-username"
+        />
+        <Input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
+          className="h-9 sm:flex-1"
+          data-testid="add-user-password"
+        />
+        <Select value={role} onValueChange={setRole}>
+          <SelectTrigger className="h-9 sm:w-[120px]" data-testid="add-user-role">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="PM">PM</SelectItem>
+            <SelectItem value="TECH">TECH</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button type="submit" className="h-9 gap-2" disabled={!username.trim() || !password || createUser.isPending}>
+          {createUser.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+          Add
+        </Button>
+      </div>
+    </form>
+  );
+};
 
 const AdminPage = () => {
   const { data: user, isLoading: userLoading } = useCurrentUser();
@@ -86,6 +156,8 @@ const AdminPage = () => {
             </div>
           )}
         </header>
+
+        <AddUserForm />
 
         <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
           {usersLoading ? (

@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { setRevision } from "@/lib/live-revision";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings, User, Edit2 } from 'lucide-react';
@@ -136,6 +137,7 @@ export const PDFUploader = () => {
         overlayPdfFileId: state.overlayPdfFileId 
       }});
       dispatch({ type: 'IMPORT_PROJECT', payload: { ...state, projectId } });
+      setRevision(projectId, state.revision ?? 0);
       
     } catch (e: any) {
       toast({ variant: "destructive", title: "Failed to open project", description: e.message });

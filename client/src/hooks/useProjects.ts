@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { Project, ProjectState } from "@shared/schema";
+import { setRevision } from "../lib/live-revision";
 
 export function useProjectList() {
   return useQuery<Project[]>({
@@ -24,7 +25,10 @@ export function useCreateProject() {
 export function useSaveProject() {
   return useMutation({
     mutationFn: async ({ id, state }: { id: string; state: ProjectState }) => {
-      await apiRequest("PUT", `/api/projects/${id}`, state);
+      const res = await apiRequest("PUT", `/api/projects/${id}`, state);
+      // Our own save is not news for the live sync.
+      const body = await res.json().catch(() => ({}));
+      setRevision(id, body.revision);
     },
   });
 }
