@@ -8,6 +8,7 @@ import multer from "multer";
 import { createHash } from "crypto";
 import { insertUserSchema, createUserSchema, projectStateSchema, updateUserRoleSchema, updateUserPasswordSchema, type Project } from "@shared/schema";
 import { applyOps, mergeManagerSave, OpError, type TechOp } from "@shared/tech-ops";
+import { BackupError, exportBackup, importBackup } from "./backup";
 
 const canAccess = (project: Project, userId: string) => project.ownerId === userId || project.sharedWith.includes(userId);
 
@@ -27,6 +28,9 @@ const withProjectLock = <T>(id: string, fn: () => Promise<T>): Promise<T> => {
 };
 
 const upload = multer({ storage: multer.memoryStorage() });
+/** Whole-server backups (all projects with their PDFs and photos) can be large. */
+const MAX_BACKUP_BYTES = 2 * 1024 * 1024 * 1024;
+const uploadBackup = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BACKUP_BYTES } });
 /** Icon library uploads: images only, small. */
 const MAX_ICON_BYTES = 5 * 1024 * 1024;
 const uploadIcon = multer({
@@ -361,6 +365,26 @@ export async function registerRoutes(
     const passwordHash = await bcrypt.hash(parsed.data.password, 10);
     await storage.updateUserPassword(req.params.id, passwordHash);
     res.sendStatus(200);
+  });
+
+  // Backup of the whole server: every project, its files and the icon library, in one ZIP.
+  app.get("/api/admin/backup", requireAuth, requireRole('admin'), async (req, res) => {
+    const stream = await exportBackup(req.user!);
+    const date = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="blueprint-backup-${date}.zip"`);
+    stream.on("error", (e) => { console.error("[Backup] Export failed", e); res.destroy(e as Error); });
+    stream.pipe(res);
+  });
+
+  app.post("/api/admin/backup", requireAuth, requireRole('admin'), uploadBackup.single("file"), async (req, res) => {
+    if (!req.file) return res.status(400).json({ message: "No backup file uploaded" });
+    try {
+      res.json(await importBackup(req.file.buffer, req.user!));
+    } catch (e) {
+      if (e instanceof BackupError) return res.status(400).json({ message: e.message });
+      throw e;
+    }
   });
 
   // An unknown API path is an error, not the app page (which the catch-all would answer with 200, so a

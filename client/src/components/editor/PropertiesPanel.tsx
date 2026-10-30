@@ -20,6 +20,7 @@ import {CameraCoverageEditor} from './CameraCoverageEditor';
 import {MountHeightEditor} from './MountHeightEditor';
 import {CoverageAreaCameras} from './CoverageAreaCameras';
 import {ResizeByPercent} from './ResizeByPercent';
+import {ReplaceObjectButton} from './ReplaceObjectButton';
 import {isCamera, isCoverageArea} from '@/core/camera-coverage';
 import {isCableDevice} from '@/core/cable-routing';
 import {STATUSES, statusUpdate} from '@/core/status';
@@ -310,6 +311,7 @@ export const PropertiesPanel = () => {
               )}
 
               {!isTech && <ResizeByPercent ids={selectedObjects.map(o => o.id)} />}
+              {!isTech && <ReplaceObjectButton objects={selectedObjects} />}
 
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between items-center">

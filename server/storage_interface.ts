@@ -13,7 +13,10 @@ export interface IStorage {
   
   getProject(id: string): Promise<Project | undefined>;
   listProjectsForUser(userId: string): Promise<Project[]>;
-  createProject(insertProject: { name: string; ownerId: string }): Promise<Project>;
+  /** Every project on the server (admin backup). */
+  listAllProjects(): Promise<Project[]>;
+  /** `id`: keep the id of a restored project (backup import). */
+  createProject(insertProject: { name: string; ownerId: string; id?: string }): Promise<Project>;
   updateProject(id: string, partial: Partial<Project>): Promise<Project>;
   deleteProject(id: string): Promise<void>;
   
@@ -23,6 +26,8 @@ export interface IStorage {
   saveFile(buffer: Buffer, originalName: string, mimeType: string, ownerId: string, projectId?: string): Promise<FileMetadata>;
   getFileMeta(fileId: string): Promise<FileMetadata | undefined>;
   getFileBuffer(fileId: string): Promise<Buffer | undefined>;
+  /** Files stored for a project (PDFs, overlays, photos, images). */
+  listProjectFiles(projectId: string): Promise<FileMetadata[]>;
   deleteFile(fileId: string): Promise<void>;
 
   /** Shared icon library, oldest first. */

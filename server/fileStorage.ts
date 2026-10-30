@@ -155,8 +155,25 @@ export class FileStorage implements IStorage {
     );
   }
 
-  async createProject(insertProject: { name: string; ownerId: string }): Promise<Project> {
-    const id = uuidv4();
+  async listAllProjects(): Promise<Project[]> {
+    return Array.from(this.projects.values());
+  }
+
+  async listProjectFiles(projectId: string): Promise<FileMetadata[]> {
+    const result: FileMetadata[] = [];
+    for (const name of fs.readdirSync(this.filesDir).filter(n => n.endsWith(".meta.json"))) {
+      try {
+        const meta: FileMetadata = JSON.parse(fs.readFileSync(path.join(this.filesDir, name), "utf-8"));
+        if (meta.projectId === projectId) result.push(meta);
+      } catch (e) {
+        console.error(`[FileStorage] Could not read ${name}`, e);
+      }
+    }
+    return result;
+  }
+
+  async createProject(insertProject: { name: string; ownerId: string; id?: string }): Promise<Project> {
+    const id = insertProject.id ?? uuidv4();
     const now = new Date().toISOString();
     const project: Project = {
       id,

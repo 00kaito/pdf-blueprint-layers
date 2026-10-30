@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { useCurrentUser, useLogout } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
 import { Link } from 'wouter';
+import { AdminBackup } from './AdminBackup';
 
 
 /** Original upload name from the file response (`Content-Disposition: inline; filename*=UTF-8''…`). */
@@ -358,6 +359,7 @@ export const PDFUploader = () => {
                 onChange={onFileChange}
                 className="hidden"
               />
+              {user?.role === 'admin' && <AdminBackup />}
             </div>
           </div>
         )}

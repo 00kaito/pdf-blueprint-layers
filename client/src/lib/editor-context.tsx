@@ -6,6 +6,7 @@ import {createInitialHistory, HistoryAction, HistoryEntry, withHistory} from './
 import {DEFAULT_LV_SETTINGS, deviceKey, normalizeLvSettings} from '@/core/lv-icons';
 import {assignDroppedCameras, isCamera, isCoverageArea} from '@/core/camera-coverage';
 import {withServerOwned} from './server-owned';
+import {replaceObjects} from '@/core/replace-object';
 
 /** Every paint-bucket fill lands in this layer. */
 export const FILL_LAYER_NAME = 'Colors';
@@ -436,6 +437,11 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
         }),
       };
     }
+    case 'REPLACE_OBJECTS':
+      return {
+        ...state,
+        objects: replaceObjects(state.objects, action.payload.ids, action.payload.target, state.lvSettings.cableDefaults),
+      };
     case 'NUDGE_OBJECTS': {
       const { ids, dx, dy } = action.payload;
       return {

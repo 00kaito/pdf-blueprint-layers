@@ -183,9 +183,28 @@ export class DatabaseStorage implements IStorage {
     return Array.from(projectMap.values());
   }
 
-  async createProject(insertProject: { name: string; ownerId: string }): Promise<Project> {
+  async listAllProjects(): Promise<Project[]> {
+    const rows = await db
+      .select({ project: projects, sharedUserId: projectShares.userId })
+      .from(projects)
+      .leftJoin(projectShares, eq(projects.id, projectShares.projectId));
+    const byId = new Map<string, Project>();
+    for (const { project, sharedUserId } of rows) {
+      const p = byId.get(project.id) ?? { ...project, sharedWith: [] };
+      if (sharedUserId) p.sharedWith.push(sharedUserId);
+      byId.set(project.id, p);
+    }
+    return Array.from(byId.values());
+  }
+
+  async listProjectFiles(projectId: string): Promise<FileMetadata[]> {
+    return db.select().from(files).where(eq(files.projectId, projectId));
+  }
+
+  async createProject(insertProject: { name: string; ownerId: string; id?: string }): Promise<Project> {
     return await db.transaction(async (tx) => {
       const [project] = await tx.insert(projects).values({
+        ...(insertProject.id ? { id: insertProject.id } : {}),
         name: insertProject.name,
         ownerId: insertProject.ownerId,
         state: {}
