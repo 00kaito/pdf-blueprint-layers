@@ -1,7 +1,7 @@
 import {useCallback} from 'react';
 import {useDocument} from '@/lib/editor-context';
 import {apiRequest} from '@/lib/queryClient';
-import {setRevision} from '@/lib/live-revision';
+import {getRevision, setRevision} from '@/lib/live-revision';
 import {useToast} from '@/hooks/use-toast';
 import {useCurrentUser} from '@/hooks/useAuth';
 import {applyChanges, isManager, type TechOp} from '@shared/tech-ops';
@@ -43,7 +43,9 @@ export const useProjectOps = () => {
     try {
       const res = await apiRequest('POST', `/api/projects/${projectId}/ops`, { ops });
       const data = await res.json() as { revision: number; objects: EditorObject[] };
-      setRevision(projectId, data.revision);
+      // Only when it follows the revision we have: otherwise others saved in between, and the live
+      // sync has to fetch (and merge) their plan first — a save must not claim to be based on it.
+      if (getRevision(projectId) === data.revision - 1) setRevision(projectId, data.revision);
       dispatch({ type: 'APPLY_REMOTE', payload: { mode: manager ? 'fieldwork' : 'patch', objects: data.objects } });
       for (const { o, changes } of approved) {
         const next = applyChanges(o, changes);

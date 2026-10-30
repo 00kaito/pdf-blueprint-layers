@@ -1,6 +1,7 @@
 import {DocumentState, EditorAction, EditorState} from './types';
 import {objectTypeName} from '@/core/lv-icons';
 import {withServerOwned} from './server-owned';
+import {mergeDoc} from './merge-state';
 
 /** Maximum number of undo steps kept in memory. */
 export const HISTORY_LIMIT = 100;
@@ -271,6 +272,13 @@ export const withHistory = (reducer: (s: EditorState, a: EditorAction) => Editor
 
     if (RESETTING_ACTIONS.has(action.type)) {
       return createInitialHistory(editor);
+    }
+
+    // Others' changes go into every undo step too: undo / redo then only take back this tab's edits.
+    if (action.type === 'APPLY_REMOTE_MERGE') {
+      const { base, remote } = action.payload;
+      const rebase = (entry: HistoryEntry): HistoryEntry => ({ ...entry, before: mergeDoc(base, entry.before, remote) });
+      return { ...state, editor, past: state.past.map(rebase), future: state.future.map(rebase) };
     }
 
     // UI-only changes (selection, zoom, tool…) and changes from the server are not recorded.

@@ -1,3 +1,4 @@
+import type {SyncedDoc} from './merge-state';
 import type {CropRect, PaperId, PaperOrientation} from '@/core/paper';
 import type {CameraType, PlacementResult} from '@/core/camera-placement';
 import type {ObjectComment, RequestChanges, RequestResult, TechRequest} from '@shared/tech-ops';
@@ -308,6 +309,11 @@ export type EditorAction =
    * (a PM's poll), 'sync' takes the whole plan (a technician's poll — they never save it).
    */
   | { type: 'APPLY_REMOTE'; payload: { mode: 'patch' | 'fieldwork' | 'sync'; objects: EditorObject[]; doc?: Partial<Pick<DocumentState, 'layers' | 'cableRoutes' | 'lvSettings' | 'measureCalibration' | 'exportSettings'>> } }
+  /**
+   * Others' saves merged into this plan (see merge-state): `doc` is the merged plan; `base` / `remote`
+   * rebase the undo history the same way, so undoing an own edit does not bring back others' old values.
+   */
+  | { type: 'APPLY_REMOTE_MERGE'; payload: { doc: SyncedDoc; base: SyncedDoc; remote: SyncedDoc } }
   | { type: 'SET_CABLE_SUMMARY_OPEN'; payload: boolean }
   | { type: 'ADD_CUSTOM_ICON'; payload: { id: string; url: string; name: string } }
   | { type: 'DELETE_CUSTOM_ICON'; payload: string }

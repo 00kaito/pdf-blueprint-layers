@@ -9,6 +9,7 @@ import { createHash } from "crypto";
 import { insertUserSchema, createUserSchema, projectStateSchema, updateUserRoleSchema, updateUserPasswordSchema, type Project } from "@shared/schema";
 import { applyOps, mergeManagerSave, OpError, type TechOp } from "@shared/tech-ops";
 import { BackupError, exportBackup, importBackup } from "./backup";
+import { openLiveStream, publishRevision } from "./live";
 
 const canAccess = (project: Project, userId: string) => project.ownerId === userId || project.sharedWith.includes(userId);
 
@@ -138,16 +139,26 @@ export async function registerRoutes(
       console.error(`[Project] Update failed for ${req.params.id}:`, parsed.error);
       return res.status(400).json(parsed.error);
     }
-    console.log(`[Project] Saving state for project ${req.params.id} by user ${req.user!.username}`);
-    const revision = await withProjectLock(req.params.id, async () => {
+    // `?base=<revision>`: the plan this save was made on. Someone saved since → 409 with the current
+    // plan; the client merges it with its edits and saves again (nobody's changes are overwritten).
+    const base = typeof req.query.base === "string" && req.query.base !== "" ? Number(req.query.base) : undefined;
+    const result = await withProjectLock(req.params.id, async () => {
       const stored = await storage.getProjectState(req.params.id);
+      const current = stored?.revision ?? 0;
+      if (base !== undefined && base !== current) return { conflict: true as const, revision: current, state: stored ?? {} };
       // Technicians' comments, photos, requests (and newer statuses) stay, even if this plan has not picked them up yet.
       const objects = mergeManagerSave(stored?.objects, parsed.data.objects);
-      const revision = (stored?.revision ?? 0) + 1;
+      const revision = current + 1;
       await storage.saveProjectState(req.params.id, { ...parsed.data, objects, revision });
-      return revision;
+      return { conflict: false as const, revision };
     });
-    res.json({ revision });
+    if (result.conflict) {
+      console.log(`[Project] Save of ${req.params.id} by ${req.user!.username} was based on an older revision (now ${result.revision}) — client merges`);
+      return res.status(409).json({ message: "The plan was changed by someone else", revision: result.revision, state: result.state });
+    }
+    console.log(`[Project] Saved state for project ${req.params.id} by user ${req.user!.username} (revision ${result.revision})`);
+    publishRevision(req.params.id, result.revision, req.user!.id);
+    res.json({ revision: result.revision });
   });
 
   // Field work (technicians) and comments / photos / request decisions (everyone): small checked changes.
@@ -178,11 +189,20 @@ export async function registerRoutes(
         return { revision: changedIds.length ? revision : (stored.revision ?? 0), objects: objects.filter(o => changed.has(o.id)) };
       });
       console.log(`[Ops] ${ops.map(o => o.type).join(', ')} on project ${project.id} by ${req.user!.username}`);
+      if (result.objects.length) publishRevision(project.id, result.revision, req.user!.id);
       res.json(result);
     } catch (e) {
       if (e instanceof OpError) return res.status(e.status).json({ message: e.message });
       throw e;
     }
+  });
+
+  // Open plans listen here: the new revision after every save / op (Server-Sent Events).
+  app.get("/api/projects/:id/events", requireAuth, async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    openLiveStream(req, res, project.id);
   });
 
   // Open plans poll this: the state only when the revision moved on.

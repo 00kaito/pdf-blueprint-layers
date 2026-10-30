@@ -3,12 +3,16 @@ import { useDocument, useUI } from "@/lib/editor-context";
 import { useSaveProject, useUploadFile } from "./useProjects";
 import { buildProjectState, isAbortError } from "@/lib/project-state";
 import { useCurrentUser } from "./useAuth";
+import { useRemoteMerge } from "./useRemoteMerge";
+import { getBase } from "@/lib/live-revision";
+import { sameForSave, toSyncedDoc } from "@/lib/merge-state";
 
 export function useAutoSave() {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const saveProject = useSaveProject();
   const uploadFile = useUploadFile();
+  const mergeRemote = useRemoteMerge();
   const [isUploadingOverlay, setIsUploadingOverlay] = useState(false);
   /** Overlay whose upload failed — not retried in a loop (a manual save uploads it again). */
   const failedOverlayRef = useRef<File | null>(null);
@@ -37,12 +41,23 @@ export function useAutoSave() {
 
     const stateString = JSON.stringify(payload);
     if (stateString === lastStateRef.current && retryCount === 0) return;
+    // Nothing of ours to save: the plan is what the server has (e.g. right after taking others' changes).
+    const base = getBase(docState.projectId);
+    if (base && sameForSave(toSyncedDoc(payload), base.doc)) {
+      lastStateRef.current = stateString;
+      return;
+    }
 
     setIsSaving(true);
     activeSaveRef.current = true;
 
     try {
-      await saveProject.mutateAsync({ id: docState.projectId!, state: payload as any });
+      const { conflict } = await saveProject.mutateAsync({ id: docState.projectId!, state: payload as any });
+      if (conflict) {
+        // Someone saved meanwhile: take their changes in; the merged plan is saved by the next run.
+        await mergeRemote(docState.projectId!, conflict.revision, conflict.state);
+        return;
+      }
       lastStateRef.current = stateString;
     } catch (e: any) {
       console.error("[AutoSave] Save failed", e);

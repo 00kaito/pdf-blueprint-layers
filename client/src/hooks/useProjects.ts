@@ -1,7 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { Project, ProjectState } from "@shared/schema";
-import { setRevision } from "../lib/live-revision";
+import { getRevision, setBase } from "../lib/live-revision";
+import { toSyncedDoc } from "../lib/merge-state";
+
+/** A save based on an older plan: the server's current plan, to merge with and save again. */
+export type SaveConflict = { revision: number; state: Record<string, any> };
 
 export function useProjectList() {
   return useQuery<Project[]>({
@@ -22,13 +26,26 @@ export function useCreateProject() {
   });
 }
 
+/**
+ * Saves the plan, saying which revision it was made on. When someone saved in between, nothing is
+ * written and the result is the conflict (their plan) — merge it (useRemoteMerge) and save again.
+ */
 export function useSaveProject() {
   return useMutation({
-    mutationFn: async ({ id, state }: { id: string; state: ProjectState }) => {
-      const res = await apiRequest("PUT", `/api/projects/${id}`, state);
-      // Our own save is not news for the live sync.
-      const body = await res.json().catch(() => ({}));
-      setRevision(id, body.revision);
+    mutationFn: async ({ id, state }: { id: string; state: ProjectState }): Promise<{ conflict?: SaveConflict }> => {
+      const base = getRevision(id);
+      try {
+        const res = await apiRequest("PUT", `/api/projects/${id}${base !== undefined ? `?base=${base}` : ""}`, state);
+        const body = await res.json().catch(() => ({}));
+        // Our own save is not news for the live sync; it is the new common plan.
+        if (typeof body.revision === "number") setBase(id, body.revision, toSyncedDoc(state));
+        return {};
+      } catch (e: any) {
+        const text = String(e?.message ?? "");
+        if (!text.startsWith("409:")) throw e;
+        const body = JSON.parse(text.slice(4).trim());
+        return { conflict: { revision: body.revision, state: body.state ?? {} } };
+      }
     },
   });
 }

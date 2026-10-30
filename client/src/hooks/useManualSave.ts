@@ -3,6 +3,7 @@ import { useSaveProject, useCreateProject, useUploadFile } from './useProjects';
 import { useToast } from './use-toast';
 import { useState, useRef } from 'react';
 import { buildProjectState, isAbortError } from '@/lib/project-state';
+import { useRemoteMerge } from './useRemoteMerge';
 
 export function useManualSave() {
   const { state: docState, dispatch } = useDocument();
@@ -12,6 +13,7 @@ export function useManualSave() {
   const saveProject = useSaveProject();
   const createProject = useCreateProject();
   const uploadFile = useUploadFile();
+  const mergeRemote = useRemoteMerge();
   
   const [isSaving, setIsSaving] = useState(false);
   const activeSaveRef = useRef<boolean>(false);
@@ -70,7 +72,15 @@ export function useManualSave() {
           overlayPdfFileId: currentOverlayPdfFileId,
         });
 
-        await saveProject.mutateAsync({ id: currentProjectId!, state: stateToSave as any });
+        const { conflict } = await saveProject.mutateAsync({ id: currentProjectId!, state: stateToSave as any });
+        if (conflict) {
+          // Someone saved meanwhile: their changes are merged in and autosave stores the result.
+          await mergeRemote(currentProjectId!, conflict.revision, conflict.state);
+          if (!silent) {
+            toast({ title: "Plan updated", description: "Someone else saved changes meanwhile — they were merged with yours and the plan is saved again in a moment." });
+          }
+          return;
+        }
         if (!silent) {
           toast({ 
             title: "Project saved", 

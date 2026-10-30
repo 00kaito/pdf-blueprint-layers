@@ -548,6 +548,20 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       return { ...state, techRequestDraft: action.payload };
     case 'APPLY_REMOTE':
       return applyRemote(state, action.payload);
+    case 'APPLY_REMOTE_MERGE': {
+      const { doc } = action.payload;
+      const ids = new Set(doc.objects.map(o => o.id));
+      const routeIds = new Set(doc.cableRoutes.map(r => r.id));
+      const layerIds = new Set(doc.layers.map(l => l.id));
+      return {
+        ...state, ...doc,
+        lvSettings: normalizeLvSettings(doc.lvSettings),
+        activeLayerId: state.activeLayerId && layerIds.has(state.activeLayerId) ? state.activeLayerId : doc.layers[0]?.id ?? null,
+        selectedObjectIds: state.selectedObjectIds.filter(id => ids.has(id)),
+        selectedRouteId: state.selectedRouteId && routeIds.has(state.selectedRouteId) ? state.selectedRouteId : null,
+        techRequestDraft: state.techRequestDraft && ids.has(state.techRequestDraft.objectId) ? state.techRequestDraft : null,
+      };
+    }
     case 'TOGGLE_MOUNT_HEIGHTS':
       return { ...state, showMountHeights: !state.showMountHeights };
     case 'SET_CABLE_SUMMARY_OPEN':
