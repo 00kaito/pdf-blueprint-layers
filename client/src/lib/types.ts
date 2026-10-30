@@ -260,6 +260,10 @@ export type EditorAction =
   | { type: 'UPDATE_OBJECTS'; payload: { ids: string[]; updates: Partial<EditorObject> } }
   /** Resizes each object by `factor` around its own centre (1.2 = +20%). */
   | { type: 'SCALE_OBJECTS'; payload: { ids: string[]; factor: number } }
+  /** Moves objects by (dx, dy) (arrow keys). */
+  | { type: 'NUDGE_OBJECTS'; payload: { ids: string[]; dx: number; dy: number } }
+  /** Turns each object by `steps` × 45° around its centre (Ctrl + arrow); negative = anticlockwise. */
+  | { type: 'ROTATE_OBJECTS'; payload: { ids: string[]; steps: number } }
   /** Clone an object next to itself (tablet double tap); the clone gets `newId` and is selected. */
   | { type: 'DUPLICATE_OBJECT'; payload: { id: string; newId: string } }
   /** A different label per object (bulk rename with a numbering pattern) — one undo step. */

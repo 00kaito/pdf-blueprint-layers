@@ -436,6 +436,25 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
         }),
       };
     }
+    case 'NUDGE_OBJECTS': {
+      const { ids, dx, dy } = action.payload;
+      return {
+        ...state,
+        // Fills are traced from the blueprint, so they stay pinned to it.
+        objects: state.objects.map((o) => (ids.includes(o.id) && !o.isFill ? { ...o, x: o.x + dx, y: o.y + dy } : o)),
+      };
+    }
+    case 'ROTATE_OBJECTS': {
+      const { ids, steps } = action.payload;
+      return {
+        ...state,
+        objects: state.objects.map((o) => {
+          if (!ids.includes(o.id) || o.isFill) return o;
+          const rotation = (((Math.round((o.rotation || 0) / 45) + steps) * 45) % 360 + 360) % 360;
+          return { ...o, rotation };
+        }),
+      };
+    }
     case 'RENAME_OBJECTS':
       return {
         ...state,
@@ -801,7 +820,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
 };
 
 /** Actions that place or move objects: a camera dropped into a coverage area gets assigned to it. */
-const PLACING_ACTIONS = new Set<EditorAction['type']>(['ADD_OBJECT', 'DUPLICATE_OBJECT', 'PASTE_OBJECT', 'UPDATE_OBJECT', 'UPDATE_OBJECTS']);
+const PLACING_ACTIONS = new Set<EditorAction['type']>(['ADD_OBJECT', 'DUPLICATE_OBJECT', 'PASTE_OBJECT', 'UPDATE_OBJECT', 'UPDATE_OBJECTS', 'NUDGE_OBJECTS']);
 
 const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
   const next = baseReducer(state, action);

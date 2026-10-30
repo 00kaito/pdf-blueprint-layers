@@ -119,6 +119,8 @@ const describe = (action: EditorAction, prev: EditorState): string => {
     }
     case 'UPDATE_OBJECTS': return `Edit ${plural(action.payload.ids.length, 'object')} (${Object.keys(action.payload.updates).join(', ')})`;
     case 'SCALE_OBJECTS': return `Resize ${plural(action.payload.ids.length, 'object')} to ${Math.round(action.payload.factor * 100)}%`;
+    case 'NUDGE_OBJECTS': return action.payload.ids.length === 1 ? `Move ${objName(action.payload.ids[0])}` : `Move ${plural(action.payload.ids.length, 'object')}`;
+    case 'ROTATE_OBJECTS': return action.payload.ids.length === 1 ? `Rotate ${objName(action.payload.ids[0])}` : `Rotate ${plural(action.payload.ids.length, 'object')}`;
     case 'RENAME_OBJECTS': return `Number ${plural(Object.keys(action.payload).length, 'label')}`;
     case 'DELETE_OBJECT': return `Delete ${objName(action.payload)}`;
     case 'DELETE_OBJECTS': return action.payload.length === 1 ? `Delete ${objName(action.payload[0])}` : `Delete ${plural(action.payload.length, 'object')}`;
@@ -170,6 +172,9 @@ const coalesceKey = (action: EditorAction): string | null => {
     }
     case 'UPDATE_OBJECTS':
       return `objs:${[...action.payload.ids].sort().join(',')}:${Object.keys(action.payload.updates).sort().join(',')}`;
+    // Holding an arrow key (or tapping it a few times) is one move.
+    case 'NUDGE_OBJECTS':
+      return `nudge:${[...action.payload.ids].sort().join(',')}`;
     case 'UPDATE_LAYER':
       return `layer:${action.payload.id}:${Object.keys(action.payload.updates).sort().join(',')}`;
     case 'SET_OBJECT_CABLES':

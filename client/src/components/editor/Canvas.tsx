@@ -61,6 +61,17 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+/** Arrow keys: move direction, and the turn with Ctrl (right / up = clockwise). */
+const ARROW_KEYS: Record<string, { dx: number; dy: number; turn: number }> = {
+  ArrowLeft: { dx: -1, dy: 0, turn: -1 },
+  ArrowRight: { dx: 1, dy: 0, turn: 1 },
+  ArrowUp: { dx: 0, dy: -1, turn: 1 },
+  ArrowDown: { dx: 0, dy: 1, turn: -1 },
+};
+/** Arrow-key move in screen pixels (the same on screen at any zoom); with Shift. */
+const NUDGE_PX = 2;
+const NUDGE_BIG_PX = 10;
+
 export const Canvas = () => {
   const { data: user } = useCurrentUser();
   const isMobile = useIsMobile();
@@ -87,6 +98,16 @@ export const Canvas = () => {
   const { lastPointerTypeRef } = useStylusGuidance(scrollRef as React.RefObject<HTMLDivElement>);
   const shortcutStateRef = useRef({ tool: uiState.tool, hasCalibration: !!docState.measureCalibration });
   shortcutStateRef.current = { tool: uiState.tool, hasCalibration: !!docState.measureCalibration };
+  /** Selected objects the keyboard may move / resize / turn (not on a locked layer), and the zoom. */
+  const keyEditRef = useRef({ ids: [] as string[], scale: 1 });
+  {
+    const locked = new Set(docState.layers.filter(l => l.locked).map(l => l.id));
+    const selected = new Set(uiState.selectedObjectIds);
+    keyEditRef.current = {
+      ids: docState.objects.filter(o => selected.has(o.id) && !locked.has(o.layerId)).map(o => o.id),
+      scale: uiState.scale,
+    };
+  }
 
   // Stable for the memoised ObjectRenderers; reads the current objects only when a drag needs them.
   const snapSourceRef = useRef({ objects: docState.objects, layers: docState.layers });
@@ -241,6 +262,32 @@ export const Canvas = () => {
       }
 
       if (isTech) return;
+
+      // Selected objects, keyboard editing (the label field is not focused, so these do not type):
+      // + / − resize by 10%, arrows move a few screen pixels (Shift: more), Ctrl + arrow turns 45°.
+      // Not while a menu, list, slider or dialog has the keys (they use the arrows themselves).
+      const { ids, scale } = keyEditRef.current;
+      const widgetKeys = e.defaultPrevented
+        || !!(e.target as HTMLElement).closest?.('[role="menu"], [role="listbox"], [role="slider"], [role="dialog"], [role="tablist"], [role="radiogroup"]');
+      if (ids.length > 0 && !widgetKeys && !e.altKey && shortcutStateRef.current.tool === 'select') {
+        const ctrl = e.ctrlKey || e.metaKey;
+        if (!ctrl && (e.key === '+' || e.key === '=' || e.key === '-')) {
+          e.preventDefault();
+          dispatch({ type: 'SCALE_OBJECTS', payload: { ids, factor: e.key === '-' ? 0.9 : 1.1 } });
+          return;
+        }
+        const arrow = ARROW_KEYS[e.key];
+        if (arrow) {
+          e.preventDefault();
+          if (ctrl) {
+            if (!e.repeat) dispatch({ type: 'ROTATE_OBJECTS', payload: { ids, steps: arrow.turn } });
+          } else {
+            const step = (e.shiftKey ? NUDGE_BIG_PX : NUDGE_PX) / scale;
+            dispatch({ type: 'NUDGE_OBJECTS', payload: { ids, dx: arrow.dx * step, dy: arrow.dy * step } });
+          }
+          return;
+        }
+      }
 
       // Typing with objects selected edits their label: the key moves into the label field (text
       // selected, so it is replaced) and the browser types the character there. Takes over the
