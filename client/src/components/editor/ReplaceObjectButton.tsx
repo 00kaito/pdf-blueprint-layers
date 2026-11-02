@@ -6,9 +6,9 @@ import {Button} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {Label} from '@/components/ui/label';
 import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
-import {LvIcon} from './LvIcon';
+import {LvIconTile} from './LvIcon';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
-import {BLINDSPOT_ICON, LV_ICON_TYPES, LV_ICONS, objectTypeName, RACK_ICON} from '@/core/lv-icons';
+import {BLINDSPOT_ICON, LV_ICON_TYPES, objectTypeName, RACK_ICON} from '@/core/lv-icons';
 import {canReplace, type ReplaceTarget} from '@/core/replace-object';
 import {isCamera} from '@/core/camera-coverage';
 
@@ -53,7 +53,7 @@ export const ReplaceObjectButton = ({ objects }: { objects: EditorObject[] }) =>
           Replace with…
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72" side="left" align="start">
+      <PopoverContent className="w-72 max-h-[var(--radix-popover-content-available-height)] overflow-y-auto" side="left" align="start">
         <div className="space-y-3">
           <div>
             <h4 className="text-sm font-medium">Replace {targets.length === 1 ? kindName : `${targets.length} objects`}</h4>
@@ -74,16 +74,13 @@ export const ReplaceObjectButton = ({ objects }: { objects: EditorObject[] }) =>
 
           <div>
             <h5 className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1.5">Low Voltage</h5>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {TARGET_ICONS.map(icon => (
-                <Button
-                  key={icon} variant="outline" size="icon" className="h-9 w-full"
-                  title={LV_ICONS[icon].label} aria-label={LV_ICONS[icon].label}
+                <LvIconTile
+                  key={icon} icon={icon}
                   disabled={targets.every(o => o.type === 'icon' && o.content === icon)}
                   onClick={() => replace({ type: 'icon', content: icon })}
-                >
-                  <LvIcon type={icon} className="w-4 h-4" />
-                </Button>
+                />
               ))}
             </div>
           </div>

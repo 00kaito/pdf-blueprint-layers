@@ -33,8 +33,8 @@ import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
 import {FILL_LAYER_NAME} from '@/lib/editor-context';
 import {useToast} from '@/hooks/use-toast';
-import {LV_ICON_TYPES, LV_ICONS} from '@/core/lv-icons';
-import {LvIcon} from '@/components/editor/LvIcon';
+import {LV_ICON_TYPES} from '@/core/lv-icons';
+import {LvIconTile} from '@/components/editor/LvIcon';
 import {DEFAULT_ICON_SIZE} from '@/core/constants';
 import {CablingTools} from './CablingTools';
 import {CctvTools} from './CctvTools';
@@ -327,7 +327,7 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                   <Square className="w-4 h-4" />
                 </Toggle>
               </PopoverTrigger>
-              <PopoverContent className="w-64" side="bottom" align="center">
+              <PopoverContent className="w-64 max-h-[var(--radix-popover-content-available-height)] overflow-y-auto" side="bottom" align="center">
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-sm font-medium mb-2 text-muted-foreground">Standard Icons</h4>
@@ -350,12 +350,10 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                   </div>
                   <div>
                     <h4 className="text-sm font-medium mb-2 text-muted-foreground">Low Voltage</h4>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       {LV_ICON_TYPES.map(icon => (
                         <div key={icon} draggable onDragStart={(e) => handleDragStart(e, 'icon', icon)} className="cursor-grab">
-                          <Button variant="outline" size="icon" onClick={() => handleAddIcon(icon)} title={LV_ICONS[icon].label} aria-label={LV_ICONS[icon].label}>
-                            <LvIcon type={icon} className="w-4 h-4" />
-                          </Button>
+                          <LvIconTile icon={icon} onClick={() => handleAddIcon(icon)} />
                         </div>
                       ))}
                     </div>

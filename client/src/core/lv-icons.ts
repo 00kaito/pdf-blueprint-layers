@@ -32,6 +32,10 @@ export const LV_ICONS: Record<string, { label: string; d: string }> = {
     label: 'TV',
     d: 'M2 4h20v13H2z M8 21h8 M12 17v4',
   },
+  'av-bar': {
+    label: 'AV Bar',
+    d: 'M1 8h22v8H1z M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M4 11v2 M7 11v2 M17 11v2 M20 11v2',
+  },
   'access-control': {
     label: 'Face Panel / Access Control',
     d: 'M5 2h14v20H5z M9.5 9a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0 M8 17a4 4 0 0 1 8 0 M10 19.5h4',
@@ -43,6 +47,10 @@ export const LV_ICONS: Record<string, { label: string; d: string }> = {
   'ceiling-speaker': {
     label: 'Ceiling Speaker',
     d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M7 12a5 5 0 1 0 10 0a5 5 0 1 0 -10 0 M11 12h2',
+  },
+  microphone: {
+    label: 'Microphone',
+    d: 'M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1 -6 0z M5 11a7 7 0 0 0 14 0 M12 18v4 M8 22h8',
   },
   wap: {
     label: 'Wireless Access Point',
@@ -83,6 +91,10 @@ export const DEFAULT_MOUNT_HEIGHT_IN: Record<string, number> = {
   data: 18,
   'floor-box': 0,
   tv: 60,
+  // Just above a 65" TV at its default height.
+  'av-bar': 78,
+  // On the meeting table.
+  microphone: 30,
   'access-control': 48,
   'control-panel': 48,
   scheduler: 48,
@@ -171,6 +183,8 @@ export const DEFAULT_LV_SETTINGS: LvSettings = {
   // Starting point per device type; editing a device's cables replaces its type's default.
   cableDefaults: {
     tv: [{ type: 'CAT6', count: 3 }],
+    'av-bar': [{ type: 'CAT6', count: 1 }],
+    microphone: [{ type: 'CAT6', count: 1 }],
     speaker: [{ type: 'SPEAKER', count: 1 }],
     'ceiling-speaker': [{ type: 'SPEAKER', count: 1 }],
     cctv: [{ type: 'CAT6', count: 2 }],
