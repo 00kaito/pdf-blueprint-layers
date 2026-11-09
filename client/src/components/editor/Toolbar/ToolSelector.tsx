@@ -30,7 +30,7 @@ import {Toggle} from '@/components/ui/toggle';
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip';
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
 import {Label} from "@/components/ui/label";
-import {PathMeasureButton, usePathMeasureToggle} from './PathMeasureButton';
+import {PATH_MEASURE_HELP, PathMeasureButton, usePathMeasureToggle} from './PathMeasureButton';
 import {Slider} from "@/components/ui/slider";
 import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
@@ -298,7 +298,7 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
                 </TooltipTrigger>
                 <TooltipContent>
                   {measureKind === 'path'
-                    ? 'Path measure — click point after point; each segment and the total (Backspace = undo point, Esc = remove)'
+                    ? PATH_MEASURE_HELP
                     : <>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'} <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">M</kbd></>}
                 </TooltipContent>
               </Tooltip>

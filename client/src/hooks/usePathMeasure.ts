@@ -32,10 +32,11 @@ export const usePathMeasure = (containerRef: React.RefObject<HTMLDivElement>) =>
     return { x: (clientX - rect.left) / latest.current.scale, y: (clientY - rect.top) / latest.current.scale };
   }, [containerRef]);
 
-  const aim = useCallback((p: Point, free: boolean): Point => {
+  /** Where the next point goes: straight (multiples of 45°) in the straight mode, Shift flips it. */
+  const place = useCallback((p: Point, shiftKey: boolean): Point => {
     const { points, straight } = latest.current;
     const prev = points[points.length - 1];
-    return prev && !free && straight ? snapToAngle45(prev, p) : p;
+    return prev && straight !== shiftKey ? snapToAngle45(prev, p) : p;
   }, []);
 
   const setPoints = useCallback((points: Point[]) => dispatch({ type: 'SET_PATH_MEASURE', payload: points }), [dispatch]);
@@ -51,11 +52,8 @@ export const usePathMeasure = (containerRef: React.RefObject<HTMLDivElement>) =>
     if (Date.now() < ignoreClickUntilRef.current) return;
     const p = toCanvasPoint(e.clientX, e.clientY);
     if (!p) return;
-    // Shift: straight segments (or free ones, when the straight mode is on).
-    const free = e.shiftKey ? latest.current.straight : !latest.current.straight;
-    const q = free ? p : (latest.current.points.length ? snapToAngle45(latest.current.points[latest.current.points.length - 1], p) : p);
-    setPoints([...latest.current.points, q]);
-  }, [toCanvasPoint, setPoints]);
+    setPoints([...latest.current.points, place(p, e.shiftKey)]);
+  }, [toCanvasPoint, place, setPoints]);
 
   /** Press on the plan: starts the "hold to remove" timer. */
   const onPointerDown = useCallback((e: React.PointerEvent) => {
@@ -80,8 +78,7 @@ export const usePathMeasure = (containerRef: React.RefObject<HTMLDivElement>) =>
       // Preview of the next segment follows the mouse (a finger has no hover).
       if (e.pointerType === 'mouse' && latest.current.points.length) {
         const p = toCanvasPoint(e.clientX, e.clientY);
-        const free = e.shiftKey ? latest.current.straight : !latest.current.straight;
-        setHover(p ? (free ? p : aim(p, false)) : null);
+        setHover(p ? place(p, e.shiftKey) : null);
       }
     };
     const onEnd = () => cancelHold();
@@ -117,7 +114,7 @@ export const usePathMeasure = (containerRef: React.RefObject<HTMLDivElement>) =>
       window.removeEventListener('contextmenu', onContextMenu);
       window.removeEventListener('blur', onEnd);
     };
-  }, [active, toCanvasPoint, aim, clear, setPoints, containerRef]);
+  }, [active, toCanvasPoint, place, clear, setPoints, containerRef]);
 
   // Scrolling (a finger pan, the wheel) is not a hold.
   useEffect(() => {

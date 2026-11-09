@@ -1,3 +1,5 @@
+> **Historical note — not maintained.** This file records an earlier stage (design notes, plans or reports) and may not match the code. Current documentation: `README.md` (running, architecture, API, features) and `DEVELOPER.md` (code map, state and sync model, how to extend).
+
 # Developer Guide: Project Structure & File Mapping
 
 This guide provides a detailed overview of the core files in the `pdf-blueprint-layers` repository, their responsibilities, and how they communicate.

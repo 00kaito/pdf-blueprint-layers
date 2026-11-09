@@ -60,17 +60,17 @@ export const useFieldActions = () => {
   const sendTechChanges = useCallback(async (objectId: string, changes: RequestChanges, note?: string): Promise<boolean> => {
     const split = splitChanges(changes, permissions);
     if (hasChanges(split.off)) toast({ variant: 'destructive', title: 'Not allowed', description: 'This project does not let technicians change that.' });
+    const direct = hasChanges(split.direct);
     const ops: TechOp[] = [];
-    const before = objects.find(x => x.id === objectId);
-    const put = (o: typeof before) => o && dispatch({ type: 'UPDATE_OBJECT', payload: { id: objectId, updates: { x: o.x, y: o.y, name: o.name, metadata: o.metadata, cables: o.cables } } });
-    if (hasChanges(split.direct)) {
-      if (before) put(applyChanges(before, split.direct) as typeof before);
-      ops.push({ type: 'edit', objectId, changes: split.direct });
-    }
+    if (direct) ops.push({ type: 'edit', objectId, changes: split.direct });
     if (hasChanges(split.request)) ops.push({ type: 'request', objectId, changes: split.request, note });
     if (!ops.length) return false;
+    // The fields a technician can change (position, label, IDF, cables), as on `o`.
+    const before = objects.find(x => x.id === objectId);
+    const show = (o: Record<string, any>) => dispatch({ type: 'UPDATE_OBJECT', payload: { id: objectId, updates: { x: o.x, y: o.y, name: o.name, metadata: o.metadata, cables: o.cables } } });
+    if (direct && before) show(applyChanges(before, split.direct));
     const ok = await send(ops);
-    if (!ok && hasChanges(split.direct)) put(before);
+    if (!ok && direct && before) show(before);
     return ok;
   }, [permissions, objects, send, toast, dispatch]);
 

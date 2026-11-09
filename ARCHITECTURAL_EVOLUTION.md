@@ -1,3 +1,5 @@
+> **Historical note — not maintained.** This file records an earlier stage (design notes, plans or reports) and may not match the code. Current documentation: `README.md` (running, architecture, API, features) and `DEVELOPER.md` (code map, state and sync model, how to extend).
+
 # Analiza Architektoniczna: Ewolucja z MVP do Systemu Enterprise
 
 Niniejszy dokument analizuje obecną architekturę aplikacji (wersja MVP) i wskazuje ścieżkę rozwoju w stronę profesjonalnego rozwiązania typu SaaS dla branży niskoprądowej.

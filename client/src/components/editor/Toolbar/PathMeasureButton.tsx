@@ -5,6 +5,9 @@ import {Toggle} from '@/components/ui/toggle';
 import {useToast} from '@/hooks/use-toast';
 import {cn} from '@/lib/utils';
 
+/** What the path measure does, for its button and menu tooltips. */
+export const PATH_MEASURE_HELP = 'Path measure — click point after point; each segment and the total length (Backspace = undo point, Esc = remove)';
+
 /** Turns the path measure on / off, with a tip (gestures on touch, or that there is no scale yet). */
 export const usePathMeasureToggle = (touch = false) => {
   const { dispatch } = useUI();
@@ -36,7 +39,7 @@ export const PathMeasureButton = ({ touch = false, className }: { touch?: boolea
       onPressedChange={toggle}
       size="sm"
       className={cn(touch ? "h-10 w-10 shrink-0" : "h-8 w-8", active && "bg-violet-100 text-violet-700 data-[state=on]:bg-violet-100 data-[state=on]:text-violet-700", className)}
-      title="Path measure: click point after point — each segment and the total length (Backspace = undo point, Esc = remove)"
+      title={PATH_MEASURE_HELP}
       aria-label="Path measure"
       data-testid="tool-path-measure"
     >

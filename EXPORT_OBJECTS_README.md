@@ -1,3 +1,5 @@
+> **Historical note — not maintained.** This file records an earlier stage (design notes, plans or reports) and may not match the code. Current documentation: `README.md` (running, architecture, API, features) and `DEVELOPER.md` (code map, state and sync model, how to extend).
+
 # PDF Object Export Implementation Details
 
 This document explains the technical implementation of how objects from the React Canvas editor are rendered onto a PDF document during the export process. The core of this logic resides in `client/src/hooks/useExport.ts` and relies on mathematical helpers from `client/src/core/pdf-math.ts`.

@@ -1,3 +1,5 @@
+> **Historical note — not maintained.** This file records an earlier stage (design notes, plans or reports) and may not match the code. Current documentation: `README.md` (running, architecture, API, features) and `DEVELOPER.md` (code map, state and sync model, how to extend).
+
 # Dokumentacja: Lokalizacja Obiektów i Eksport Dokumentów PDF
 
 Niniejsza instrukcja wyjaśnia zasady pozycjonowania obiektów (warstw, adnotacji, kształtów) wewnątrz dokumentu PDF oraz sposób, w jaki system zarządza ich renderowaniem i eksportem.

@@ -133,7 +133,7 @@ export const TechEditDialog = () => {
   const uiDispatch = useUIDispatch();
   const { state: docState } = useDocument();
   const { data: user } = useCurrentUser();
-  const { techMode, sendTechChanges } = useFieldActions();
+  const { techMode, sendTechChanges, permissions } = useFieldActions();
   const { toast } = useToast();
   const describe = useDescribe();
   const obj = uiState.techEditId ? docState.objects.find(o => o.id === uiState.techEditId) : undefined;
@@ -160,7 +160,7 @@ export const TechEditDialog = () => {
   const showLabel = usable(labelMode);
   const showCables = isCableDevice(obj) && usable(cablesMode);
   const asked: RequestChanges = { ...(showLabel ? { name: name.trim() } : {}), ...(showCables ? { cables } : {}) };
-  const split = splitChanges(asked, docState.lvSettings.techPermissions);
+  const split = splitChanges(asked, permissions);
   const now = effectiveChanges(obj, split.direct);
   const requested = effectiveChanges(obj, { ...(pending ?? {}), ...split.request });
   const newRequest = effectiveChanges(obj, split.request);

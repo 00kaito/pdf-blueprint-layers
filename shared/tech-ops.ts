@@ -35,7 +35,7 @@ const CABLE_NAMES: Record<string, string> = { CAT6: 'Cat6', SPEAKER: 'Speaker', 
 export type RequestChanges = { x?: number; y?: number; name?: string; rackId?: string | null; cables?: RequestCable[] };
 
 /** Cables from a request, checked: known types, whole counts 1–999, at most 20 rows. Throws on anything else. */
-export const cleanCables = (cables: unknown): RequestCable[] => {
+const cleanCables = (cables: unknown): RequestCable[] => {
   if (!Array.isArray(cables) || cables.length > 20) throw new OpError('Invalid cables');
   return cables.map(c => {
     const type = (c as any)?.type, count = (c as any)?.count;
@@ -251,14 +251,15 @@ export const applyOps = (
         if (manager) throw new OpError('PMs change the plan directly');
         const asked = cleanChanges(op.changes);
         const split = splitChanges(asked, permissions);
-        if (hasChanges(split.off) || hasChanges(split.request)) throw new OpError('This project needs a change request (or does not allow it) for that', 403);
+        if (hasChanges(split.off)) throw new OpError('This project does not let technicians change that', 403);
+        if (hasChanges(split.request)) throw new OpError('This project needs a change request for that', 403);
         const changes = effectiveChanges(o, asked);
         if (!hasChanges(changes)) break;
         next = { ...applyChanges(o, changes), editedBy: user.username, editedAt: now };
         // What was just changed drops out of the technician's own pending request.
         const req = o.techRequest as TechRequest | undefined;
         if (req && req.byId === user.id) {
-          const rest = effectiveChanges(next, withoutKeys(req.changes, Object.keys(changes).concat(changes.x !== undefined ? ['x', 'y'] : [])));
+          const rest = effectiveChanges(next, withoutKeys(req.changes, Object.keys(changes)));
           if (hasChanges(rest)) next.techRequest = { ...req, changes: rest };
           else delete next.techRequest;
         }

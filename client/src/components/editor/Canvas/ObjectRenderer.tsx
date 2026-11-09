@@ -1,5 +1,3 @@
-import {DEFAULT_TECH_PERMISSIONS, type TechPermissions} from '@shared/tech-ops';
-import {isCableDevice} from '@/core/cable-routing';
 import React, {useEffect, useLayoutEffect, useRef, useState, memo} from 'react';
 import {Rnd} from 'react-rnd';
 import {ArrowRight, Camera, Circle, CopyPlus, Heart, Hexagon, RotateCw, Settings2, Square, Star, Trash2, Triangle} from 'lucide-react';
@@ -19,6 +17,8 @@ import {BlindspotShape} from '@/components/editor/BlindspotShape';
 import {BLINDSPOT_ICON} from '@/core/camera-coverage';
 import {PLAN_CHANGE_BY_ID} from '@/core/plan-change';
 import {v4 as uuidv4} from 'uuid';
+import {DEFAULT_TECH_PERMISSIONS, type TechPermissions} from '@shared/tech-ops';
+import {isCableDevice} from '@/core/cable-routing';
 
 /** Label placement around the object box; the label never moves the object itself. */
 const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {

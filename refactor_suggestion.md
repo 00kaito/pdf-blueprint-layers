@@ -1,3 +1,5 @@
+> **Historical note — not maintained.** This file records an earlier stage (design notes, plans or reports) and may not match the code. Current documentation: `README.md` (running, architecture, API, features) and `DEVELOPER.md` (code map, state and sync model, how to extend).
+
 # Refactoring Plan — PDF Blueprint Layers Editor
 
 Based on full analysis of: `Toolbar.tsx` (1067 lines), `Canvas.tsx` (550 lines),

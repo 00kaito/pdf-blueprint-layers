@@ -1,5 +1,3 @@
-import {usePathMeasure} from '@/hooks/usePathMeasure';
-import {PathMeasureLayer} from './Canvas/PathMeasureLayer';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {v4 as uuidv4} from 'uuid';
 import {useDocument, useUI} from '@/lib/editor-context';
@@ -23,6 +21,7 @@ import type {Box} from '@/core/snapping';
 import {ObjectRenderer} from './Canvas/ObjectRenderer';
 import {DrawingLayer} from './Canvas/DrawingLayer';
 import {MeasureLayer} from './Canvas/MeasureLayer';
+import {PathMeasureLayer} from './Canvas/PathMeasureLayer';
 import {GuidesLayer} from './Canvas/GuidesLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
 import {RouteLayer} from './Canvas/RouteLayer';
@@ -32,6 +31,7 @@ import {AutoPlaceCamerasDialog} from './AutoPlaceCamerasDialog';
 import {CropLayer} from './Canvas/CropLayer';
 import {useRouteDrawing} from '@/hooks/useRouteDrawing';
 import {useWallDrawing} from '@/hooks/useWallDrawing';
+import {usePathMeasure} from '@/hooks/usePathMeasure';
 import {WallPreview} from './Canvas/WallPreview';
 import {
   computeCableRuns, getRacks, hasCables, isCableDevice, rackColorMap, rackLabel, runFeet, SHARED_ROUTE_COLOR,
@@ -324,12 +324,13 @@ export const Canvas = () => {
         }
       }
 
-      // The path measure takes Backspace (its last point back).
-      if (state.tool === 'path-measure') {
-        // nothing: handled by usePathMeasure
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedObjectIds.length > 0) {
+      // Delete / Backspace remove the selection — except in the path measure, where Backspace takes
+      // back its last point (usePathMeasure). The tool comes from the ref: this handler is not
+      // re-created when the tool changes.
+      const deleteKey = (e.key === 'Delete' || e.key === 'Backspace') && shortcutStateRef.current.tool !== 'path-measure';
+      if (deleteKey && state.selectedObjectIds.length > 0) {
         dispatch({ type: 'DELETE_OBJECTS', payload: state.selectedObjectIds });
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedRouteId) {
+      } else if (deleteKey && state.selectedRouteId) {
         dispatch({ type: 'DELETE_CABLE_ROUTE', payload: state.selectedRouteId });
       }
 
