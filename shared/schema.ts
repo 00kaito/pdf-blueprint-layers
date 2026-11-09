@@ -80,6 +80,11 @@ export const projectStateSchema = z.object({
   pdfFileId: z.string().optional().nullable(),
   overlayPdfFileId: z.string().optional().nullable(),
   activeLayerId: z.string().optional().nullable(),
+  /**
+   * People an import found no account for (their id in the plan → username), to link to an account
+   * later. Kept by the server: a PM's save never changes it (see PUT /api/projects/:id).
+   */
+  importedPeople: z.record(z.string()).optional(),
   /** Bumped on every save / op, so open plans fetch the project only when it changed. */
   revision: z.number().optional(),
 });

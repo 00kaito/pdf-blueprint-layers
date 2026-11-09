@@ -8,10 +8,25 @@ import multer from "multer";
 import { createHash } from "crypto";
 import { insertUserSchema, createUserSchema, projectStateSchema, updateUserRoleSchema, updateUserPasswordSchema, type Project } from "@shared/schema";
 import { applyOps, mergeManagerSave, OpError, type TechOp } from "@shared/tech-ops";
-import { BackupError, exportBackup, importBackup } from "./backup";
+import { BackupError, exportBackup, exportProject, importBackup, linkImportedPerson, type PeopleMapping } from "./backup";
+import { fileSecurityHeaders, getServerId } from "./server-id";
 import { openLiveStream, publishRevision } from "./live";
 
 const canAccess = (project: Project, userId: string) => project.ownerId === userId || project.sharedWith.includes(userId);
+
+/** The import dialog's "who is who" (multipart field, JSON); anything malformed counts as not given. */
+const parsePeople = (raw: unknown): PeopleMapping | undefined => {
+  if (typeof raw !== "string" || !raw) return undefined;
+  try {
+    const value = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    const out: PeopleMapping = {};
+    for (const [id, v] of Object.entries(value as Record<string, any>)) {
+      out[id] = { userId: typeof v?.userId === "string" ? v.userId : null, share: v?.share === true };
+    }
+    return out;
+  } catch { return undefined; }
+};
 
 /** File id of a project file URL ("/api/files/<id>"). */
 const fileIdOf = (url: string) => /^\/api\/files\/([\w-]+)$/.exec(url)?.[1];
@@ -118,6 +133,80 @@ export async function registerRoutes(
     res.status(201).json(project);
   });
 
+  // One project as a ZIP (backup format: plan, PDFs, photos, icon library, owner / shares).
+  app.get("/api/projects/:id/export", requireAuth, async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canAccess(project, req.user!.id) && req.user!.role !== 'admin') {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const stream = await exportProject(project, req.user!);
+    const safeName = project.name.replace(/[^\w\- ]+/g, '_').trim() || 'project';
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}.zip"; filename*=UTF-8''${encodeURIComponent(project.name)}.zip`);
+    stream.on("error", (e) => { console.error("[Backup] Project export failed", e); res.destroy(e as Error); });
+    stream.pipe(res);
+  });
+
+  // Import a project ZIP (this app's export, or an older in-browser one) as a new project.
+  // `people` (form field, JSON PeopleMapping): who is who, from the import dialog.
+  app.post("/api/projects/import", requireAuth, requireRole('PM', 'admin'), uploadBackup.single("file"), async (req, res) => {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    try {
+      res.json(await importBackup(req.file.buffer, req.user!, { existing: 'copy', people: parsePeople(req.body?.people) }, req.file.originalname));
+    } catch (e) {
+      if (e instanceof BackupError) return res.status(400).json({ message: e.message });
+      throw e;
+    }
+  });
+
+  // This installation's id: the import dialog compares it with the ZIP's (same server → no questions).
+  app.get("/api/server-info", requireAuth, (_req, res) => {
+    res.json({ serverId: getServerId() });
+  });
+
+  // Accounts to pick from when assigning imported people (name and role only).
+  app.get("/api/users/directory", requireAuth, requireRole('PM', 'admin'), async (_req, res) => {
+    const users = await storage.listAllUsers();
+    res.json(users.map(u => ({ id: u.id, username: u.username, role: u.role })));
+  });
+
+  // People an import left without an account, and linking one of them to an account here.
+  app.get("/api/projects/:id/people", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    const state = await storage.getProjectState(project.id);
+    res.json(Object.entries(state?.importedPeople ?? {}).map(([id, username]) => ({ id, username })));
+  });
+
+  app.post("/api/projects/:id/people/:personId/link", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    const account = typeof req.body?.userId === 'string' ? await storage.getUser(req.body.userId) : undefined;
+    if (!account) return res.status(400).json({ message: "Choose an account" });
+    try {
+      const revision = await withProjectLock(project.id, async () => {
+        const stored = await storage.getProjectState(project.id);
+        if (!stored) throw new BackupError("Project has no saved plan yet");
+        const next = linkImportedPerson(stored, req.params.personId, account.id);
+        const rev = (stored.revision ?? 0) + 1;
+        await storage.saveProjectState(project.id, { ...next, revision: rev });
+        return rev;
+      });
+      if (req.body?.share && account.id !== project.ownerId && !project.sharedWith.includes(account.id)) {
+        await storage.updateProject(project.id, { sharedWith: [...project.sharedWith, account.id] });
+      }
+      console.log(`[Project] ${req.user!.username} linked imported person ${req.params.personId} to ${account.username} in ${project.id}`);
+      publishRevision(project.id, revision, req.user!.id);
+      res.json({ revision });
+    } catch (e) {
+      if (e instanceof BackupError) return res.status(400).json({ message: e.message });
+      throw e;
+    }
+  });
+
   app.get("/api/projects/:id", requireAuth, async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
@@ -149,7 +238,8 @@ export async function registerRoutes(
       // Technicians' comments, photos, requests (and newer statuses) stay, even if this plan has not picked them up yet.
       const objects = mergeManagerSave(stored?.objects, parsed.data.objects);
       const revision = current + 1;
-      await storage.saveProjectState(req.params.id, { ...parsed.data, objects, revision });
+      // `importedPeople` belongs to the server (imports / linking): a plan save keeps the stored one.
+      await storage.saveProjectState(req.params.id, { ...parsed.data, objects, revision, importedPeople: stored?.importedPeople });
       return { conflict: false as const, revision };
     });
     if (result.conflict) {
@@ -306,6 +396,7 @@ export async function registerRoutes(
     }
     
     res.setHeader("Content-Type", meta.mimeType);
+    for (const [k, v] of Object.entries(fileSecurityHeaders(meta.mimeType))) res.setHeader(k, v);
     // The original name, so an opened project shows its real file names (not "overlay.pdf").
     res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(meta.originalName)}`);
     res.send(buffer);
@@ -325,6 +416,7 @@ export async function registerRoutes(
     const buffer = icon && await storage.getFileBuffer(icon.fileId);
     if (!icon || !meta || !buffer) return res.status(404).json({ message: "Icon not found" });
     res.setHeader("Content-Type", meta.mimeType);
+    for (const [k, v] of Object.entries(fileSecurityHeaders(meta.mimeType))) res.setHeader(k, v);
     // An icon id always has the same image.
     res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
     res.send(buffer);
@@ -400,7 +492,7 @@ export async function registerRoutes(
   app.post("/api/admin/backup", requireAuth, requireRole('admin'), uploadBackup.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "No backup file uploaded" });
     try {
-      res.json(await importBackup(req.file.buffer, req.user!));
+      res.json(await importBackup(req.file.buffer, req.user!, { existing: 'skip', people: parsePeople(req.body?.people) }, req.file.originalname));
     } catch (e) {
       if (e instanceof BackupError) return res.status(400).json({ message: e.message });
       throw e;

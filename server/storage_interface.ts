@@ -15,8 +15,8 @@ export interface IStorage {
   listProjectsForUser(userId: string): Promise<Project[]>;
   /** Every project on the server (admin backup). */
   listAllProjects(): Promise<Project[]>;
-  /** `id`: keep the id of a restored project (backup import). */
-  createProject(insertProject: { name: string; ownerId: string; id?: string }): Promise<Project>;
+  /** `id` / `createdAt`: keep those of a restored project (backup import). */
+  createProject(insertProject: { name: string; ownerId: string; id?: string; createdAt?: string }): Promise<Project>;
   updateProject(id: string, partial: Partial<Project>): Promise<Project>;
   deleteProject(id: string): Promise<void>;
   

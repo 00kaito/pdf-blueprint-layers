@@ -2,6 +2,7 @@ import {Route, Switch, Redirect} from "wouter";
 import {queryClient} from "./lib/queryClient";
 import {QueryClientProvider} from "@tanstack/react-query";
 import {Toaster} from "@/components/ui/toaster";
+import {ZipImportHost} from "@/components/editor/ZipImport";
 import {TooltipProvider} from "@/components/ui/tooltip";
 import {EditorProvider} from "@/lib/editor-context";
 import NotFound from "@/pages/not-found";
@@ -49,6 +50,8 @@ function AppContent() {
   return (
     <TooltipProvider>
       <Toaster />
+      {/* "Who is who" when importing a project ZIP from another server. */}
+      <ZipImportHost />
       <Switch>
         <Route path="/auth">
           {user ? <Redirect to="/" /> : <AuthPage />}

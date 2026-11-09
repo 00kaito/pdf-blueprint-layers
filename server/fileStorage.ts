@@ -172,7 +172,7 @@ export class FileStorage implements IStorage {
     return result;
   }
 
-  async createProject(insertProject: { name: string; ownerId: string; id?: string }): Promise<Project> {
+  async createProject(insertProject: { name: string; ownerId: string; id?: string; createdAt?: string }): Promise<Project> {
     const id = insertProject.id ?? uuidv4();
     const now = new Date().toISOString();
     const project: Project = {
@@ -181,7 +181,7 @@ export class FileStorage implements IStorage {
       ownerId: insertProject.ownerId,
       state: {},
       sharedWith: [],
-      createdAt: now,
+      createdAt: insertProject.createdAt ?? now,
       updatedAt: now
     };
     this.projects.set(id, project);

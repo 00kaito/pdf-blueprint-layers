@@ -3,7 +3,7 @@ import { setBase } from "@/lib/live-revision";
 import { toSyncedDoc } from "@/lib/merge-state";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings, User, Edit2 } from 'lucide-react';
+import { Upload, FolderOpen, Plus, FileText, Share2, Trash2, Loader2, LogOut, Shield, Settings, User, Edit2, Download } from 'lucide-react';
 import { useImport } from '@/hooks/useImport';
 import { useProjectList, useCreateProject, useDeleteProject, useShareProject, useUploadFile, useRenameProject } from '@/hooks/useProjects';
 import { useDocument, useUI } from '@/lib/editor-context';
@@ -16,6 +16,7 @@ import { useCurrentUser, useLogout } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
 import { Link } from 'wouter';
 import { AdminBackup } from './AdminBackup';
+import { ImportedPeople } from './ImportedPeople';
 
 
 /** Original upload name from the file response (`Content-Disposition: inline; filename*=UTF-8''…`). */
@@ -291,6 +292,12 @@ export const PDFUploader = () => {
                           <Button variant="ghost" size="icon" onClick={() => setSharingProjectId(project.id)}>
                             <Share2 className="h-4 w-4" />
                           </Button>
+                          {/* Complete project ZIP (plan, PDFs, photos, icons, shares) — restores with Import from ZIP. */}
+                          <Button variant="ghost" size="icon" asChild title="Export project (.zip)">
+                            <a href={`/api/projects/${project.id}/export`} download data-testid={`export-project-${project.id}`}>
+                              <Download className="h-4 w-4" />
+                            </a>
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -384,6 +391,7 @@ export const PDFUploader = () => {
             <Button className="w-full" onClick={handleShare} disabled={!shareUsername || shareProject.isPending}>
               {shareProject.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Share"}
             </Button>
+            <ImportedPeople projectId={sharingProjectId} />
           </div>
         </DialogContent>
       </Dialog>

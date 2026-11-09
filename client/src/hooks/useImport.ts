@@ -1,93 +1,36 @@
 import {useDocument} from '@/lib/editor-context';
-import JSZip from 'jszip';
+import {queryClient} from '@/lib/queryClient';
+import {useToast} from '@/hooks/use-toast';
+import {describeImport, importZip} from '@/components/editor/ZipImport';
+
+/** A project from a file / folder starts unsaved: the next save creates a new project (never overwrites the open one). */
+const AS_NEW_PROJECT = { projectId: null, pdfFileId: null, overlayPdfFileId: null };
 
 export const useImport = () => {
   const { dispatch } = useDocument();
+  const { toast } = useToast();
 
-  const getMimeType = (filename: string) => {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'png': return 'image/png';
-      case 'jpg':
-      case 'jpeg': return 'image/jpeg';
-      case 'svg': return 'image/svg+xml';
-      default: return 'application/octet-stream';
-    }
-  };
-
+  /**
+   * Project ZIP: imported by the server as a new project — this app's export (plan, PDFs, photos,
+   * icons, shares) or an older in-browser bundle (its inlined photos become stored files). Then the
+   * project list opens with the new project in it.
+   */
   const handleZipImport = async (zipFile: File) => {
-    dispatch({ type: 'SET_IMPORTING', payload: true });
     try {
-      const zip = await JSZip.loadAsync(zipFile);
-      const jsonFile = zip.file('project.json');
-      if (!jsonFile) {
-        alert("Invalid project ZIP: project.json not found");
-        return;
-      }
-
-      const projectData = JSON.parse(await jsonFile.async('string'));
-      const assetCache = new Map<string, string>();
-
-      const resolveAsset = async (path: string) => {
-        if (!path || !path.startsWith('assets/')) return path;
-        if (assetCache.has(path)) return assetCache.get(path)!;
-
-        const assetEntry = zip.file(path);
-        if (assetEntry) {
-            const blob = await assetEntry.async('blob');
-            const mime = getMimeType(path);
-            const blobUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
-            assetCache.set(path, blobUrl);
-            return blobUrl;
-        }
-        return path;
-      };
-      
-      // Load PDF if exists
-      let pdfFile: File | null = null;
-      const pdfEntry = zip.file('document.pdf');
-      if (pdfEntry) {
-        const pdfBlob = await pdfEntry.async('blob');
-        pdfFile = new File([pdfBlob], 'document.pdf', { type: 'application/pdf' });
-      }
-
-      // Load Overlay PDF if exists
-      let overlayPdfFile: File | null = null;
-      const overlayPdfEntry = zip.file('overlay.pdf');
-      if (overlayPdfEntry) {
-        const overlayPdfBlob = await overlayPdfEntry.async('blob');
-        overlayPdfFile = new File([overlayPdfBlob], 'overlay.pdf', { type: 'application/pdf' });
-      }
-
-      // Resolve assets in objects
-      const resolvedObjects = await Promise.all((projectData.objects || []).map(async (obj: any) => {
-        if (obj.content && (obj.type === 'image' || (obj.type === 'icon' && obj.content.startsWith('assets/')))) {
-          return { ...obj, content: await resolveAsset(obj.content) };
-        }
-        return obj;
-      }));
-
-      // Resolve assets in custom icons
-      const resolvedCustomIcons = await Promise.all((projectData.customIcons || []).map(async (icon: any) => {
-        if (icon.url) {
-          return { ...icon, url: await resolveAsset(icon.url) };
-        }
-        return icon;
-      }));
-
-      dispatch({ 
-        type: 'IMPORT_PROJECT', 
-        payload: { 
-          ...projectData, 
-          pdfFile: pdfFile || projectData.pdfFile,
-          overlayPdfFile: overlayPdfFile || projectData.overlayPdfFile,
-          objects: resolvedObjects, 
-          customIcons: resolvedCustomIcons 
-        } 
+      // From another server it first asks who is who (ZipImportHost); the overlay waits for the upload.
+      const report = await importZip(zipFile, '/api/projects/import', () => dispatch({ type: 'SET_IMPORTING', payload: true }));
+      if (!report) return; // cancelled
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/icons'] });
+      dispatch({ type: 'RESET_EDITOR' });
+      toast({
+        variant: report.missingFiles ? 'destructive' : undefined,
+        title: `Imported: ${report.imported.join(', ') || 'nothing'}`,
+        description: describeImport(report) || 'The project is in the list.',
       });
     } catch (error) {
       console.error("Error importing ZIP:", error);
-      alert("Failed to import project ZIP");
+      toast({ variant: 'destructive', title: 'Import failed', description: error instanceof Error ? error.message : String(error) });
     } finally {
       dispatch({ type: 'SET_IMPORTING', payload: false });
     }
@@ -153,7 +96,7 @@ export const useImport = () => {
       dispatch({ 
         type: 'IMPORT_PROJECT', 
         payload: { 
-          ...projectData, 
+          ...projectData, ...AS_NEW_PROJECT,
           pdfFile: pdfFile || projectData.pdfFile || null,
           overlayPdfFile: overlayPdfFile || projectData.overlayPdfFile || null,
           objects: resolvedObjects, 
@@ -192,7 +135,7 @@ export const useImport = () => {
       try {
         const text = await firstFile.text();
         const projectData = JSON.parse(text);
-        dispatch({ type: 'IMPORT_PROJECT', payload: projectData });
+        dispatch({ type: 'IMPORT_PROJECT', payload: { ...projectData, ...AS_NEW_PROJECT } });
       } catch (e) {
         alert("Invalid project JSON");
       } finally {

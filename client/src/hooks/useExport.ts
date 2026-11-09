@@ -31,6 +31,8 @@ import {feetPerUnit} from '@/core/measure';
 import {BLINDSPOT_COLOR, BLINDSPOT_ICON, isCoverageArea} from '@/core/camera-coverage';
 import {paperSizePt} from '@/core/paper';
 import type {ExportCrop} from '@/lib/types';
+import {useCurrentUser} from '@/hooks/useAuth';
+import {useManualSave} from '@/hooks/useManualSave';
 
 const toSafeFileName = (name: string) =>
   name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\.(pdf|zip)$/i, '').trim();
@@ -88,7 +90,27 @@ export const useExport = () => {
   const { state: uiState } = useUI();
   const { data: projects } = useProjectList();
 
+  const { data: user } = useCurrentUser();
+  const { handleSave } = useManualSave();
+
+  /**
+   * Project ZIP. A saved project is exported by the server, complete: plan, PDFs, photos as files,
+   * icon library, name, owner / shares and authors — one import (here or on another server) restores
+   * it as it was. Unsaved local work falls back to the in-browser bundle below.
+   */
   const handleExportProject = useCallback(async () => {
+    if (docState.projectId) {
+      // Latest edits first, so the server exports what is on screen (a technician's changes are already there).
+      if (user && user.role !== 'TECH') await handleSave(true);
+      const a = document.createElement('a');
+      a.href = `/api/projects/${docState.projectId}/export`;
+      a.download = '';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
+
     const zip = new JSZip();
     
     // Cache to prevent duplicate files for the same asset content
@@ -155,6 +177,7 @@ export const useExport = () => {
     }));
 
     const projectData = JSON.stringify({
+      projectName: docState.pdfFile?.name?.replace(/\.pdf$/i, '') || undefined,
       layers: docState.layers,
       objects: finalObjects,
       customIcons: finalCustomIcons,
@@ -180,7 +203,7 @@ export const useExport = () => {
     const content = await zip.generateAsync({ type: 'blob' });
     const projectName = projects?.find(p => p.id === docState.projectId)?.name || docState.pdfFile?.name || '';
     saveAs(content, `${toSafeFileName(projectName) || 'project-bundle'}.zip`);
-  }, [docState, projects]);
+  }, [docState, projects, user, handleSave]);
 
   /** Project name — the default name of the exported PDF. */
   const projectName = toSafeFileName(projects?.find(p => p.id === docState.projectId)?.name || docState.pdfFile?.name || '');

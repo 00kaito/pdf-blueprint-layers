@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useShareProject } from '@/hooks/useProjects';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { ImportedPeople } from './ImportedPeople';
 
 interface ShareProjectDialogProps {
   projectId: string | null;
@@ -51,6 +52,7 @@ export const ShareProjectDialog = ({ projectId, open, onOpenChange }: ShareProje
           <Button className="w-full" onClick={handleShare} disabled={!shareUsername || shareProject.isPending}>
             {shareProject.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Share"}
           </Button>
+          <ImportedPeople projectId={projectId} />
         </div>
       </DialogContent>
     </Dialog>

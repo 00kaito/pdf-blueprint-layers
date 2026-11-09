@@ -181,8 +181,9 @@ SESSION_SECRET=dev-secret
 - Project list with rename, delete and sharing.
 
 ### Import and export
-- **Export Project Files (.zip)** — `project.json` plus `document.pdf` / `overlay.pdf`, with images and photos embedded. The file is named after the project.
-- **Import** a project from `.zip`, `.json`, or an unpacked project folder.
+- **Export Project Files (.zip)** (main menu, or the download button on a project in the list) — exported by the server, complete and portable: the plan with every layer / object / property, the PDF and overlay, photos and images as files, the icon library and the project name. People appear only as usernames — no accounts, passwords or e-mails.
+- **Import from ZIP** — the server creates a new project (a copy, if the project already exists here) owned by the importer and stores its files; it is all or nothing (a failed import leaves nothing behind), and only PDFs and images keep their file type (anything else is stored as plain bytes). From **this** server (same server id) people and access stay as they were. From **another** server a *Who is who?* dialog asks, for each person in the ZIP, which account here they are (same-name accounts are suggested, never applied silently) and whether to share the project with them. Accounts are never created. People left without an account stay in the plan and are listed in the project's **Share** dialog, where they can be linked to an account (and given access) later. Older in-browser ZIPs (`project.json` + `document.pdf`, inlined photos) are imported too. `.json` files and unpacked folders still open in the browser as a new, unsaved project.
+- **Admin: Export / Import all projects** — the same format for the whole server (re-importing skips projects that exist). Works on any server, also a fresh install with its own admin: one full import, or each project ZIP, brings back every project.
 - **Flatten & download PDF** — draws all objects and labels into the PDF (white label backgrounds, configurable label font size in Settings) for printing or sharing.
 
 ---

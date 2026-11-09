@@ -201,10 +201,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(files).where(eq(files.projectId, projectId));
   }
 
-  async createProject(insertProject: { name: string; ownerId: string; id?: string }): Promise<Project> {
+  async createProject(insertProject: { name: string; ownerId: string; id?: string; createdAt?: string }): Promise<Project> {
     return await db.transaction(async (tx) => {
       const [project] = await tx.insert(projects).values({
         ...(insertProject.id ? { id: insertProject.id } : {}),
+        ...(insertProject.createdAt ? { createdAt: insertProject.createdAt } : {}),
         name: insertProject.name,
         ownerId: insertProject.ownerId,
         state: {}

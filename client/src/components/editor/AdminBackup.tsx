@@ -4,14 +4,15 @@ import { ArchiveRestore, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-
-type ImportReport = { imported: string[]; skipped: string[]; createdUsers: string[]; icons: number; missingFiles: number };
+import { importZip, type ImportReport } from './ZipImport';
 
 const listed = (names: string[]) => names.length > 8 ? `${names.slice(0, 8).join(', ')} and ${names.length - 8} more` : names.join(', ');
 
 /**
- * Admin, project list: one ZIP with every project on the server (plans, PDFs, photos, icon library,
- * owners and shares) and its import — restores what is missing, skips projects that already exist.
+ * Admin, project list: one ZIP with every project on the server (plans, PDFs, photos, icon library)
+ * and its import — portable to any server: no accounts or passwords; the importing admin owns the
+ * projects and says who is who (from another server). Skips projects that already exist.
+ * Single-project ZIPs (Export on a project) can be imported here too.
  */
 export const AdminBackup = () => {
   const queryClient = useQueryClient();
@@ -24,14 +25,10 @@ export const AdminBackup = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setImporting(true);
     try {
-      const body = new FormData();
-      body.append('file', file);
-      const res = await fetch('/api/admin/backup', { method: 'POST', body, credentials: 'include' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
-      setReport(data as ImportReport);
+      const result = await importZip(file, '/api/admin/backup', () => setImporting(true));
+      if (!result) return; // cancelled
+      setReport(result);
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       queryClient.invalidateQueries({ queryKey: ['/api/icons'] });
@@ -69,9 +66,18 @@ export const AdminBackup = () => {
                 <p className="text-muted-foreground">{report.skipped.length} already here, skipped (not overwritten): {listed(report.skipped)}.</p>
               )}
               {report.icons > 0 && <p className="text-muted-foreground">{report.icons} library icon{report.icons === 1 ? '' : 's'} added or matched.</p>}
-              {report.createdUsers.length > 0 && (
+              <p className="text-muted-foreground">
+                {report.sameServer ? 'From this server: people and access kept as they were.' : 'The projects are yours now.'}
+              </p>
+              {report.matchedUsers.length > 0 && (
+                <p className="text-muted-foreground">Linked to accounts here: {listed(report.matchedUsers)}.</p>
+              )}
+              {report.sharedWith.length > 0 && (
+                <p className="text-muted-foreground">Shared with: {listed(report.sharedWith)}.</p>
+              )}
+              {report.unknownUsers.length > 0 && (
                 <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                  New accounts created (with a random password — set one in User Management): {listed(report.createdUsers)}.
+                  Without an account here (no account created; link them later in a project's Share dialog): {listed(report.unknownUsers)}.
                 </p>
               )}
               {report.missingFiles > 0 && (
