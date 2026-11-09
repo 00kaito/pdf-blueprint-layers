@@ -217,6 +217,7 @@ Files are served with `X-Content-Type-Options: nosniff`; SVG images additionally
 ### Phone
 - A simplified layout: the plan, a bottom bar for the selected object (status, planned cables, photos, move), and a ☰ menu (all projects, whole-layer visibility, colour by status, log out).
 - Technicians start with colour by status on and camera coverage / cable routes off.
+- **Install as an app** (*Install app* on the login page, the project list, the ☰ menu and the desktop main menu): an icon on the home screen that opens the app full screen. Android Chrome shows its install dialog; on iPhone / iPad the app shows the steps (Safari → Share → *Add to Home Screen*). Android installing needs the server on **HTTPS** (or `localhost`); iPhone home-screen icons work on plain HTTP too. Plans still need the connection: offline, the app shows a "You are offline" page.
 
 ### Users and projects
 - Roles:

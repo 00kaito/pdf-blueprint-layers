@@ -143,7 +143,21 @@ accounts never travel.
 
 ---
 
-## 7. Conventions and checks
+## 7. Installable app (PWA)
+
+- `client/public/manifest.webmanifest` (name, colours, icons), `client/public/sw.js` (service worker:
+  only page loads that fail offline get `offline.html`; API, files and assets are never touched or
+  cached) and the `apple-*` tags in `client/index.html` (iPhone / iPad home screen).
+- `lib/install-app.ts` registers the worker and keeps Chrome's `beforeinstallprompt` (captured
+  in `main.tsx` before React renders); `components/InstallApp.tsx` has the *Install app* button /
+  action and the steps dialog for Safari and browsers without a prompt.
+- Icons in `client/public/icons/` are generated from the favicon design:
+  `npx tsx script/generate-pwa-icons.ts` (plain Node, no image libraries).
+- When `sw.js` changes, bump its `CACHE` name so old offline pages are dropped.
+
+---
+
+## 8. Conventions and checks
 
 - `npm run check` (TypeScript) must pass. There is no unit-test runner in the repo; server logic in
   `shared/tech-ops.ts` and `server/backup.ts` can be exercised with a `tsx` script.

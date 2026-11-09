@@ -17,6 +17,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { Link } from 'wouter';
 import { AdminBackup } from './AdminBackup';
 import { ImportedPeople } from './ImportedPeople';
+import { InstallAppButton } from '@/components/InstallApp';
 
 
 /** Original upload name from the file response (`Content-Disposition: inline; filename*=UTF-8''…`). */
@@ -190,6 +191,7 @@ export const PDFUploader = () => {
             <p className="text-muted-foreground">Welcome back, {user?.username}. Manage your blueprint projects.</p>
           </div>
           <div className="flex items-center gap-2">
+            <InstallAppButton />
             {user && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-md bg-white border border-border shadow-sm mr-2">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">

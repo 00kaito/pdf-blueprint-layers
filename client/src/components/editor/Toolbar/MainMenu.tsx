@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import {CableSummaryPanel} from '../CableSummaryPanel';
 import {TechPermissionsDialog} from '../TechPermissionsDialog';
+import {useInstallAppAction} from '@/components/InstallApp';
 import {Button} from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -47,6 +48,7 @@ export const MainMenu = () => {
   const [shareOpen, setShareOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const install = useInstallAppAction();
   const replacePdfInputRef = useRef<HTMLInputElement>(null);
   const [replacingPdf, setReplacingPdf] = useState(false);
   const uploadFile = useUploadFile();
@@ -245,6 +247,19 @@ export const MainMenu = () => {
             </div>
           </DropdownMenuCheckboxItem>
 
+          {install.available && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={install.start} className="gap-2 cursor-pointer" data-testid="menu-install-app">
+                <Download className="w-4 h-4" />
+                <div className="flex flex-col">
+                  <span>Install app</span>
+                  <span className="text-[10px] text-muted-foreground">Icon on the home screen, opens full screen</span>
+                </div>
+              </DropdownMenuItem>
+            </>
+          )}
+
           {user && (
             <>
               <DropdownMenuSeparator />
@@ -276,6 +291,7 @@ export const MainMenu = () => {
 
       <ShareProjectDialog projectId={docState.projectId} open={shareOpen} onOpenChange={setShareOpen} />
       <TechPermissionsDialog open={permissionsOpen} onOpenChange={setPermissionsOpen} />
+      {install.dialog}
       <ExportPdfDialog />
       <CableSummaryPanel />
 

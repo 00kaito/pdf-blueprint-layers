@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { InstallAppButton } from "@/components/InstallApp";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -58,7 +59,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">PDF Blueprint Layers</CardTitle>
@@ -139,6 +140,8 @@ export default function AuthPage() {
           </Tabs>
         </CardContent>
       </Card>
+      {/* Phones / tablets: put the app on the home screen (hidden once installed). */}
+      <InstallAppButton variant="ghost" className="text-muted-foreground" />
     </div>
   );
 }

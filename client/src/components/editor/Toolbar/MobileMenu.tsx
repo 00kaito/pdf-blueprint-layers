@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {ChevronLeft, Layers, LogOut, Menu, Spline, Palette, User, Video} from 'lucide-react';
+import {ChevronLeft, Download, Layers, LogOut, Menu, Spline, Palette, User, Video} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Switch} from '@/components/ui/switch';
 import {Separator} from '@/components/ui/separator';
@@ -8,6 +8,7 @@ import {useDocument, useUI} from '@/lib/editor-context';
 import {useCurrentUser, useLogout} from '@/hooks/useAuth';
 import {hasCctvObjects, useToggleCoverage} from './CctvTools';
 import {cn} from '@/lib/utils';
+import {useInstallAppAction} from '@/components/InstallApp';
 
 const Row = ({ icon: Icon, label, checked, onChange, testId }: {
   icon: typeof Menu; label: string; checked: boolean; onChange: () => void; testId: string;
@@ -30,6 +31,7 @@ export const MobileMenu = () => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
   const toggleCoverage = useToggleCoverage();
+  const install = useInstallAppAction();
 
   const allProjects = () => {
     setOpen(false);
@@ -80,6 +82,18 @@ export const MobileMenu = () => {
               <ChevronLeft className="h-4 w-4 text-muted-foreground" />
               All projects
             </button>
+            {install.available && (
+              <button
+                type="button"
+                // The steps dialog lives outside the sheet, so closing the menu does not close it.
+                onClick={() => { setOpen(false); install.start(); }}
+                className="flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-sm font-medium active:bg-muted"
+                data-testid="mobile-menu-install"
+              >
+                <Download className="h-4 w-4 text-muted-foreground" />
+                Install app
+              </button>
+            )}
 
             <Separator className="my-2" />
             <div className="px-2 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Show</div>
@@ -145,6 +159,7 @@ export const MobileMenu = () => {
           )}
         </SheetContent>
       </Sheet>
+      {install.dialog}
     </>
   );
 };
