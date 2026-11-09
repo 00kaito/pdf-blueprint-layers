@@ -31,6 +31,7 @@ import {Checkbox} from "@/components/ui/checkbox";
 import {Label} from "@/components/ui/label";
 import {cn} from '@/lib/utils';
 import {defaultObjectNames} from '@/core/lv-icons';
+import {STATUSES} from '@/core/status';
 import {useCurrentUser} from '@/hooks/useAuth';
 
 const PROGRESS_OPEN_STORAGE_KEY = 'editor.progressOpen';
@@ -157,10 +158,13 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
   const trackableObjects = state.objects.filter(obj => obj.type !== 'path' && obj.type !== 'text' && !obj.isFill);
   const counts = {
     total: trackableObjects.length,
-    planned: trackableObjects.filter(o => o.status === 'PLANNED').length,
-    inProgress: trackableObjects.filter(o => o.status === 'CABLE_PULLED' || o.status === 'TERMINATED').length,
     completed: trackableObjects.filter(o => o.status === 'TESTED' || o.status === 'APPROVED').length,
-    issue: trackableObjects.filter(o => o.status === 'ISSUE').length
+    /** No status yet counts as Planned. */
+    byStatus: trackableObjects.reduce<Record<string, number>>((acc, o) => {
+      const s = o.status ?? 'PLANNED';
+      acc[s] = (acc[s] ?? 0) + 1;
+      return acc;
+    }, {}),
   };
   const progressPercent = counts.total > 0 ? (counts.completed / counts.total) * 100 : 0;
 
@@ -209,23 +213,13 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
           {progressOpen && (<>
           <Progress value={progressPercent} className="h-2 mb-3" />
           
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-red-400 uppercase">Planned</span>
-              <span className="text-xs font-mono">{counts.planned}</span>
-            </div>
-            <div className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-amber-400 uppercase">In Progress</span>
-              <span className="text-xs font-mono">{counts.inProgress}</span>
-            </div>
-            <div className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-green-500 uppercase">Completed</span>
-              <span className="text-xs font-mono">{counts.completed}</span>
-            </div>
-            <div className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
-              <span className="text-[10px] font-bold text-red-600 uppercase">Issues</span>
-              <span className="text-xs font-mono">{counts.issue}</span>
-            </div>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {STATUSES.map(s => (
+              <div key={s.id} className="flex flex-col items-center p-1.5 rounded bg-background border border-border/50">
+                <span className={cn("text-[10px] font-bold uppercase", s.text)}>{s.short}</span>
+                <span className="text-xs font-mono">{counts.byStatus[s.id] ?? 0}</span>
+              </div>
+            ))}
           </div>
 
           <div className="flex items-center space-x-2 px-1">

@@ -21,9 +21,11 @@ export const useFieldActions = () => {
   const isTech = user?.role === 'TECH';
   const send = useProjectOps();
 
-  const setStatus = useCallback((ids: string[], status: Status) => {
-    dispatch({ type: 'UPDATE_OBJECTS', payload: { ids, updates: statusUpdate(status, user?.username) } });
-    if (isTech) send(ids.map(objectId => ({ type: 'status' as const, objectId, status })));
+  /** `issueDescription` (optional) is saved together with the status, e.g. the phone's Issue popup. */
+  const setStatus = useCallback((ids: string[], status: Status, issueDescription?: string) => {
+    const updates = { ...statusUpdate(status, user?.username), ...(issueDescription !== undefined ? { issueDescription } : {}) };
+    dispatch({ type: 'UPDATE_OBJECTS', payload: { ids, updates } });
+    if (isTech) send(ids.map(objectId => ({ type: 'status' as const, objectId, status, issueDescription })));
   }, [dispatch, isTech, send, user?.username]);
 
   /** Issue text while typing (shown at once); a technician's goes to the server in `commitIssue`. */

@@ -314,7 +314,7 @@ export const appendLvPages = (
   // Progress per cable type
   heading('Install progress (cables)');
   table(
-    [{ title: 'Cable', w: 160 }, ...['Planned', 'Pulled', 'Terminated', 'Tested / approved', 'Issue'].map(t => ({ title: t, w: 90, align: 'right' as const }))],
+    [{ title: 'Cable', w: 160 }, ...['Planned', 'Pulled', 'Terminated', 'Tested / done', 'Issue'].map(t => ({ title: t, w: 90, align: 'right' as const }))],
     types.map(t => {
       const p = summary.progress[t];
       return { cells: [CABLE_LABEL[t], String(p.planned), String(p.pulled), String(p.terminated), String(p.tested), String(p.issue)] };

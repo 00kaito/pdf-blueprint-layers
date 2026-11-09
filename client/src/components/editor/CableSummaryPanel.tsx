@@ -17,7 +17,7 @@ const BUCKETS: { id: ProgressBucket; label: string }[] = [
   { id: 'planned', label: 'Planned' },
   { id: 'pulled', label: 'Pulled' },
   { id: 'terminated', label: 'Terminated' },
-  { id: 'tested', label: 'Tested / approved' },
+  { id: 'tested', label: 'Tested / done' },
   { id: 'issue', label: 'Issue' },
 ];
 

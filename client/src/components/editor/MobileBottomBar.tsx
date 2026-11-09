@@ -8,9 +8,11 @@ import { useObjectCreation } from '@/hooks/useObjectCreation';
 import { compressImageToFile } from '@/core/image-compress';
 import { STATUSES, type ObjectStatus } from '@/core/status';
 import { CANVAS_BASE_WIDTH } from '@/core/constants';
-import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames } from '@/core/lv-icons';
-import { Camera, Circle, CopyPlus, Images, Info, Loader2, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
+import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames, formatCables } from '@/core/lv-icons';
+import { hasCables } from '@/core/cable-routing';
+import { AlertCircle, Cable, Camera, Circle, CopyPlus, Images, Info, Loader2, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { BlindspotShape, CoverageAreaShape } from './BlindspotShape';
 import { BLINDSPOT_ICON } from '@/core/camera-coverage';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,6 +21,7 @@ import { LvIcon } from './LvIcon';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -78,6 +81,8 @@ export const MobileBottomBar: React.FC = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [moving, setMoving] = useState(false);
+  /** Issue comment being written in the popup; null = popup closed. */
+  const [issueDraft, setIssueDraft] = useState<string | null>(null);
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
@@ -92,7 +97,7 @@ export const MobileBottomBar: React.FC = () => {
     : '';
 
   // Move ends when the object is deselected or another one is selected.
-  useEffect(() => { setMoving(false); }, [selectedObjectId]);
+  useEffect(() => { setMoving(false); setIssueDraft(null); }, [selectedObjectId]);
 
   // Move: the next tap on the plan places the object's center there (captured before the canvas sees it).
   useEffect(() => {
@@ -142,7 +147,18 @@ export const MobileBottomBar: React.FC = () => {
 
   const setStatus = (status: ObjectStatus) => {
     if (!selectedObject) return;
+    // Issue: ask for a comment first; Cancel leaves the status as it was.
+    if (status === 'ISSUE') {
+      setIssueDraft(selectedObject.issueDescription ?? '');
+      return;
+    }
     field.setStatus([selectedObject.id], status);
+  };
+
+  const saveIssue = () => {
+    if (!selectedObject || issueDraft === null) return;
+    field.setStatus([selectedObject.id], 'ISSUE', issueDraft.trim());
+    setIssueDraft(null);
   };
 
   const duplicate = () => {
@@ -177,12 +193,20 @@ export const MobileBottomBar: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                className="flex min-w-0 flex-1 flex-col text-left"
                 onClick={() => isPM && setIsDetailsOpen(true)}
                 disabled={!isPM}
               >
-                <span className="truncate text-sm font-bold" data-testid="mobile-object-name">{name}</span>
-                {isPM && <Info className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate text-sm font-bold" data-testid="mobile-object-name">{name}</span>
+                  {isPM && <Info className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                </span>
+                {hasCables(selectedObject) && (
+                  <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground" data-testid="mobile-object-cables">
+                    <Cable className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{formatCables(selectedObject.cables)}</span>
+                  </span>
+                )}
               </button>
               {canDelete && (
                 <Button
@@ -203,7 +227,7 @@ export const MobileBottomBar: React.FC = () => {
 
             {/* Status */}
             {selectedObject.type !== 'text' && (
-              <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-3 px-3">
+              <div className="grid grid-cols-3 gap-1.5">
                 {STATUSES.map(s => (
                   <button
                     key={s.id}
@@ -211,13 +235,13 @@ export const MobileBottomBar: React.FC = () => {
                     onClick={() => setStatus(s.id)}
                     data-testid={`mobile-status-${s.id}`}
                     className={cn(
-                      "flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-bold",
+                      "flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 text-xs font-bold whitespace-nowrap",
                       selectedObject.status === s.id
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background border-border"
                     )}
                   >
-                    <span className={cn("h-2 w-2 rounded-full", s.dot)} />
+                    <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", s.dot)} />
                     {s.short}
                   </button>
                 ))}
@@ -337,6 +361,33 @@ export const MobileBottomBar: React.FC = () => {
           </DrawerContent>
         </Drawer>
       )}
+
+      {/* Issue: comment popup — Save sets the status with the comment, Cancel changes nothing. */}
+      <Dialog open={issueDraft !== null} onOpenChange={open => !open && setIssueDraft(null)}>
+        <DialogContent className="max-w-sm" data-testid="mobile-issue-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-1.5 text-red-600">
+              <AlertCircle className="h-5 w-5" /> Issue — {name}
+            </DialogTitle>
+          </DialogHeader>
+          <Textarea
+            autoFocus
+            placeholder="Describe the issue..."
+            value={issueDraft ?? ''}
+            onChange={e => setIssueDraft(e.target.value)}
+            className="min-h-[100px] text-base"
+            data-testid="mobile-issue-text"
+          />
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" className="h-11 flex-1 sm:flex-none" onClick={() => setIssueDraft(null)} data-testid="mobile-issue-cancel">
+              Cancel
+            </Button>
+            <Button variant="destructive" className="h-11 flex-1 sm:flex-none" onClick={saveIssue} data-testid="mobile-issue-save">
+              Set Issue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
         <DialogContent className="max-w-lg p-0 overflow-hidden">

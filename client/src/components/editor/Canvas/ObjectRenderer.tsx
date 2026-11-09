@@ -108,17 +108,8 @@ const IconRenderer = ({ iconType, color }: { iconType: string, color?: string })
   }
 };
 
-const getStatusCategoryColor = (status?: string) => {
-  switch (status) {
-    case 'PLANNED': return '#f87171'; // Red 400
-    case 'CABLE_PULLED':
-    case 'TERMINATED': return '#fbbf24'; // Amber 400
-    case 'TESTED':
-    case 'APPROVED': return '#22c55e'; // Green 500
-    case 'ISSUE': return '#dc2626'; // Red 600
-    default: return null;
-  }
-};
+/** "Color by status": every status its own colour, the same as its status dot. */
+const getStatusCategoryColor = (status?: string) => statusOf(status)?.hex ?? null;
 
 export const ObjectRenderer = memo(({ 
   obj, 

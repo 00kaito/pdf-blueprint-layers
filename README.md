@@ -168,7 +168,7 @@ SESSION_SECRET=dev-secret
 - Object names shown as labels on the plan.
 
 ### Installation progress
-- Status life cycle: `Planned → Cable Pulled → Terminated → Tested → Approved`, plus `Issue` with a description.
+- Status life cycle: `Planned → Cable Pulled → Terminated → Tested → Done`, plus `Issue` with a description (on the phone, Issue asks for the comment in a popup).
 - Each status change records who made it and when.
 - **Color by status** turns the plan into a progress map; a dashboard shows completion percentage and issue count.
 - **Photos** per object (compressed in the browser before upload) with a gallery view.
