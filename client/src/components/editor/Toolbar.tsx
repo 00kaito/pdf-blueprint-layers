@@ -7,6 +7,7 @@ import {HistoryControls} from './Toolbar/HistoryControls';
 import {ProjectActions} from './Toolbar/ProjectActions';
 import {ToolSelector} from './Toolbar/ToolSelector';
 import {MainMenu} from './Toolbar/MainMenu';
+import {MobileMenu} from './Toolbar/MobileMenu';
 import {ContextBar} from './Toolbar/ContextBar';
 import {DraftingAids} from './Toolbar/DraftingAids';
 import {RequestsButton} from './TechRequests';
@@ -39,7 +40,10 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
     // Phone layout: no editing tools, just the project actions.
     return (
       <div className="h-16 border-b border-border bg-card flex items-center px-4 justify-between gap-3 shrink-0">
-        <ProjectName className="min-w-0" />
+        <div className="flex min-w-0 items-center gap-1">
+          <MobileMenu />
+          <ProjectName className="min-w-0" />
+        </div>
         <RequestsButton />
         <ProjectActions
           projectId={docState.projectId}

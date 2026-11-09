@@ -765,6 +765,8 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       };
     case 'TOGGLE_STATUS_COLORS':
       return { ...state, showStatusColors: !state.showStatusColors };
+    case 'APPLY_TECH_VIEW_DEFAULTS':
+      return { ...state, showStatusColors: true, showCameraCoverage: false, showCableRoutes: false };
     case 'SET_IMPORTING':
       return { ...state, isImporting: action.payload };
     case 'SET_EXPORT_STEP':

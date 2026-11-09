@@ -19,19 +19,12 @@ import {ToolGroup} from './ToolGroup';
 export const hasCctvObjects = (objects: EditorObject[]) =>
   objects.some(o => isCamera(o) || isBlindspot(o) || isBlindspotWall(o) || isCoverageArea(o));
 
-/**
- * CCTV tools (blindspot wall / box, coverage area) and the coverage visibility. Shown only on plans
- * with CCTV objects (or while a CCTV tool is on), always at the end of the tool row. TECH only gets the visibility.
- */
-export const CctvTools = ({ isTech }: { isTech: boolean }) => {
+/** Camera coverage on / off (toolbar and the phone menu); coverage areas are shown and hidden with it. */
+export const useToggleCoverage = () => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
-  const { handleAddIcon } = useObjectCreation();
   const { toast } = useToast();
-
-  if (uiState.tool !== 'wall' && uiState.tool !== 'area' && !hasCctvObjects(docState.objects)) return null;
-
-  const toggleCoverage = () => {
+  return () => {
     // Coverage is drawn in feet: without the measuring scale there is nothing to draw yet.
     if (!uiState.showCameraCoverage && !docState.measureCalibration) {
       toast({ title: 'Set the scale first', description: 'Camera coverage appears once the plan is calibrated (measure tool).' });
@@ -45,6 +38,19 @@ export const CctvTools = ({ isTech }: { isTech: boolean }) => {
       dispatch({ type: 'UPDATE_LAYER', payload: { id: areaLayer.id, updates: { visible: show } } });
     }
   };
+};
+
+/**
+ * CCTV tools (blindspot wall / box, coverage area) and the coverage visibility. Shown only on plans
+ * with CCTV objects (or while a CCTV tool is on), always at the end of the tool row. TECH only gets the visibility.
+ */
+export const CctvTools = ({ isTech }: { isTech: boolean }) => {
+  const { state: docState, dispatch } = useDocument();
+  const { state: uiState } = useUI();
+  const { handleAddIcon } = useObjectCreation();
+  const toggleCoverage = useToggleCoverage();
+
+  if (uiState.tool !== 'wall' && uiState.tool !== 'area' && !hasCctvObjects(docState.objects)) return null;
 
   return (
     <ToolGroup label="CCTV" data-testid="toolbar-cctv">

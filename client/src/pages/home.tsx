@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {PDFUploader} from '@/components/editor/PDFUploader';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -22,13 +22,21 @@ const SHOW_LAYERS_STORAGE_KEY = 'editor.showLayers';
 
 const Home = () => {
   const { state: docState } = useDocument();
-  const { state: uiState } = useUI();
+  const { state: uiState, dispatch: uiDispatch } = useUI();
   const isMobile = useIsMobile();
   const { isSaving } = useAutoSave();
   useLiveSync();
   useLegacyIconMigration();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
+  // A technician works by status: their plan starts coloured by status, without camera coverage
+  // and cable routes (they can still turn each on / off).
+  const techDefaultApplied = useRef(false);
+  useEffect(() => {
+    if (!isTech || techDefaultApplied.current) return;
+    techDefaultApplied.current = true;
+    uiDispatch({ type: 'APPLY_TECH_VIEW_DEFAULTS' });
+  }, [isTech, uiDispatch]);
   // Remembered per device; the first time it is hidden in the touch layout (more room to work, layers are a desk thing).
   const [showLayers, setShowLayersState] = useState(() => {
     try {

@@ -300,6 +300,8 @@ export type EditorAction =
   | { type: 'SELECT_CABLE_ROUTE'; payload: string | null }
   | { type: 'TOGGLE_CABLE_ROUTES' }
   | { type: 'TOGGLE_CAMERA_COVERAGE' }
+  /** A technician's starting view: coloured by status, no camera coverage, no cable routes. */
+  | { type: 'APPLY_TECH_VIEW_DEFAULTS' }
   | { type: 'TOGGLE_COVERAGE_SOLID' }
   | { type: 'TOGGLE_MOUNT_HEIGHTS' }
   | { type: 'SET_TECH_REQUEST_DRAFT'; payload: { objectId: string; changes: RequestChanges } | null }
