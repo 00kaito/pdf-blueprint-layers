@@ -86,6 +86,8 @@ export const MobileBottomBar: React.FC = () => {
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
+  /** Status shown as picked (no status yet = Planned, as everywhere else). */
+  const current = selectedObject?.status ?? 'PLANNED';
   const layerLocked = !!docState.layers.find(l => l.id === selectedObject?.layerId)?.locked;
   const canEdit = !isTech && !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path';
   const canDelete = !isTech && !!selectedObject && !layerLocked;
@@ -98,6 +100,12 @@ export const MobileBottomBar: React.FC = () => {
 
   // Move ends when the object is deselected or another one is selected.
   useEffect(() => { setMoving(false); setIssueDraft(null); }, [selectedObjectId]);
+
+  // The status row scrolls sideways: bring the object's current status into view when it is selected.
+  const statusRowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    statusRowRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [selectedObjectId]);
 
   // Move: the next tap on the plan places the object's center there (captured before the canvas sees it).
   useEffect(() => {
@@ -225,18 +233,23 @@ export const MobileBottomBar: React.FC = () => {
               </Button>
             </div>
 
-            {/* Status */}
+            {/* Status: one row, scrolled sideways (full names, no wrapping into several rows). */}
             {selectedObject.type !== 'text' && (
-              <div className="grid grid-cols-3 gap-1.5">
+              <div
+                ref={statusRowRef}
+                className="-mx-3 flex gap-1.5 overflow-x-auto overscroll-x-contain px-3 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                data-testid="mobile-status-row"
+              >
                 {STATUSES.map(s => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setStatus(s.id)}
+                    aria-pressed={current === s.id}
                     data-testid={`mobile-status-${s.id}`}
                     className={cn(
-                      "flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 text-xs font-bold whitespace-nowrap",
-                      selectedObject.status === s.id
+                      "flex h-10 shrink-0 snap-start items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-bold whitespace-nowrap",
+                      current === s.id
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background border-border"
                     )}

@@ -47,6 +47,8 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
         </div>
         <PathMeasureButton touch />
         <RequestsButton />
+        {/* Autosave instead of a save button: just whether it is saved. */}
+        {isSaving !== undefined && docState.projectId && !isTech && <SaveStatus isSaving={isSaving} />}
         <ProjectActions
           projectId={docState.projectId}
           pdfFile={docState.pdfFile}

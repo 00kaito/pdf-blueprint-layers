@@ -127,7 +127,8 @@ export const MainMenu = () => {
             <ChevronLeft className="w-4 h-4" />
             All projects
           </DropdownMenuItem>
-          {docState.pdfFile && (
+          {/* Technicians' changes are sent at once — nothing for them to save. */}
+          {docState.pdfFile && !isTech && (
             <DropdownMenuItem onClick={async () => await handleSave()} disabled={isSaving} className="gap-2 cursor-pointer">
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save project
@@ -213,13 +214,15 @@ export const MainMenu = () => {
               <span className="text-[10px] text-muted-foreground">Flattened blueprint with layers</span>
             </div>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleExportProject} className="gap-2 cursor-pointer">
-            <Archive className="w-4 h-4 text-amber-600" />
-            <div className="flex flex-col">
-              <span>Export project files (.zip)</span>
-              <span className="text-[10px] text-muted-foreground">Backup or transfer</span>
-            </div>
-          </DropdownMenuItem>
+          {!isTech && (
+            <DropdownMenuItem onClick={handleExportProject} className="gap-2 cursor-pointer">
+              <Archive className="w-4 h-4 text-amber-600" />
+              <div className="flex flex-col">
+                <span>Export project files (.zip)</span>
+                <span className="text-[10px] text-muted-foreground">Backup or transfer</span>
+              </div>
+            </DropdownMenuItem>
+          )}
           {/* Not a menu item: dragging the slider must not close the menu. */}
           <div className="px-2 pt-1 pb-2 space-y-2" onKeyDown={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center">

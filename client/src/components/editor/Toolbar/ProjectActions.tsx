@@ -14,7 +14,12 @@ interface ProjectActionsProps {
   exportSettings: DocumentState['exportSettings'];
 }
 
-/** Phone layout project actions (on desktop / iPad these live in the main menu, see MainMenu). */
+/**
+ * Phone layout project actions (on desktop / iPad these live in the main menu, see MainMenu).
+ * No save button: a project on the server saves itself (PM) or sends every change at once
+ * (technician) — only a plan opened from a file and not saved yet has one. Technicians get no
+ * project ZIP download (that is for PMs / admins moving or backing up projects).
+ */
 export const ProjectActions = ({
   projectId,
   pdfFile,
@@ -27,7 +32,7 @@ export const ProjectActions = ({
 
   return (
     <div className="flex items-center gap-2">
-      {pdfFile && (
+      {pdfFile && !projectId && !isTech && (
         <Button 
           variant="ghost" 
           size="sm" 
@@ -48,14 +53,17 @@ export const ProjectActions = ({
         <Download className="w-5 h-5 text-primary" />
       </Button>
 
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={handleExportProject}
-        className="h-10 w-10 p-0"
-      >
-        <Archive className="w-5 h-5 text-amber-600" />
-      </Button>
+      {!isTech && (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleExportProject}
+          className="h-10 w-10 p-0"
+          aria-label="Download project files (.zip)"
+        >
+          <Archive className="w-5 h-5 text-amber-600" />
+        </Button>
+      )}
       <ExportPdfDialog />
     </div>
   );
