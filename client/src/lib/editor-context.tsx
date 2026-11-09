@@ -184,6 +184,7 @@ const initialUIState: UIState = {
   scrollPos: { x: 0, y: 0 },
   tool: 'select',
   showStatusColors: false,
+  localLabelOffsets: {},
   showCableRoutes: true,
   selectedRouteId: null,
   routeRackId: null,
@@ -765,6 +766,8 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       };
     case 'TOGGLE_STATUS_COLORS':
       return { ...state, showStatusColors: !state.showStatusColors };
+    case 'SET_LOCAL_LABEL_OFFSET':
+      return { ...state, localLabelOffsets: { ...state.localLabelOffsets, [action.payload.id]: action.payload.offset } };
     case 'APPLY_TECH_VIEW_DEFAULTS':
       return { ...state, showStatusColors: true, showCameraCoverage: false, showCableRoutes: false };
     case 'SET_IMPORTING':
@@ -835,7 +838,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       return { ...state, layers, objects };
     }
     case 'RESET_EDITOR':
-      return { ...state, ...initialDocumentState, measureTape: null, tool: state.tool === 'pan-overlay' ? 'select' : state.tool };
+      return { ...state, ...initialDocumentState, measureTape: null, localLabelOffsets: {}, tool: state.tool === 'pan-overlay' ? 'select' : state.tool };
     default:
       return state;
   }
@@ -927,6 +930,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     scrollPos: state.scrollPos,
     tool: state.tool,
     showStatusColors: state.showStatusColors,
+    localLabelOffsets: state.localLabelOffsets,
     showCableRoutes: state.showCableRoutes,
     showCameraCoverage: state.showCameraCoverage,
     coverageSolid: state.coverageSolid,
@@ -950,7 +954,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.showMountHeights, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.techRequestDraft, state.wallStraight, state.wallSnap]);
+  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.localLabelOffsets, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.showMountHeights, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.techRequestDraft, state.wallStraight, state.wallSnap]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

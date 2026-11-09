@@ -47,6 +47,11 @@ const ACTION_BAR_MARGIN_PX = 8;
 /** Pointer travel (px) before a press on the label counts as a drag rather than a click. */
 const LABEL_DRAG_THRESHOLD = 3;
 
+/** Technician on touch: hold the label this long to pick it up (a quick swipe still scrolls the plan). */
+const LABEL_LONG_PRESS_MS = 450;
+/** …and moving the finger more than this before that is a scroll, not a pick-up. */
+const LABEL_LONG_PRESS_SLOP_PX = 10;
+
 /** Colour of technicians' change requests on the plan. */
 export const REQUEST_COLOR = '#d97706';
 
@@ -81,6 +86,8 @@ interface ObjectRendererProps {
   noCables?: boolean;
   /** Label size of the exported PDF (canvas units): labels grow with it, never below the screen's 10px. */
   labelFontSize?: number;
+  /** A technician's own label position, on their screen only (see `UIState.localLabelOffsets`). */
+  localLabelOffset?: { x: number; y: number };
 }
 
 /** Client coordinates of a mouse or touch event. */
@@ -129,6 +136,7 @@ export const ObjectRenderer = memo(({
   idfColor,
   noCables = false,
   labelFontSize = 1,
+  localLabelOffset,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -235,10 +243,36 @@ export const ObjectRenderer = memo(({
   const [dragLabelOffset, setDragLabelOffset] = useState<{ x: number; y: number } | null>(null);
   const labelDragRef = useRef<{
     pointerId: number; startX: number; startY: number; origin: { x: number; y: number }; moved: boolean;
+    /** Technician's finger: the label must be held before it moves. */
+    hold: boolean;
+    /** Ready to move (at once for mouse / pen; after the hold for a technician's finger). */
+    armed: boolean;
   } | null>(null);
-  const labelOffset = dragLabelOffset ?? obj.labelOffset ?? null;
+  const labelHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedLabelOffset = (isTech ? localLabelOffset : undefined) ?? obj.labelOffset;
+  const labelOffset = dragLabelOffset ?? savedLabelOffset ?? null;
   const labelText = objectLabel(obj, showMountHeight);
+  /** PM: drag moves the label in the plan (saved). */
   const canMoveLabel = !isTech && !disableMovement && !layer.locked && tool === 'select';
+  /** Technician: the label moves on their screen only (long press on touch) — never saved or sent. */
+  const canMoveLabelLocally = isTech && tool === 'select';
+  const labelMovable = (canMoveLabel || canMoveLabelLocally) && !!labelText;
+
+  const clearLabelHold = () => {
+    if (labelHoldTimerRef.current) clearTimeout(labelHoldTimerRef.current);
+    labelHoldTimerRef.current = null;
+  };
+  useEffect(() => clearLabelHold, []);
+
+  // Once a technician's label is picked up, the finger moves it instead of scrolling the plan
+  // (non-passive, so preventDefault works; before the pick-up the plan scrolls as usual).
+  useEffect(() => {
+    const el = labelRef.current;
+    if (!el || !canMoveLabelLocally) return;
+    const onTouchMove = (e: TouchEvent) => { if (labelDragRef.current?.armed) e.preventDefault(); };
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onTouchMove);
+  }, [canMoveLabelLocally]);
 
   useLayoutEffect(() => {
     const el = labelRef.current;
@@ -247,10 +281,10 @@ export const ObjectRenderer = memo(({
   }, [obj.name, obj.mountHeightIn, showMountHeight, labelOffset !== null]);
 
   const handleLabelPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!canMoveLabel || e.button !== 0) return;
+    if (!labelMovable || e.button !== 0) return;
     e.stopPropagation();
     const el = e.currentTarget;
-    let origin = obj.labelOffset;
+    let origin = savedLabelOffset;
     if (!origin) {
       // Start from wherever the side placement currently puts the label.
       const parent = el.offsetParent as HTMLElement | null;
@@ -260,14 +294,34 @@ export const ObjectRenderer = memo(({
         ? { x: (lr.left + lr.width / 2 - (pr.left + pr.width / 2)) / scale, y: (lr.top + lr.height / 2 - (pr.top + pr.height / 2)) / scale }
         : { x: 0, y: 0 };
     }
-    el.setPointerCapture(e.pointerId);
-    labelDragRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, origin, moved: false };
+    // A technician's finger has to hold the label first (a swipe over it scrolls the plan); mouse / pen drag at once.
+    const holdFirst = canMoveLabelLocally && e.pointerType === 'touch';
+    if (!holdFirst) el.setPointerCapture(e.pointerId);
+    const drag = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, origin, moved: false, hold: holdFirst, armed: !holdFirst };
+    labelDragRef.current = drag;
+    if (holdFirst) {
+      clearLabelHold();
+      const pointerId = e.pointerId;
+      labelHoldTimerRef.current = setTimeout(() => {
+        labelHoldTimerRef.current = null;
+        if (labelDragRef.current !== drag) return;
+        drag.armed = true;
+        try { el.setPointerCapture(pointerId); } catch { /* pointer already gone */ }
+        navigator.vibrate?.(15);
+        setDragLabelOffset(drag.origin); // shows it is picked up (ring)
+      }, LABEL_LONG_PRESS_MS);
+    }
   };
 
   const handleLabelPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const drag = labelDragRef.current;
     if (!drag || drag.pointerId !== e.pointerId) return;
     const dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+    if (!drag.armed) {
+      // Moved before the hold finished: it is a scroll — let the plan have it.
+      if (Math.hypot(dx, dy) > LABEL_LONG_PRESS_SLOP_PX) { clearLabelHold(); labelDragRef.current = null; }
+      return;
+    }
     if (!drag.moved && Math.hypot(dx, dy) < LABEL_DRAG_THRESHOLD) return;
     drag.moved = true;
     setDragLabelOffset({ x: drag.origin.x + dx / scale, y: drag.origin.y + dy / scale });
@@ -277,13 +331,15 @@ export const ObjectRenderer = memo(({
     const drag = labelDragRef.current;
     if (!drag || drag.pointerId !== e.pointerId) return;
     labelDragRef.current = null;
+    const wasHolding = !!labelHoldTimerRef.current;
+    clearLabelHold();
     if (drag.moved && dragLabelOffset) {
       const round = (v: number) => Math.round(v * 100) / 100;
-      dispatch({
-        type: 'UPDATE_OBJECT',
-        payload: { id: obj.id, updates: { labelOffset: { x: round(dragLabelOffset.x), y: round(dragLabelOffset.y) } } },
-      });
-    } else {
+      const offset = { x: round(dragLabelOffset.x), y: round(dragLabelOffset.y) };
+      if (canMoveLabelLocally) uiDispatch({ type: 'SET_LOCAL_LABEL_OFFSET', payload: { id: obj.id, offset } });
+      else dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { labelOffset: offset } } });
+    } else if (!drag.hold || (wasHolding && e.type === 'pointerup')) {
+      // A click / short tap on the label selects the object (a hold that was not dragged does nothing).
       uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
     }
     setDragLabelOffset(null);
@@ -714,10 +770,12 @@ export const ObjectRenderer = memo(({
       {!isFill && <div 
         ref={labelRef}
         className={cn(
-          "object-label absolute whitespace-nowrap border border-border px-1.5 py-0.5 rounded font-medium shadow-sm touch-none",
+          // A technician's label lets the plan scroll under the finger until it is held (see the touchmove listener).
+          "object-label absolute whitespace-nowrap border border-border px-1.5 py-0.5 rounded font-medium shadow-sm select-none",
+          !canMoveLabelLocally && "touch-none",
           // A detached label is opaque so the leader line visibly ends at its border.
           labelCenter ? "bg-white -translate-x-1/2 -translate-y-1/2" : cn("bg-white/80", LABEL_POSITION_CLASSES[obj.labelPosition ?? DEFAULT_LABEL_POSITION]),
-          canMoveLabel && labelText ? "pointer-events-auto cursor-move" : "pointer-events-none",
+          labelMovable ? "pointer-events-auto cursor-move" : "pointer-events-none",
           dragLabelOffset && "ring-1 ring-primary"
         )}
         style={{
@@ -725,12 +783,14 @@ export const ObjectRenderer = memo(({
           // Same size relative to the plan as in the printed PDF, so overlaps show before printing.
           fontSize: Math.max(LABEL_MIN_PX, labelFontSize * scale),
         }}
-        title={canMoveLabel && labelText ? 'Drag to move the label' : undefined}
+        title={labelMovable ? (canMoveLabelLocally ? 'Drag (on touch: hold, then drag) to move the label — on your screen only' : 'Drag to move the label') : undefined}
         onPointerDown={handleLabelPointerDown}
         onPointerMove={handleLabelPointerMove}
         onPointerUp={handleLabelPointerUp}
         onPointerCancel={handleLabelPointerUp}
-        onMouseDown={(e) => { if (canMoveLabel) e.stopPropagation(); }}
+        onMouseDown={(e) => { if (labelMovable) e.stopPropagation(); }}
+        onTouchStart={(e) => { if (canMoveLabelLocally) e.stopPropagation(); }}
+        onContextMenu={(e) => { if (canMoveLabelLocally) e.preventDefault(); }}
         onClick={(e) => e.stopPropagation()}
       >
         {labelText}

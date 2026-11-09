@@ -217,6 +217,11 @@ export type UIState = {
   /** Snap dragged objects to the edges / centres of nearby objects. Remembered per device. */
   snapEnabled: boolean;
   showStatusColors: boolean;
+  /**
+   * A technician's own label positions (object id → offset, like `labelOffset`): only on their
+   * screen, to see what is under a label — never saved or sent. Cleared when the project closes.
+   */
+  localLabelOffsets: Record<string, { x: number; y: number }>;
   /** Cable routes drawn on the plan (always shown while the route tool is active). */
   showCableRoutes: boolean;
   /** CCTV fields of view drawn on the plan (and exported). Remembered per device. */
@@ -325,6 +330,7 @@ export type EditorAction =
   | { type: 'ADD_OBJECT_PHOTO'; payload: { id: string; photoDataUrl: string } }
   | { type: 'REMOVE_OBJECT_PHOTO'; payload: { id: string; index: number } }
   | { type: 'TOGGLE_STATUS_COLORS' }
+  | { type: 'SET_LOCAL_LABEL_OFFSET'; payload: { id: string; offset: { x: number; y: number } } }
   | { type: 'SET_IMPORTING'; payload: boolean }
   | { type: 'SET_EXPORT_STEP'; payload: UIState['exportStep'] }
   | { type: 'SET_PLACEMENT'; payload: CameraPlacement | null }

@@ -613,6 +613,7 @@ export const Canvas = () => {
                 touchLayout={state.ipadMode && !isMobile}
                 idfColor={idfColorOf(obj.id)}
                 labelFontSize={docState.exportSettings.labelFontSize}
+                localLabelOffset={uiState.localLabelOffsets[obj.id]}
                 noCables={uiState.showCableRoutes && isCableDevice(obj) && obj.change !== 'REMOVE' && !hasCables(obj)}
               />
             );
