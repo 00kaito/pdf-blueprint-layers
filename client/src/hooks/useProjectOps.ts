@@ -49,7 +49,7 @@ export const useProjectOps = () => {
       dispatch({ type: 'APPLY_REMOTE', payload: { mode: manager ? 'fieldwork' : 'patch', objects: data.objects } });
       for (const { o, changes } of approved) {
         const next = applyChanges(o, changes);
-        dispatch({ type: 'UPDATE_OBJECT', payload: { id: o.id, updates: { x: next.x, y: next.y, name: next.name, metadata: next.metadata } } });
+        dispatch({ type: 'UPDATE_OBJECT', payload: { id: o.id, updates: { x: next.x, y: next.y, name: next.name, metadata: next.metadata, cables: next.cables } } });
       }
       return true;
     } catch (e) {

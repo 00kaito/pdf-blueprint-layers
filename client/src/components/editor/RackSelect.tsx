@@ -23,7 +23,8 @@ export const RackSelect = ({ objects, readOnly = false, asRequest = false }: {
   asRequest?: boolean;
 }) => {
   const { state: docState, dispatch } = useDocument();
-  const { requestChange } = useFieldActions();
+  const { requestChange, techMode } = useFieldActions();
+  const idfMode = asRequest ? techMode('idf') : 'direct';
   const racks = useMemo(() => getRacks(docState.objects), [docState.objects]);
   const colors = useMemo(() => rackColorMap(docState.objects), [docState.objects]);
   const runs = useMemo(
@@ -34,7 +35,7 @@ export const RackSelect = ({ objects, readOnly = false, asRequest = false }: {
 
   const first = objects[0];
   // A technician sees the IDF they asked for while the request waits.
-  const rackOf = (o: EditorObject) => (asRequest && o.techRequest?.changes.rackId !== undefined ? o.techRequest.changes.rackId : o.metadata?.rackId) || AUTO;
+  const rackOf = (o: EditorObject) => (asRequest && idfMode === 'request' && o.techRequest?.changes.rackId !== undefined ? o.techRequest.changes.rackId : o.metadata?.rackId) || AUTO;
   const picked = objects.every(o => rackOf(o) === rackOf(first)) ? rackOf(first) : '';
   const single = objects.length === 1 && hasCables(first) ? runs.get(first.id) : undefined;
   const feet = single ? runFeet(single, first, docState.measureCalibration, docState.lvSettings) : null;
@@ -47,7 +48,7 @@ export const RackSelect = ({ objects, readOnly = false, asRequest = false }: {
       </Label>
       <Select
         value={picked}
-        disabled={readOnly}
+        disabled={readOnly || idfMode === 'off'}
         onValueChange={(v) => {
           if (asRequest) {
             requestChange(first.id, { rackId: v === AUTO ? null : v });

@@ -11,6 +11,7 @@ import {MobileMenu} from './Toolbar/MobileMenu';
 import {ContextBar} from './Toolbar/ContextBar';
 import {DraftingAids} from './Toolbar/DraftingAids';
 import {RequestsButton} from './TechRequests';
+import {PathMeasureButton} from './Toolbar/PathMeasureButton';
 import {useIsMobile} from '@/hooks/use-mobile';
 import {ProjectName} from './Toolbar/ProjectName';
 import {cn} from '@/lib/utils';
@@ -44,6 +45,7 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           <MobileMenu />
           <ProjectName className="min-w-0" />
         </div>
+        <PathMeasureButton touch />
         <RequestsButton />
         <ProjectActions
           projectId={docState.projectId}

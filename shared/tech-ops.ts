@@ -26,8 +26,65 @@ export type ObjectComment = {
   replyTo?: string;
 };
 
-/** What a technician asks to change; `rackId: null` = back to the nearest IDF. */
-export type RequestChanges = { x?: number; y?: number; name?: string; rackId?: string | null };
+/** Cable types a device can have (same ids as the client's `CableType`). */
+export const CABLE_TYPE_IDS = ['CAT6', 'SPEAKER', 'POWER', 'COAX', 'FIBER', 'OTHER'] as const;
+export type RequestCable = { type: (typeof CABLE_TYPE_IDS)[number]; count: number };
+const CABLE_NAMES: Record<string, string> = { CAT6: 'Cat6', SPEAKER: 'Speaker', POWER: 'Power', COAX: 'Coax', FIBER: 'Fiber', OTHER: 'Other' };
+
+/** What a technician asks to change; `rackId: null` = back to the nearest IDF; `cables: []` = no cables. */
+export type RequestChanges = { x?: number; y?: number; name?: string; rackId?: string | null; cables?: RequestCable[] };
+
+/** Cables from a request, checked: known types, whole counts 1–999, at most 20 rows. Throws on anything else. */
+export const cleanCables = (cables: unknown): RequestCable[] => {
+  if (!Array.isArray(cables) || cables.length > 20) throw new OpError('Invalid cables');
+  return cables.map(c => {
+    const type = (c as any)?.type, count = (c as any)?.count;
+    if (!CABLE_TYPE_IDS.includes(type) || !Number.isInteger(count) || count < 1 || count > 999) throw new OpError('Invalid cables');
+    return { type, count };
+  });
+};
+
+const sameCables = (a: RequestCable[] | undefined, b: RequestCable[] | undefined) =>
+  JSON.stringify((a ?? []).map(c => [c.type, c.count])) === JSON.stringify((b ?? []).map(c => [c.type, c.count]));
+
+/** "2× Cat6, 1× Power" (or "none"). */
+export const describeCables = (cables: RequestCable[] | undefined) =>
+  cables?.length ? cables.map(c => `${c.count}× ${CABLE_NAMES[c.type] ?? c.type}`).join(', ') : 'none';
+
+/**
+ * What technicians may change in a project (set by its PM / admin, in the project settings):
+ * per field, not at all, by a change request the PM approves, or directly without approval.
+ */
+export type TechFieldMode = 'off' | 'request' | 'direct';
+export const TECH_FIELDS = ['move', 'label', 'cables', 'idf'] as const;
+export type TechField = (typeof TECH_FIELDS)[number];
+export type TechPermissions = Record<TechField, TechFieldMode>;
+/** As before the setting existed: everything by request. */
+export const DEFAULT_TECH_PERMISSIONS: TechPermissions = { move: 'request', label: 'request', cables: 'request', idf: 'request' };
+const MODES: TechFieldMode[] = ['off', 'request', 'direct'];
+
+/** A project's setting with the defaults filled in (and anything unknown ignored). */
+export const techPermissionsOf = (p: unknown): TechPermissions => {
+  const given = (p && typeof p === 'object' ? p : {}) as Record<string, unknown>;
+  return Object.fromEntries(TECH_FIELDS.map(f => [f, MODES.includes(given[f] as TechFieldMode) ? given[f] : DEFAULT_TECH_PERMISSIONS[f]])) as TechPermissions;
+};
+
+/** Setting that covers each key of RequestChanges. */
+const FIELD_OF: Record<keyof RequestChanges, TechField> = { x: 'move', y: 'move', name: 'label', cables: 'cables', rackId: 'idf' };
+
+/** Changes split by what the project allows: applied at once, sent as a request, or not allowed. */
+export const splitChanges = (changes: RequestChanges, permissions: TechPermissions) => {
+  const out: Record<TechFieldMode, RequestChanges> = { off: {}, request: {}, direct: {} };
+  for (const [key, value] of Object.entries(changes) as [keyof RequestChanges, any][]) {
+    if (value === undefined) continue;
+    (out[permissions[FIELD_OF[key]]] as any)[key] = value;
+  }
+  return out;
+};
+
+/** Pending request without the given keys (they were changed directly). */
+const withoutKeys = (c: RequestChanges, keys: string[]): RequestChanges =>
+  Object.fromEntries(Object.entries(c).filter(([k]) => !keys.includes(k))) as RequestChanges;
 
 /** A technician's pending change request on an object — one per object, later edits join it. */
 export type TechRequest = {
@@ -38,7 +95,7 @@ export type TechRequest = {
   note?: string;
   changes: RequestChanges;
   /** The values when the request was made, to show "from → to". */
-  from: { x: number; y: number; name?: string; rackId?: string | null };
+  from: { x: number; y: number; name?: string; rackId?: string | null; cables?: RequestCable[] };
 };
 
 /** The PM's decision on the last request, kept on the object so the technician sees it. */
@@ -55,6 +112,7 @@ export type TechOp =
   | { type: 'status'; objectId: string; status: string; issueDescription?: string }
   | { type: 'label'; objectId: string; labelPosition: 'bottom' | 'top' | 'left' | 'right' }
   | { type: 'request'; objectId: string; changes: RequestChanges; note?: string }
+  | { type: 'edit'; objectId: string; changes: RequestChanges }
   | { type: 'cancelRequest'; objectId: string }
   | { type: 'resolve'; objectId: string; approve: boolean; reason?: string }
   | { type: 'comment'; objectId: string; text: string; replyTo?: string }
@@ -89,6 +147,7 @@ export const effectiveChanges = (o: Obj, changes: RequestChanges): RequestChange
   }
   if (changes.name !== undefined && changes.name !== (o.name ?? '')) out.name = changes.name;
   if (changes.rackId !== undefined && (changes.rackId ?? null) !== (o.metadata?.rackId ?? null)) out.rackId = changes.rackId;
+  if (changes.cables !== undefined && !sameCables(changes.cables, o.cables)) out.cables = changes.cables;
   return out;
 };
 
@@ -104,7 +163,28 @@ export const applyChanges = (o: Obj, c: RequestChanges): Obj => {
     if (c.rackId === null) delete metadata.rackId; else metadata.rackId = c.rackId;
     next.metadata = metadata;
   }
+  if (c.cables !== undefined) next.cables = c.cables.map(x => ({ ...x }));
   return next;
+};
+
+/** Changes as sent by a client, checked (types, cable rows, label length). Throws OpError. */
+const cleanChanges = (raw: unknown): RequestChanges => {
+  if (!raw || typeof raw !== 'object') throw new OpError('Invalid changes');
+  const c = raw as Record<string, unknown>, out: RequestChanges = {};
+  if (c.x !== undefined || c.y !== undefined) {
+    if (!Number.isFinite(c.x) || !Number.isFinite(c.y)) throw new OpError('Invalid position');
+    out.x = c.x as number; out.y = c.y as number;
+  }
+  if (c.name !== undefined) {
+    if (typeof c.name !== 'string' || c.name.length > 200) throw new OpError('Invalid label');
+    out.name = c.name;
+  }
+  if (c.rackId !== undefined) {
+    if (c.rackId !== null && typeof c.rackId !== 'string') throw new OpError('Invalid IDF');
+    out.rackId = c.rackId as string | null;
+  }
+  if (c.cables !== undefined) out.cables = cleanCables(c.cables);
+  return out;
 };
 
 export class OpError extends Error {
@@ -120,6 +200,8 @@ export const applyOps = (
   ops: TechOp[],
   user: OpsUser,
   photoOwners: Record<string, string | undefined> = {},
+  /** The project's setting of what technicians may change (see TechPermissions). */
+  permissions: TechPermissions = DEFAULT_TECH_PERMISSIONS,
   now = new Date().toISOString(),
 ): { objects: Obj[]; changedIds: string[] } => {
   const byId = new Map(objects.map(o => [o.id as string, o]));
@@ -148,7 +230,9 @@ export const applyOps = (
         const prev = o.techRequest as TechRequest | undefined;
         const mine = prev && prev.byId === user.id ? prev : undefined;
         if (prev && !mine) throw new OpError(`${prev.byName} already has a pending request on this object`, 409);
-        const changes = effectiveChanges(o, { ...(mine?.changes ?? {}), ...op.changes });
+        const asked = cleanChanges(op.changes);
+        if (hasChanges(splitChanges(asked, permissions).off)) throw new OpError('This project does not let technicians change that', 403);
+        const changes = effectiveChanges(o, { ...(mine?.changes ?? {}), ...asked });
         const { techRequest, ...rest } = o;
         next = hasChanges(changes)
           ? {
@@ -156,10 +240,28 @@ export const applyOps = (
             techRequest: {
               id: mine?.id ?? newId(), byId: user.id, byName: user.username, at: now,
               note: op.note?.trim() || mine?.note, changes,
-              from: mine?.from ?? { x: o.x, y: o.y, name: o.name, rackId: o.metadata?.rackId ?? null },
+              // (Requests from before cables could be asked for have no `from.cables`.)
+              from: mine?.from ? { cables: o.cables ?? [], ...mine.from } : { x: o.x, y: o.y, name: o.name, rackId: o.metadata?.rackId ?? null, cables: o.cables ?? [] },
             } satisfies TechRequest,
           }
           : rest;
+        break;
+      }
+      case 'edit': {
+        if (manager) throw new OpError('PMs change the plan directly');
+        const asked = cleanChanges(op.changes);
+        const split = splitChanges(asked, permissions);
+        if (hasChanges(split.off) || hasChanges(split.request)) throw new OpError('This project needs a change request (or does not allow it) for that', 403);
+        const changes = effectiveChanges(o, asked);
+        if (!hasChanges(changes)) break;
+        next = { ...applyChanges(o, changes), editedBy: user.username, editedAt: now };
+        // What was just changed drops out of the technician's own pending request.
+        const req = o.techRequest as TechRequest | undefined;
+        if (req && req.byId === user.id) {
+          const rest = effectiveChanges(next, withoutKeys(req.changes, Object.keys(changes).concat(changes.x !== undefined ? ['x', 'y'] : [])));
+          if (hasChanges(rest)) next.techRequest = { ...req, changes: rest };
+          else delete next.techRequest;
+        }
         break;
       }
       case 'cancelRequest': {
@@ -262,7 +364,7 @@ export const mergeManagerSave = (stored: Obj[] | undefined, incoming: Obj[]): Ob
 /** Short description of requested changes: "move 4.2 ft · rename "A" → "B" · IDF → IDF 2". */
 export const describeChanges = (
   c: RequestChanges,
-  from: { x: number; y: number; name?: string },
+  from: { x: number; y: number; name?: string; cables?: RequestCable[] },
   opts: { feetPerUnit?: number | null; rackName?: (id: string | null) => string } = {},
 ): string[] => {
   const parts: string[] = [];
@@ -272,5 +374,6 @@ export const describeChanges = (
   }
   if (c.name !== undefined) parts.push(`Rename "${from.name ?? ''}" → "${c.name}"`);
   if (c.rackId !== undefined) parts.push(`IDF → ${opts.rackName ? opts.rackName(c.rackId) : (c.rackId ?? 'nearest')}`);
+  if (c.cables !== undefined) parts.push(`Cables ${describeCables(from.cables)} → ${describeCables(c.cables)}`);
   return parts;
 };

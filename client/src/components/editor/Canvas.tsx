@@ -1,3 +1,5 @@
+import {usePathMeasure} from '@/hooks/usePathMeasure';
+import {PathMeasureLayer} from './Canvas/PathMeasureLayer';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {v4 as uuidv4} from 'uuid';
 import {useDocument, useUI} from '@/lib/editor-context';
@@ -87,6 +89,7 @@ export const Canvas = () => {
   const marquee = useMarquee(containerRef as React.RefObject<HTMLDivElement>);
   const route = useRouteDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const wall = useWallDrawing(containerRef as React.RefObject<HTMLDivElement>);
+  const pathMeasure = usePathMeasure(containerRef as React.RefObject<HTMLDivElement>);
   // Auto-placement proposal: drawn instead of the plan's own cameras until applied / cancelled.
   const placementProposal = usePlacementProposal();
   const placementPreview = placementProposal.preview;
@@ -167,7 +170,8 @@ export const Canvas = () => {
   }, [selectedDevice, cableRuns, racks, rackColors, docState.measureCalibration, docState.lvSettings]);
 
   useEffect(() => {
-    if (isTech && uiState.tool !== 'select') {
+    // Technicians have the select tool and the path measure only.
+    if (isTech && uiState.tool !== 'select' && uiState.tool !== 'path-measure') {
       dispatch({ type: 'SET_TOOL', payload: 'select' });
     }
   }, [isTech, uiState.tool, dispatch]);
@@ -320,7 +324,10 @@ export const Canvas = () => {
         }
       }
 
-      if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedObjectIds.length > 0) {
+      // The path measure takes Backspace (its last point back).
+      if (state.tool === 'path-measure') {
+        // nothing: handled by usePathMeasure
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedObjectIds.length > 0) {
         dispatch({ type: 'DELETE_OBJECTS', payload: state.selectedObjectIds });
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedRouteId) {
         dispatch({ type: 'DELETE_CABLE_ROUTE', payload: state.selectedRouteId });
@@ -347,6 +354,7 @@ export const Canvas = () => {
   }, [state.selectedObjectIds, state.selectedRouteId, dispatch, isTech]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (state.tool === 'path-measure') { pathMeasure.onPointerDown(e); return; }
     if (isTech) return;
     if (state.tool === 'select') marquee.onPointerDown(e);
     else if (state.tool === 'draw') onPointerDown(e);
@@ -355,6 +363,7 @@ export const Canvas = () => {
 
   // Click (not pointerdown) so that a finger that starts scrolling never fills, stamps or deselects.
   const handleClick = (e: React.MouseEvent) => {
+    if (state.tool === 'path-measure') { pathMeasure.onClick(e); return; }
     if (isTech) {
       dispatch({ type: 'SELECT_OBJECT', payload: null });
       return;
@@ -479,7 +488,7 @@ export const Canvas = () => {
 
   return (
     <div ref={scrollRef} data-canvas-scroller className={`flex-1 bg-muted/30 overflow-auto relative select-none${
-      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || state.tool === 'wall' || state.tool === 'area' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
+      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || state.tool === 'wall' || state.tool === 'area' || state.tool === 'path-measure' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
     }`} 
       // Stroke tools suppress native Safari gestures for pen and touch. In stylus-only mode,
       // useFingerPan restores one-finger panning and usePinchZoom handles two fingers.
@@ -549,6 +558,13 @@ export const Canvas = () => {
               toast({ title: 'Scale set', description: `Reference line = ${formatFeet(calibration.feet)}${docState.projectId ? ', saved with the project' : ''}. Drag to measure any distance.` });
             }}
           />
+          <PathMeasureLayer
+            points={pathMeasure.points}
+            hover={pathMeasure.hover}
+            scale={state.scale}
+            ftPerUnit={ftPerUnitValue}
+            onRemove={pathMeasure.clear}
+          />
           {marquee.rect && (
             <div
               className="absolute pointer-events-none border border-primary bg-primary/10 rounded-[1px]"
@@ -614,6 +630,7 @@ export const Canvas = () => {
                 idfColor={idfColorOf(obj.id)}
                 labelFontSize={docState.exportSettings.labelFontSize}
                 localLabelOffset={uiState.localLabelOffsets[obj.id]}
+                techPermissions={docState.lvSettings.techPermissions}
                 noCables={uiState.showCableRoutes && isCableDevice(obj) && obj.change !== 'REMOVE' && !hasCables(obj)}
               />
             );

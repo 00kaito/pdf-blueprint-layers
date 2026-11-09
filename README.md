@@ -129,7 +129,7 @@ SESSION_SECRET=dev-secret
 2. **Editing.** All editor state lives in a React reducer (`lib/editor-context.tsx`). Every change (add/move/resize object, layers, status, photos) is a reducer action.
 3. **Saving.** On the first save a project is created on the server and the PDF(s) are uploaded to `/api/files`. After that, `useAutoSave` sends the state to `PUT /api/projects/:id` about 2 s after the last change, with retries for flaky mobile connections; there is also a manual save button.
 4. **Loading.** The project list comes from `GET /api/projects` (own + shared projects); opening a project loads its state and streams the PDFs from `/api/files/:id`.
-5. **Access control.** Each API route is guarded by `requireAuth` and, where needed, `requireRole(...)`. A project is visible only to its owner and the users it is shared with (this applies to admins too); rename, delete and share are owner-only.
+5. **Access control.** Each API route is guarded by `requireAuth` and, where needed, `requireRole(...)`. A project is visible to its owner, the users it is shared with, and every admin (admins see all projects, e.g. to approve technicians' change requests); rename, delete and share are owner-only.
 6. **Serving.** In production Express serves the built SPA from `dist/public`; in development it mounts Vite as middleware.
 
 ### API overview
@@ -162,6 +162,7 @@ SESSION_SECRET=dev-secret
 - Move, resize, rotate, multi-select, copy/paste (`Ctrl+C` / `Ctrl+V`) with smart offset.
 - **Auto-numbering**: prefix + counter (e.g. `IDF1-P1-001`) with click-to-place stamping for fast placement of many points.
 - Zoom up to 1000%, pan, and touch gestures (pinch zoom) on mobile.
+- **Path measure** (every role, also on the phone; on a computer in the measuring tape's menu ▾, for technicians and on the phone its own button): click / tap point after point — each segment and the total length are shown (needs the plan's scale). On a phone a tap adds the next point, a drag still pans, and holding a finger on the plan removes the measurement; on a computer Backspace takes back a point and Esc / ✕ removes it. The measurement is only on your screen, never saved.
 
 ### Network documentation
 - Per-object metadata: socket ID, patch-panel port, switch ID, cable ID, cables (type × count), IDF, notes and comments. The device type is the icon itself.
@@ -170,13 +171,14 @@ SESSION_SECRET=dev-secret
 ### Installation progress
 - Status life cycle: `Planned → Cable Pulled → Terminated → Tested → Done`, plus `Issue` with a description (on the phone, Issue asks for the comment in a popup).
 - Each status change records who made it and when.
+- **Technician permissions** (main menu → *Technician permissions…*, PM / admin, per project): for location, label, cables and IDF, choose *Not allowed*, *Change request* (default — a PM or admin approves or rejects it) or *Without approval* (saved straight into the plan; the PM sees who changed it). The server enforces the setting. On the phone a technician long-presses an object to edit its label and cables.
 - **Color by status** turns the plan into a progress map; a dashboard shows completion percentage and issue count.
 - **Photos** per object (compressed in the browser before upload) with a gallery view.
 
 ### Users and projects
 - Roles:
-  - **admin** — everything, plus user management (roles, password resets) on the Admin page.
-  - **PM** — create, edit, rename, delete and share projects.
+  - **admin** — everything, on every project (all projects are listed for admins), plus user management (roles, password resets) on the Admin page.
+  - **PM** — create, edit, rename, delete and share projects; on their own and shared projects they approve or reject technicians' change requests (move, label, cables, IDF).
   - **TECH** — opens projects shared with them in a simplified, preview-oriented UI (status and photos). Note: the API currently allows saving project state (`PUT /api/projects/:id`) only for PM/admin.
 - Project list with rename, delete and sharing.
 

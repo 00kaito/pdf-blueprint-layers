@@ -7,12 +7,14 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import { createHash } from "crypto";
 import { insertUserSchema, createUserSchema, projectStateSchema, updateUserRoleSchema, updateUserPasswordSchema, type Project } from "@shared/schema";
-import { applyOps, mergeManagerSave, OpError, type TechOp } from "@shared/tech-ops";
+import { applyOps, mergeManagerSave, OpError, techPermissionsOf, type TechOp } from "@shared/tech-ops";
 import { BackupError, exportBackup, exportProject, importBackup, linkImportedPerson, type PeopleMapping } from "./backup";
 import { fileSecurityHeaders, getServerId } from "./server-id";
 import { openLiveStream, publishRevision } from "./live";
 
-const canAccess = (project: Project, userId: string) => project.ownerId === userId || project.sharedWith.includes(userId);
+/** Owner, people it is shared with, and admins (they oversee every project, e.g. approve technicians' requests). */
+const canAccess = (project: Project, user: { id: string; role: string }) =>
+  user.role === 'admin' || project.ownerId === user.id || project.sharedWith.includes(user.id);
 
 /** The import dialog's "who is who" (multipart field, JSON); anything malformed counts as not given. */
 const parsePeople = (raw: unknown): PeopleMapping | undefined => {
@@ -122,7 +124,7 @@ export async function registerRoutes(
 
   // Project Routes
   app.get("/api/projects", requireAuth, async (req, res) => {
-    const projects = await storage.listProjectsForUser(req.user!.id);
+    const projects = req.user!.role === 'admin' ? await storage.listAllProjects() : await storage.listProjectsForUser(req.user!.id);
     res.json(projects);
   });
 
@@ -137,7 +139,7 @@ export async function registerRoutes(
   app.get("/api/projects/:id/export", requireAuth, async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canAccess(project, req.user!.id) && req.user!.role !== 'admin') {
+    if (!canAccess(project, req.user!)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     const stream = await exportProject(project, req.user!);
@@ -175,7 +177,7 @@ export async function registerRoutes(
   app.get("/api/projects/:id/people", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    if (!canAccess(project, req.user!)) return res.status(403).json({ message: "Forbidden" });
     const state = await storage.getProjectState(project.id);
     res.json(Object.entries(state?.importedPeople ?? {}).map(([id, username]) => ({ id, username })));
   });
@@ -183,7 +185,7 @@ export async function registerRoutes(
   app.post("/api/projects/:id/people/:personId/link", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    if (!canAccess(project, req.user!)) return res.status(403).json({ message: "Forbidden" });
     const account = typeof req.body?.userId === 'string' ? await storage.getUser(req.body.userId) : undefined;
     if (!account) return res.status(400).json({ message: "Choose an account" });
     try {
@@ -210,7 +212,7 @@ export async function registerRoutes(
   app.get("/api/projects/:id", requireAuth, async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (project.ownerId !== req.user!.id && !project.sharedWith.includes(req.user!.id)) {
+    if (!canAccess(project, req.user!)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     const state = await storage.getProjectState(req.params.id);
@@ -220,7 +222,7 @@ export async function registerRoutes(
   app.put("/api/projects/:id", requireAuth, requireRole('PM', 'admin'), async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (project.ownerId !== req.user!.id && !project.sharedWith.includes(req.user!.id)) {
+    if (!canAccess(project, req.user!)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     const parsed = projectStateSchema.safeParse(req.body);
@@ -255,7 +257,7 @@ export async function registerRoutes(
   app.post("/api/projects/:id/ops", requireAuth, async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    if (!canAccess(project, req.user!)) return res.status(403).json({ message: "Forbidden" });
     const ops = req.body?.ops as TechOp[] | undefined;
     if (!Array.isArray(ops) || ops.length === 0 || ops.length > 500) return res.status(400).json({ message: "No operations" });
 
@@ -272,7 +274,7 @@ export async function registerRoutes(
       const result = await withProjectLock(project.id, async () => {
         const stored = await storage.getProjectState(project.id);
         if (!stored) throw new OpError("Project has no saved plan yet", 409);
-        const { objects, changedIds } = applyOps(stored.objects ?? [], ops, req.user!, photoOwners);
+        const { objects, changedIds } = applyOps(stored.objects ?? [], ops, req.user!, photoOwners, techPermissionsOf(stored.lvSettings?.techPermissions));
         const revision = (stored.revision ?? 0) + 1;
         if (changedIds.length) await storage.saveProjectState(project.id, { ...stored, objects, revision });
         const changed = new Set(changedIds);
@@ -291,7 +293,7 @@ export async function registerRoutes(
   app.get("/api/projects/:id/events", requireAuth, async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    if (!canAccess(project, req.user!)) return res.status(403).json({ message: "Forbidden" });
     openLiveStream(req, res, project.id);
   });
 
@@ -299,7 +301,7 @@ export async function registerRoutes(
   app.get("/api/projects/:id/live", requireAuth, async (req, res) => {
     const project = await storage.getProject(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canAccess(project, req.user!.id)) return res.status(403).json({ message: "Forbidden" });
+    if (!canAccess(project, req.user!)) return res.status(403).json({ message: "Forbidden" });
     const state = await storage.getProjectState(req.params.id);
     const revision = state?.revision ?? 0;
     if (String(revision) === req.query.rev) return res.json({ revision });
@@ -361,7 +363,7 @@ export async function registerRoutes(
     // Technicians upload only photos, into a project they work on.
     if (req.user!.role === 'TECH') {
       const project = projectId ? await storage.getProject(projectId) : undefined;
-      if (!project || !canAccess(project, req.user!.id) || !mimetype.startsWith("image/")) {
+      if (!project || !canAccess(project, req.user!) || !mimetype.startsWith("image/")) {
         return res.status(403).json({ message: "Forbidden" });
       }
     }
@@ -380,7 +382,7 @@ export async function registerRoutes(
     
     if (meta.projectId) {
       const project = await storage.getProject(meta.projectId);
-      if (!project || (project.ownerId !== req.user!.id && !project.sharedWith.includes(req.user!.id))) {
+      if (!project || (!canAccess(project, req.user!))) {
         console.warn(`[File] Access denied for ${req.params.fileId} (project mismatch or no access)`);
         return res.status(403).json({ message: "Forbidden" });
       }

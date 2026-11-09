@@ -1,3 +1,5 @@
+import {DEFAULT_TECH_PERMISSIONS, type TechPermissions} from '@shared/tech-ops';
+import {isCableDevice} from '@/core/cable-routing';
 import React, {useEffect, useLayoutEffect, useRef, useState, memo} from 'react';
 import {Rnd} from 'react-rnd';
 import {ArrowRight, Camera, Circle, CopyPlus, Heart, Hexagon, RotateCw, Settings2, Square, Star, Trash2, Triangle} from 'lucide-react';
@@ -88,6 +90,8 @@ interface ObjectRendererProps {
   labelFontSize?: number;
   /** A technician's own label position, on their screen only (see `UIState.localLabelOffsets`). */
   localLabelOffset?: { x: number; y: number };
+  /** What the project lets technicians change (moving, label / cables on long press). */
+  techPermissions?: TechPermissions;
 }
 
 /** Client coordinates of a mouse or touch event. */
@@ -137,6 +141,7 @@ export const ObjectRenderer = memo(({
   noCables = false,
   labelFontSize = 1,
   localLabelOffset,
+  techPermissions = DEFAULT_TECH_PERMISSIONS,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -224,10 +229,13 @@ export const ObjectRenderer = memo(({
       }
       duplicate();
     },
-    // Long press = select it (so it can be moved) and open its settings.
+    // Long press = select it (so it can be moved) and open its settings; a technician gets the
+    // "request a change" form (label, cables) instead.
     onLongPress: () => {
       uiDispatch({ type: 'SELECT_OBJECT', payload: obj.id });
-      uiDispatch({ type: 'OPEN_OBJECT_DETAILS' });
+      const techEdits = techPermissions.label !== 'off' || (techPermissions.cables !== 'off' && isCableDevice(obj));
+      if (isTech && techEdits) uiDispatch({ type: 'SET_TECH_EDIT', payload: obj.id });
+      else uiDispatch({ type: 'OPEN_OBJECT_DETAILS' });
     },
   });
 
@@ -498,7 +506,8 @@ export const ObjectRenderer = memo(({
         dragStore.set(null);
         // No movement (a plain click) or movement not allowed: nothing to save.
         if (!pos || disableMovement || (start && pos.x === start.x && pos.y === start.y)) return;
-        // A technician's move is a request: the object goes back, "send as request?" shows the proposal.
+        // A technician's move: changed at once or (needs approval) the object goes back and "send as
+        // request?" shows the proposal — TechRequestDialog decides by the project's setting.
         if (isTech) {
           uiDispatch({ type: 'SET_TECH_REQUEST_DRAFT', payload: { objectId: obj.id, changes: { x: pos.x, y: pos.y } } });
           return;
@@ -535,7 +544,7 @@ export const ObjectRenderer = memo(({
       // Not drag handles: react-draggable cancels their touchstart, which would swallow the button's click.
       cancel=".object-label, .object-action"
       bounds="parent"
-      disableDragging={lockGeometry || (isTech && obj.type === 'path') || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
+      disableDragging={lockGeometry || (isTech && (obj.type === 'path' || techPermissions.move === 'off')) || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
       // Touch: no resize handles — they took most of a small icon and turned moves into resizes.
       enableResizing={isTech || lockGeometry || touchLayout ? {} : (!layer.locked && isSelected)}
       // re-resizable sizes the corner handles inline (20 px) — keep that as the grab area and draw a
@@ -554,7 +563,7 @@ export const ObjectRenderer = memo(({
         isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         // While the bucket is active, clicks go through a fill to the blueprint (re-fill = recolour).
         // Route tool: clicks reach the plan, so a route can end on a device or rack.
-        layer.locked || tool === 'route' || tool === 'wall' || tool === 'area' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
+        layer.locked || tool === 'route' || tool === 'wall' || tool === 'area' || tool === 'path-measure' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
       )}
       // Fills sit below regular objects and drawn paths. With its action bar, the object goes above the
       // cable-run preview and its length label (z 45–46) so they never cover the bar.

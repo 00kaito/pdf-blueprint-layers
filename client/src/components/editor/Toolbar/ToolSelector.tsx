@@ -4,6 +4,7 @@ import {v4 as uuidv4} from 'uuid';
 import {
     ArrowRight,
     Camera,
+    ChevronDown,
     Circle,
     Heart,
     Hexagon,
@@ -15,6 +16,7 @@ import {
     Pencil,
     Plus,
     Ruler,
+    RulerDimensionLine,
     Settings2,
     Square,
     Star,
@@ -28,6 +30,7 @@ import {Toggle} from '@/components/ui/toggle';
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip';
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
 import {Label} from "@/components/ui/label";
+import {PathMeasureButton, usePathMeasureToggle} from './PathMeasureButton';
 import {Slider} from "@/components/ui/slider";
 import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
@@ -89,6 +92,16 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
   const { toast } = useToast();
   const calibration = docState.measureCalibration;
 
+  /** Which measuring tool the measure button stands for (the one picked last from its menu). */
+  const [measureKind, setMeasureKind] = React.useState<'tape' | 'path'>('tape');
+  const [measureMenuOpen, setMeasureMenuOpen] = React.useState(false);
+  const selectPathMeasure = usePathMeasureToggle();
+  // The M key (tape) makes the button the tape again.
+  React.useEffect(() => {
+    if (uiState.tool === 'measure' || uiState.tool === 'calibrate') setMeasureKind('tape');
+    else if (uiState.tool === 'path-measure') setMeasureKind('path');
+  }, [uiState.tool]);
+
   const selectMeasure = (pressed: boolean) => {
     if (pressed && !calibration) {
       // The tape needs a scale: start with the calibration probe.
@@ -120,6 +133,8 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
           </TooltipTrigger>
           <TooltipContent>Select <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">V</kbd></TooltipContent>
         </Tooltip>
+        {/* Technicians have no measuring tape: the path measure stands on its own. */}
+        {isTech && <PathMeasureButton touch={uiState.ipadMode} />}
 
         {!isTech && (
           <>
@@ -265,22 +280,64 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
               </Popover>
             </div>
 
-            {/* One tape button; the scale probe lives in its options row (ContextBar), next to "Clear scale". */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Toggle
-                  pressed={uiState.tool === 'measure' || uiState.tool === 'calibrate'}
-                  onPressedChange={selectMeasure}
-                  size="sm"
-                  className="h-8 w-8 relative"
-                  data-testid="tool-measure"
-                >
-                  <Ruler className="w-4 h-4" />
-                  <StraightBadge show={uiState.drawStraight} />
-                </Toggle>
-              </TooltipTrigger>
-              <TooltipContent>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'} <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">M</kbd></TooltipContent>
-            </Tooltip>
+            {/* Measuring: the tape (one A–B measurement) and, in its menu, the path measure (point after
+                point). The button shows the one picked last; the scale probe lives in the options row (ContextBar). */}
+            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={uiState.tool === 'measure' || uiState.tool === 'calibrate' || uiState.tool === 'path-measure'}
+                    onPressedChange={(p) => (measureKind === 'path' ? selectPathMeasure(p) : selectMeasure(p))}
+                    size="sm"
+                    className="h-8 w-8 rounded-none border-none relative"
+                    data-testid="tool-measure"
+                  >
+                    {measureKind === 'path' ? <RulerDimensionLine className="w-4 h-4" /> : <Ruler className="w-4 h-4" />}
+                    <StraightBadge show={uiState.drawStraight} />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {measureKind === 'path'
+                    ? 'Path measure — click point after point; each segment and the total (Backspace = undo point, Esc = remove)'
+                    : <>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'} <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">M</kbd></>}
+                </TooltipContent>
+              </Tooltip>
+              <Popover open={measureMenuOpen} onOpenChange={setMeasureMenuOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-5 rounded-none px-0 border-l border-input hover:bg-muted" title="Measuring tools" data-testid="measure-menu">
+                    <ChevronDown className="w-3 h-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-1" side="bottom" align="start">
+                  {([
+                    { kind: 'tape' as const, icon: Ruler, label: 'Measuring tape', hint: 'One distance, A to B', key: 'M', testId: 'menu-measure-tape' },
+                    { kind: 'path' as const, icon: RulerDimensionLine, label: 'Path measure', hint: 'Point after point, with the total', key: null, testId: 'tool-path-measure' },
+                  ]).map(item => {
+                    const on = item.kind === 'path' ? uiState.tool === 'path-measure' : uiState.tool === 'measure' || uiState.tool === 'calibrate';
+                    return (
+                      <button
+                        key={item.kind}
+                        type="button"
+                        className={`w-full flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted ${on ? 'bg-muted font-medium' : ''}`}
+                        onClick={() => {
+                          setMeasureKind(item.kind);
+                          setMeasureMenuOpen(false);
+                          if (item.kind === 'path') selectPathMeasure(true); else selectMeasure(true);
+                        }}
+                        data-testid={item.testId}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="flex flex-col">
+                          <span>{item.label}</span>
+                          <span className="text-[10px] text-muted-foreground">{item.hint}</span>
+                        </span>
+                        {item.key && <kbd className="ml-auto rounded border px-1 font-mono text-[10px]">{item.key}</kbd>}
+                      </button>
+                    );
+                  })}
+                </PopoverContent>
+              </Popover>
+            </div>
 
             <Separator orientation="vertical" className="h-6 mx-1" />
 

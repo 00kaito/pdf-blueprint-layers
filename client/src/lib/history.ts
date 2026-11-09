@@ -150,7 +150,7 @@ const describe = (action: EditorAction, prev: EditorState): string => {
     case 'SET_OBJECT_CABLES': return action.payload.ids.length === 1
       ? `Set cables of ${objName(action.payload.ids[0])}`
       : `Set cables of ${plural(action.payload.ids.length, 'object')}`;
-    case 'SET_LV_SETTINGS': return 'Change cable settings';
+    case 'SET_LV_SETTINGS': return action.payload.techPermissions ? 'Change technician permissions' : 'Change cable settings';
     case 'ADD_CABLE_ROUTE': return `Draw cable route (${action.payload.points.length} points)`;
     case 'DELETE_CABLE_ROUTE': return 'Delete cable route';
     case 'SET_CABLE_ROUTE_RACK': return 'Change IDF of cable route';

@@ -1,7 +1,7 @@
 import type {SyncedDoc} from './merge-state';
 import type {CropRect, PaperId, PaperOrientation} from '@/core/paper';
 import type {CameraType, PlacementResult} from '@/core/camera-placement';
-import type {ObjectComment, RequestChanges, RequestResult, TechRequest} from '@shared/tech-ops';
+import type {ObjectComment, RequestChanges, RequestResult, TechPermissions, TechRequest} from '@shared/tech-ops';
 
 /** Automatic camera placement in progress: the settings dialog, then the proposal shown on the plan. */
 export type CameraPlacement = {
@@ -52,6 +52,8 @@ export type LvSettings = {
   rackHeightFt?: number;
   /** Cable sold per box / reel (ft). */
   boxLengthFt: number;
+  /** What technicians may change in this project, and whether it needs the PM's approval. */
+  techPermissions: TechPermissions;
 };
 
 /**
@@ -128,6 +130,9 @@ export type EditorObject = {
   techRequest?: TechRequest;
   /** The PM's decision on the last request. */
   requestResult?: RequestResult;
+  /** Technician who last changed it directly (projects that allow that without a request), and when. */
+  editedBy?: string;
+  editedAt?: string;
   /** When a technician last set the label position (a PM's save keeps a newer one). */
   labelUpdatedAt?: string;
   notes?: string;
@@ -192,10 +197,13 @@ export type UIState = {
   scale: number;
   scrollPos: { x: number; y: number };
   /** 'pan-overlay' = hand tool dragging the overlay blueprint to align it with the main one. */
-  /** 'calibrate' = set the measuring scale from a known dimension; 'measure' = measuring tape. */
+  /**
+   * 'calibrate' = set the measuring scale from a known dimension; 'measure' = measuring tape;
+   * 'path-measure' = path measure (click / tap point after point, total length; for every role).
+   */
   /** 'route' = draw cable routes (click control points). */
   /** 'wall' = draw a camera blindspot wall (click its corner points); 'area' = draw a coverage area (closed outline). */
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'route' | 'wall' | 'area';
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'path-measure' | 'route' | 'wall' | 'area';
   /** Wall tool: runs at multiples of 45° only. */
   wallStraight: boolean;
   /** Wall tool: points stick to existing walls and blindspots. */
@@ -214,6 +222,8 @@ export type UIState = {
   stylusOnly: boolean;
   /** Measuring tape left on the blueprint (unscaled canvas units, `a` = where it was pulled from). Session only. */
   measureTape: { a: { x: number; y: number }; b: { x: number; y: number } } | null;
+  /** Path measure points (unscaled canvas units), on this screen only; stays after leaving the tool until removed. */
+  pathMeasure: { x: number; y: number }[];
   /** Snap dragged objects to the edges / centres of nearby objects. Remembered per device. */
   snapEnabled: boolean;
   showStatusColors: boolean;
@@ -242,6 +252,8 @@ export type UIState = {
   placement: CameraPlacement | null;
   /** A technician's change waiting for "send as request?" (the object stays put meanwhile). */
   techRequestDraft: { objectId: string; changes: RequestChanges } | null;
+  /** Object a technician long-pressed: its "request a change" form (label, cables). */
+  techEditId: string | null;
 };
 
 export type EditorState = DocumentState & UIState;
@@ -310,6 +322,7 @@ export type EditorAction =
   | { type: 'TOGGLE_COVERAGE_SOLID' }
   | { type: 'TOGGLE_MOUNT_HEIGHTS' }
   | { type: 'SET_TECH_REQUEST_DRAFT'; payload: { objectId: string; changes: RequestChanges } | null }
+  | { type: 'SET_TECH_EDIT'; payload: string | null }
   /**
    * Changes from the server, not undoable: 'patch' replaces the given objects (an op's result),
    * 'fieldwork' takes only comments / photos / requests and newer statuses / label positions
@@ -343,6 +356,7 @@ export type EditorAction =
   | { type: 'SET_IPAD_MODE'; payload: boolean }
   | { type: 'SET_STYLUS_ONLY'; payload: boolean }
   | { type: 'SET_MEASURE_TAPE'; payload: UIState['measureTape'] }
+  | { type: 'SET_PATH_MEASURE'; payload: UIState['pathMeasure'] }
   | { type: 'SET_SNAP_ENABLED'; payload: boolean }
   /** Adds a paint-bucket fill to the Colors layer (created if missing). Re-filling the same area replaces it. */
   | { type: 'ADD_FILL'; payload: { object: EditorObject; newLayerId: string } };

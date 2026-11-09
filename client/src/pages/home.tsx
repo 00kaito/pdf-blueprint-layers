@@ -16,6 +16,7 @@ const LayerPanel = lazy(() => import('@/components/editor/LayerPanel').then(modu
 const PropertiesPanel = lazy(() => import('@/components/editor/PropertiesPanel').then(module => ({ default: module.PropertiesPanel })));
 const ToolHint = lazy(() => import('@/components/editor/Canvas/ToolHint').then(module => ({ default: module.ToolHint })));
 const TechRequestDialog = lazy(() => import('@/components/editor/TechRequests').then(module => ({ default: module.TechRequestDialog })));
+const TechEditDialog = lazy(() => import('@/components/editor/TechRequests').then(module => ({ default: module.TechEditDialog })));
 const MobileBottomBar = lazy(() => import('@/components/editor/MobileBottomBar').then(module => ({ default: module.MobileBottomBar })));
 
 const SHOW_LAYERS_STORAGE_KEY = 'editor.showLayers';
@@ -76,6 +77,7 @@ const Home = () => {
           <Canvas />
           <MobileBottomBar />
           <TechRequestDialog />
+          <TechEditDialog />
         </div>
       </Suspense>
     );
@@ -93,6 +95,7 @@ const Home = () => {
       <div className="flex flex-col h-screen overflow-hidden bg-background">
         <Toolbar isSaving={isSaving} />
         <TechRequestDialog />
+        <TechEditDialog />
         <div className="flex flex-1 overflow-hidden relative">
           {/* Left Sidebar (collapsible, to give the canvas room on a tablet) */}
           {showLayers && (

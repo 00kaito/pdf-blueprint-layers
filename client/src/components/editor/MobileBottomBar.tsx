@@ -90,8 +90,8 @@ export const MobileBottomBar: React.FC = () => {
   const canEdit = !isTech && !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path';
   const canDelete = !isTech && !!selectedObject && !layerLocked;
   /** Technicians move too — as a change request for the PM. */
-  const canMove = !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path';
   const field = useFieldActions();
+  const canMove = !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path' && field.techMode('move') !== 'off';
   const name = selectedObject
     ? selectedObject.name || defaultObjectNames(docState.objects, docState.customIcons).get(selectedObject.id) || 'Object'
     : '';
@@ -259,7 +259,7 @@ export const MobileBottomBar: React.FC = () => {
               />
               <ActionButton icon={Images} label={`Photos (${photoCount})`} onClick={() => setIsGalleryOpen(true)} testId="mobile-gallery" />
               {canEdit && <ActionButton icon={CopyPlus} label="Copy" onClick={duplicate} testId="mobile-duplicate" />}
-              {canMove && <ActionButton icon={Move} label={isTech ? 'Request move' : 'Move'} onClick={() => setMoving(true)} testId="mobile-move" />}
+              {canMove && <ActionButton icon={Move} label={isTech && field.techMode('move') === 'request' ? 'Request move' : 'Move'} onClick={() => setMoving(true)} testId="mobile-move" />}
               {!isTech && <ActionButton icon={Plus} label="Add" onClick={() => setIsAddOpen(true)} testId="mobile-add" />}
             </div>
           </>

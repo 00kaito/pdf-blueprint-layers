@@ -4,7 +4,8 @@ import {useCurrentUser} from '@/hooks/useAuth';
 import {useProjectOps} from '@/hooks/useProjectOps';
 import {statusUpdate} from '@/core/status';
 import type {EditorObject} from '@/lib/types';
-import type {RequestChanges} from '@shared/tech-ops';
+import {useToast} from '@/hooks/use-toast';
+import {applyChanges, hasChanges, splitChanges, type RequestChanges, type TechField, type TechOp} from '@shared/tech-ops';
 
 type Status = NonNullable<EditorObject['status']>;
 type LabelUpdates = Pick<EditorObject, 'labelPosition' | 'labelOffset'>;
@@ -15,7 +16,10 @@ type LabelUpdates = Pick<EditorObject, 'labelPosition' | 'labelOffset'>;
  * moves / renames / IDF changes become a request for the PM (after "send as request?").
  */
 export const useFieldActions = () => {
-  const { dispatch } = useDocument();
+  const { state: docState, dispatch } = useDocument();
+  const { toast } = useToast();
+  const permissions = docState.lvSettings.techPermissions;
+  const objects = docState.objects;
   const uiDispatch = useUIDispatch();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -45,10 +49,35 @@ export const useFieldActions = () => {
     }
   }, [dispatch, isTech, send]);
 
-  /** A technician's move / rename / IDF change: asks "send as request?" (TechRequestDialog). */
+  /** What this project lets a technician do with a field: 'off', 'request' (PM approves) or 'direct'. */
+  const techMode = useCallback((field: TechField) => (isTech ? permissions[field] : 'direct'), [isTech, permissions]);
+
+  /**
+   * Sends a technician's changes as the project allows: what may change directly is changed (shown
+   * at once, put back if the server refuses) and what needs approval becomes a request (with `note`).
+   * Not allowed parts are refused with a message. The server checks the setting again.
+   */
+  const sendTechChanges = useCallback(async (objectId: string, changes: RequestChanges, note?: string): Promise<boolean> => {
+    const split = splitChanges(changes, permissions);
+    if (hasChanges(split.off)) toast({ variant: 'destructive', title: 'Not allowed', description: 'This project does not let technicians change that.' });
+    const ops: TechOp[] = [];
+    const before = objects.find(x => x.id === objectId);
+    const put = (o: typeof before) => o && dispatch({ type: 'UPDATE_OBJECT', payload: { id: objectId, updates: { x: o.x, y: o.y, name: o.name, metadata: o.metadata, cables: o.cables } } });
+    if (hasChanges(split.direct)) {
+      if (before) put(applyChanges(before, split.direct) as typeof before);
+      ops.push({ type: 'edit', objectId, changes: split.direct });
+    }
+    if (hasChanges(split.request)) ops.push({ type: 'request', objectId, changes: split.request, note });
+    if (!ops.length) return false;
+    const ok = await send(ops);
+    if (!ok && hasChanges(split.direct)) put(before);
+    return ok;
+  }, [permissions, objects, send, toast, dispatch]);
+
+  /** A technician's move / rename / IDF change: handled by TechRequestDialog (applies / asks "send as request?"). */
   const requestChange = useCallback((objectId: string, changes: RequestChanges) => {
     uiDispatch({ type: 'SET_TECH_REQUEST_DRAFT', payload: { objectId, changes } });
   }, [uiDispatch]);
 
-  return { isTech, setStatus, setIssue, commitIssue, setLabelPosition, requestChange, send };
+  return { isTech, setStatus, setIssue, commitIssue, setLabelPosition, requestChange, techMode, sendTechChanges, permissions, send };
 };

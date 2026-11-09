@@ -1,8 +1,10 @@
 import React, {useRef, useState} from 'react';
 import {
   Archive, Cable, ChevronLeft, Copy, Download, FileUp, FolderOpen, Loader2, LogOut, Menu, Ruler, Save, Share2, Tablet, User,
+  ShieldCheck,
 } from 'lucide-react';
 import {CableSummaryPanel} from '../CableSummaryPanel';
+import {TechPermissionsDialog} from '../TechPermissionsDialog';
 import {Button} from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -44,6 +46,7 @@ export const MainMenu = () => {
   const dirInputRef = useRef<HTMLInputElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
   const replacePdfInputRef = useRef<HTMLInputElement>(null);
   const [replacingPdf, setReplacingPdf] = useState(false);
   const uploadFile = useUploadFile();
@@ -133,6 +136,13 @@ export const MainMenu = () => {
               <DropdownMenuItem onClick={() => setShareOpen(true)} disabled={!docState.projectId} className="gap-2 cursor-pointer">
                 <Share2 className="w-4 h-4" />
                 Share project
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPermissionsOpen(true)} className="gap-2 cursor-pointer" data-testid="menu-tech-permissions">
+                <ShieldCheck className="w-4 h-4" />
+                <div className="flex flex-col">
+                  <span>Technician permissions…</span>
+                  <span className="text-[10px] text-muted-foreground">What techs may change, with or without approval</span>
+                </div>
               </DropdownMenuItem>
               <DropdownMenuItem className="p-0">
                 <label htmlFor="project-upload-main-menu" className="flex items-center gap-2 px-2 py-1.5 w-full cursor-pointer">
@@ -265,6 +275,7 @@ export const MainMenu = () => {
       />
 
       <ShareProjectDialog projectId={docState.projectId} open={shareOpen} onOpenChange={setShareOpen} />
+      <TechPermissionsDialog open={permissionsOpen} onOpenChange={setPermissionsOpen} />
       <ExportPdfDialog />
       <CableSummaryPanel />
 

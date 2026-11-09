@@ -1,7 +1,9 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {Check, ClipboardCheck, Loader2, MessageSquare, Send, Undo2, X} from 'lucide-react';
 import {useDocument, useUI, useUIDispatch} from '@/lib/editor-context';
-import type {EditorObject} from '@/lib/types';
+import type {CableSpec, EditorObject} from '@/lib/types';
+import {Label} from '@/components/ui/label';
+import {CableEditor} from './CableEditor';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
@@ -10,12 +12,12 @@ import {useCurrentUser} from '@/hooks/useAuth';
 import {useProjectOps} from '@/hooks/useProjectOps';
 import {useFieldActions} from '@/hooks/useFieldActions';
 import {useToast} from '@/hooks/use-toast';
-import {getRacks, rackLabel} from '@/core/cable-routing';
+import {getRacks, isCableDevice, rackLabel} from '@/core/cable-routing';
 import {feetPerUnit} from '@/core/measure';
 import {defaultObjectNames} from '@/core/lv-icons';
 import {REQUEST_COLOR} from './Canvas/ObjectRenderer';
 import {cn} from '@/lib/utils';
-import {describeChanges, effectiveChanges, hasChanges, isManager, normalizeComments, type RequestChanges, type TechOp} from '@shared/tech-ops';
+import {describeChanges, effectiveChanges, hasChanges, isManager, normalizeComments, splitChanges, type RequestChanges, type TechFieldMode, type TechOp} from '@shared/tech-ops';
 
 const when = (at: string) => new Date(at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -52,10 +54,20 @@ export const TechRequestDialog = () => {
   const [busy, setBusy] = useState(false);
   const draft = uiState.techRequestDraft;
   const obj = draft ? docState.objects.find(o => o.id === draft.objectId) : undefined;
+  const { sendTechChanges, permissions } = useFieldActions();
   useEffect(() => { if (!draft) setNote(''); }, [draft]);
+  // What the project lets the technician change without approval is changed at once (and what it
+  // does not allow is refused); only the rest stays here as the request to send.
+  const split = draft ? splitChanges(draft.changes, permissions) : null;
+  const handleNow = !!split && (hasChanges(split.direct) || hasChanges(split.off));
+  useEffect(() => {
+    if (!draft || !split || !handleNow) return;
+    sendTechChanges(draft.objectId, { ...split.direct, ...split.off });
+    uiDispatch({ type: 'SET_TECH_REQUEST_DRAFT', payload: hasChanges(split.request) ? { objectId: draft.objectId, changes: split.request } : null });
+  }, [draft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const close = () => uiDispatch({ type: 'SET_TECH_REQUEST_DRAFT', payload: null });
-  if (!draft || !obj) return null;
+  if (!draft || !obj || handleNow) return null;
   // Together with what is already pending from this technician.
   const pending = obj.techRequest?.changes ?? {};
   const changes = effectiveChanges(obj, { ...pending, ...draft.changes });
@@ -105,6 +117,129 @@ export const TechRequestDialog = () => {
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Send request
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/**
+ * A technician's long press on an object: change its label and (devices) its cables, as far as the
+ * project allows. Fields the project lets them change directly are changed on "Save"; the rest goes
+ * to the PM as a change request (joining what they already asked for on this object).
+ */
+export const TechEditDialog = () => {
+  const { state: uiState } = useUI();
+  const uiDispatch = useUIDispatch();
+  const { state: docState } = useDocument();
+  const { data: user } = useCurrentUser();
+  const { techMode, sendTechChanges } = useFieldActions();
+  const { toast } = useToast();
+  const describe = useDescribe();
+  const obj = uiState.techEditId ? docState.objects.find(o => o.id === uiState.techEditId) : undefined;
+  const pending = obj?.techRequest?.byId === user?.id ? obj?.techRequest?.changes : undefined;
+  const labelMode = techMode('label'), cablesMode = techMode('cables');
+  const [name, setName] = useState('');
+  const [cables, setCables] = useState<CableSpec[]>([]);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  // Start from what is asked already (fields that need approval), else the plan, each time the form opens.
+  useEffect(() => {
+    if (!obj) return;
+    setName((labelMode === 'request' ? pending?.name : undefined) ?? obj.name ?? '');
+    setCables(((cablesMode === 'request' ? pending?.cables : undefined) ?? obj.cables ?? []).map(c => ({ ...c })));
+    setNote('');
+  }, [uiState.techEditId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const close = () => uiDispatch({ type: 'SET_TECH_EDIT', payload: null });
+  if (!obj) return null;
+
+  // Another technician's pending request: no request of this one's on top (direct changes are fine).
+  const othersRequest = obj.techRequest && obj.techRequest.byId !== user?.id ? obj.techRequest : undefined;
+  const usable = (mode: TechFieldMode) => mode === 'direct' || (mode === 'request' && !othersRequest);
+  const showLabel = usable(labelMode);
+  const showCables = isCableDevice(obj) && usable(cablesMode);
+  const asked: RequestChanges = { ...(showLabel ? { name: name.trim() } : {}), ...(showCables ? { cables } : {}) };
+  const split = splitChanges(asked, docState.lvSettings.techPermissions);
+  const now = effectiveChanges(obj, split.direct);
+  const requested = effectiveChanges(obj, { ...(pending ?? {}), ...split.request });
+  const newRequest = effectiveChanges(obj, split.request);
+  const nowLines = describe(now, obj);
+  const requestLines = describe(requested, obj.techRequest?.from ?? obj);
+  const canSend = hasChanges(now) || hasChanges(newRequest) || (hasChanges(requested) && !!note.trim());
+  const title = obj.name || defaultObjectNames(docState.objects, docState.customIcons).get(obj.id);
+  const tag = (mode: TechFieldMode) => mode === 'request'
+    ? <span className="text-[10px] font-normal text-muted-foreground">· needs PM approval</span>
+    : null;
+
+  const submit = async () => {
+    setBusy(true);
+    const ok = await sendTechChanges(obj.id, { ...now, ...(hasChanges(requested) ? split.request : {}) }, note.trim() || undefined);
+    setBusy(false);
+    if (ok) {
+      toast(hasChanges(requested)
+        ? { title: hasChanges(now) ? 'Saved, request sent' : 'Request sent', description: 'The PM will see the request and approve or reject it.' }
+        : { title: 'Saved' });
+      close();
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && close()}>
+      <DialogContent className="sm:max-w-[420px] max-h-[90dvh] overflow-y-auto" data-testid="tech-edit-dialog">
+        <DialogHeader>
+          <DialogTitle>Edit · {title}</DialogTitle>
+          <DialogDescription>
+            {labelMode === 'request' || cablesMode === 'request'
+              ? 'Changes marked "needs PM approval" go to the PM as a request; the plan keeps them until approved.'
+              : 'Your changes are saved to the plan.'}
+          </DialogDescription>
+        </DialogHeader>
+        {othersRequest && (
+          <p className="text-sm text-muted-foreground">
+            {othersRequest.byName} already has a pending request on this object — what needs approval waits for the PM's decision on it.
+          </p>
+        )}
+        {!showLabel && !showCables && !othersRequest && (
+          <p className="text-sm text-muted-foreground">This project does not let technicians change the label or cables.</p>
+        )}
+        {showLabel && (
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium flex items-center gap-1">Label {tag(labelMode)}</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="No label" className="h-10"
+              autoCapitalize="none" data-testid="tech-edit-label" />
+          </div>
+        )}
+        {showCables && (
+          <div className="space-y-1">
+            {cablesMode === 'request' && <div className="text-[10px] text-muted-foreground">Cables need PM approval</div>}
+            <CableEditor objects={[obj]} value={cables} onChange={setCables} large />
+          </div>
+        )}
+        {(hasChanges(now) || hasChanges(requested)) && (
+          <ul className="text-sm space-y-1" data-testid="tech-edit-summary">
+            {nowLines.map(l => (
+              <li key={'n' + l} className="flex items-center gap-2"><span className="w-2 h-2 rounded-full shrink-0 bg-green-600" />{l}</li>
+            ))}
+            {requestLines.map(l => (
+              <li key={'r' + l} className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: REQUEST_COLOR }} />{l}
+                <span className="text-[10px] text-muted-foreground">(request)</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {hasChanges(requested) && (
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why? (optional)" className="text-sm min-h-[60px]" />
+        )}
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={close}>Cancel</Button>
+          {(showLabel || showCables) && (
+            <Button onClick={submit} disabled={busy || !canSend} className="gap-1.5" data-testid="tech-edit-send">
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : hasChanges(requested) ? <Send className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+              {hasChanges(requested) ? (hasChanges(now) ? 'Save & send request' : 'Send request') : 'Save'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -161,6 +296,10 @@ export const TechRequestSection = ({ obj }: { obj: EditorObject }) => {
   const { data: user } = useCurrentUser();
   const req = obj.techRequest;
   const result = obj.requestResult;
+  // Changed by a technician without approval (projects that allow it): who and when, for the PM.
+  const edited = obj.editedBy && obj.editedAt && isManager(user?.role) ? (
+    <div className="text-[11px] text-muted-foreground" data-testid="tech-edited">Changed by technician {obj.editedBy} · {when(obj.editedAt)}</div>
+  ) : null;
   if (req) {
     return (
       <div className="rounded-md border p-2.5 space-y-2 text-xs" style={{ borderColor: REQUEST_COLOR, backgroundColor: `${REQUEST_COLOR}10` }} data-testid="tech-request-section">
@@ -168,6 +307,7 @@ export const TechRequestSection = ({ obj }: { obj: EditorObject }) => {
         <ul className="space-y-0.5">{describe(req.changes, req.from).map(l => <li key={l}>• {l}</li>)}</ul>
         {req.note && <p className="italic text-muted-foreground">“{req.note}”</p>}
         <RequestActions obj={obj} />
+        {edited}
       </div>
     );
   }
@@ -182,7 +322,7 @@ export const TechRequestSection = ({ obj }: { obj: EditorObject }) => {
       </div>
     );
   }
-  return null;
+  return edited;
 };
 
 /**
@@ -190,8 +330,9 @@ export const TechRequestSection = ({ obj }: { obj: EditorObject }) => {
  * (on Enter / leaving the field). Shows the requested name while it waits.
  */
 export const TechLabelInput = ({ obj, className }: { obj: EditorObject; className?: string }) => {
-  const { requestChange } = useFieldActions();
-  const current = obj.techRequest?.changes.name ?? obj.name ?? '';
+  const { requestChange, techMode } = useFieldActions();
+  const mode = techMode('label');
+  const current = (mode === 'request' ? obj.techRequest?.changes.name : undefined) ?? obj.name ?? '';
   const [draft, setDraft] = useState(current);
   useEffect(() => setDraft(current), [current, obj.id]);
   const commit = () => {
@@ -205,7 +346,9 @@ export const TechLabelInput = ({ obj, className }: { obj: EditorObject; classNam
       onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setDraft(current); }}
       placeholder="No label"
       className={className}
-      title="Changing the label sends a rename request to the PM"
+      disabled={mode === 'off'}
+      title={mode === 'off' ? 'This project does not let technicians change labels'
+        : mode === 'direct' ? 'Changing the label saves it to the plan' : 'Changing the label sends a rename request to the PM'}
       data-testid="tech-label-input"
     />
   );

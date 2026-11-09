@@ -194,6 +194,7 @@ const initialUIState: UIState = {
   exportStep: 'closed',
   placement: null,
   techRequestDraft: null,
+  techEditId: null,
   fillColor: '#3b82f6',
   fillOpacity: 0.35,
   drawColor: '#000000',
@@ -207,6 +208,7 @@ const initialUIState: UIState = {
   coverageSolid: loadCoverageSolid(),
   showMountHeights: loadMountHeights(),
   measureTape: null,
+  pathMeasure: [],
   snapEnabled: loadSnapEnabled()
 };
 
@@ -268,6 +270,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
         pdfCanvasHeight: CANVAS_BASE_HEIGHT,
         measureCalibration: null,
         measureTape: null,
+        pathMeasure: [],
       };
     case 'REPLACE_PDF':
       return {
@@ -381,7 +384,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       // Same device settings as copy / paste: no photos, comments or notes of the original.
       const {
         photos, photoBy, comments, notes, issueDescription, statusUpdatedAt, statusUpdatedBy,
-        techRequest, requestResult, labelUpdatedAt,
+        techRequest, requestResult, labelUpdatedAt, editedBy, editedAt,
         change, changeOrigin, changeNote, changeUpdatedAt, changeUpdatedBy, ...rest
       } = source;
       // Right of the original; to its left / below when that runs off the page.
@@ -516,7 +519,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
         ? requestedLayerId
         : layers[0]?.id ?? null;
       return {
-        ...state, measureCalibration: null, measureTape: null, ...action.payload, layers, activeLayerId,
+        ...state, measureCalibration: null, measureTape: null, pathMeasure: [], ...action.payload, layers, activeLayerId,
         lvSettings: normalizeLvSettings(action.payload.lvSettings),
         cableRoutes: action.payload.cableRoutes ?? [],
         selectedRouteId: null,
@@ -547,6 +550,8 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       return { ...state, coverageSolid: !state.coverageSolid };
     case 'SET_TECH_REQUEST_DRAFT':
       return { ...state, techRequestDraft: action.payload };
+    case 'SET_TECH_EDIT':
+      return { ...state, techEditId: action.payload };
     case 'APPLY_REMOTE':
       return applyRemote(state, action.payload);
     case 'APPLY_REMOTE_MERGE': {
@@ -808,6 +813,8 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       return { ...state, stylusOnly: action.payload };
     case 'SET_MEASURE_TAPE':
       return { ...state, measureTape: action.payload };
+    case 'SET_PATH_MEASURE':
+      return { ...state, pathMeasure: action.payload };
     case 'SET_SNAP_ENABLED':
       return { ...state, snapEnabled: action.payload };
     case 'ADD_FILL': {
@@ -838,7 +845,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       return { ...state, layers, objects };
     }
     case 'RESET_EDITOR':
-      return { ...state, ...initialDocumentState, measureTape: null, localLabelOffsets: {}, tool: state.tool === 'pan-overlay' ? 'select' : state.tool };
+      return { ...state, ...initialDocumentState, measureTape: null, pathMeasure: [], localLabelOffsets: {}, tool: state.tool === 'pan-overlay' ? 'select' : state.tool };
     default:
       return state;
   }
@@ -943,6 +950,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     exportStep: state.exportStep,
     placement: state.placement,
     techRequestDraft: state.techRequestDraft,
+    techEditId: state.techEditId,
     fillColor: state.fillColor,
     fillOpacity: state.fillOpacity,
     drawColor: state.drawColor,
@@ -953,8 +961,9 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     ipadMode: state.ipadMode,
     stylusOnly: state.stylusOnly,
     measureTape: state.measureTape,
+    pathMeasure: state.pathMeasure,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.localLabelOffsets, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.showMountHeights, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.techRequestDraft, state.wallStraight, state.wallSnap]);
+  }), [state.measureTape, state.pathMeasure, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.localLabelOffsets, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.showMountHeights, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.techRequestDraft, state.techEditId, state.wallStraight, state.wallSnap]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

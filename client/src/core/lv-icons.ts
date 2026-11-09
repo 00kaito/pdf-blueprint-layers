@@ -4,6 +4,7 @@
  * the same path is rendered on the canvas (LvIcon) and in the PDF export (drawSvgPath), so both match.
  */
 import type {CableSpec, CableType, LvSettings} from '@/lib/types';
+import {DEFAULT_TECH_PERMISSIONS, techPermissionsOf} from '@shared/tech-ops';
 
 export const LV_ICON_GRID = 24;
 
@@ -72,6 +73,10 @@ export const LV_ICONS: Record<string, { label: string; d: string }> = {
     label: 'Control Panel',
     d: 'M3 3h18v18H3z M6 6h12v5H6z M6 14h4v4H6z M14 14h4v4h-4z',
   },
+  printer: {
+    label: 'Copier / Printer',
+    d: 'M6 9V3h12v6 M6 18H2V9h20v9h-4 M6 14h12v8H6z M17.5 12h1',
+  },
   [RACK_ICON]: {
     label: 'Rack / IDF',
     d: 'M5 2h14v20H5z M8 6h8 M8 10h8 M8 14h8 M8 18h8',
@@ -98,6 +103,8 @@ export const DEFAULT_MOUNT_HEIGHT_IN: Record<string, number> = {
   'access-control': 48,
   'control-panel': 48,
   scheduler: 48,
+  // Wall outlet behind the machine.
+  printer: 18,
   speaker: 84,
   cctv: MOUNT_CEILING,
   [CAMERA_360_ICON]: MOUNT_CEILING,
@@ -196,12 +203,14 @@ export const DEFAULT_LV_SETTINGS: LvSettings = {
     wap: [{ type: 'CAT6', count: 1 }],
     'control-panel': [{ type: 'CAT6', count: 1 }],
     scheduler: [{ type: 'CAT6', count: 1 }],
+    printer: [{ type: 'CAT6', count: 1 }],
   },
 
   portsPerPanel: 24,
   serviceLoopFt: 10,
   deviceSlackFt: 15,
   boxLengthFt: 1000,
+  techPermissions: DEFAULT_TECH_PERMISSIONS,
 };
 
 /**
@@ -220,6 +229,7 @@ export const normalizeLvSettings = (s: Partial<LvSettings> | undefined): LvSetti
   ...DEFAULT_LV_SETTINGS,
   ...s,
   cableDefaults: withoutStrayPower({ ...DEFAULT_LV_SETTINGS.cableDefaults, ...s?.cableDefaults }),
+  techPermissions: techPermissionsOf(s?.techPermissions),
 });
 
 /**

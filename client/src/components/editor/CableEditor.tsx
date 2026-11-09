@@ -16,18 +16,21 @@ const sameCables = (a: CableSpec[] | undefined, b: CableSpec[] | undefined) =>
  * Cables of the selected devices (type × count). Whatever is set here also becomes the default for
  * new devices of the same type, so it only has to be entered once per device type.
  */
-export const CableEditor = ({ objects, readOnly = false, large = false }: {
+export const CableEditor = ({ objects, readOnly = false, large = false, value, onChange }: {
   objects: EditorObject[]; readOnly?: boolean; large?: boolean;
+  /** Edit these cables instead of the objects' (a technician's change request); nothing is dispatched. */
+  value?: CableSpec[]; onChange?: (cables: CableSpec[]) => void;
 }) => {
   const dispatch = useDocumentDispatch();
   const first = objects[0];
   if (!first) return null;
 
-  const mixed = objects.some(o => !sameCables(o.cables, first.cables));
-  const cables = mixed ? [] : (first.cables ?? []);
+  const local = !!onChange;
+  const mixed = !local && objects.some(o => !sameCables(o.cables, first.cables));
+  const cables = local ? (value ?? []) : mixed ? [] : (first.cables ?? []);
   const ids = objects.map(o => o.id);
 
-  const set = (next: CableSpec[]) => dispatch({ type: 'SET_OBJECT_CABLES', payload: { ids, cables: next } });
+  const set = (next: CableSpec[]) => onChange ? onChange(next) : dispatch({ type: 'SET_OBJECT_CABLES', payload: { ids, cables: next } });
   const updateRow = (i: number, patch: Partial<CableSpec>) =>
     set(cables.map((c, j) => (j === i ? { ...c, ...patch } : c)));
 
@@ -115,7 +118,7 @@ export const CableEditor = ({ objects, readOnly = false, large = false }: {
         Add cable
       </Button>
 
-      {typeLabel && (
+      {typeLabel && !local && (
         <div className="text-[10px] text-muted-foreground px-1">
           New <span className="font-medium">{typeLabel}</span> devices get the same cables.
         </div>

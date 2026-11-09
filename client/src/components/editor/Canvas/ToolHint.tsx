@@ -28,6 +28,9 @@ const hintFor = (tool: string, hasScale: boolean, touch: boolean, stylusOnly: bo
       : touch
         ? `${pen}Drag from A to B · ${pinch} · the tape stays until ✕`
         : 'Drag from A to B · Shift = straight · the tape stays until ✕ or Esc';
+    case 'path-measure': return touch
+      ? 'Tap = next point · hold a finger = remove the measurement · drag = pan'
+      : 'Click point after point · Shift = straight · Backspace = undo point · Esc / ✕ = remove';
     case 'pan-overlay': return touch
       ? 'Drag the overlay to align it · tap Done when finished'
       : 'Drag the overlay to align it · arrow keys nudge · Esc = done';
