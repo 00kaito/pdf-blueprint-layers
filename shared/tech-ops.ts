@@ -10,6 +10,8 @@
  * PM's open plan may not have the latest yet), and status / label position keep whichever is newer.
  */
 
+import {JUMPER_STATUSES, withNewerJumperStatuses, type Jumper} from './jumpers';
+
 export type UserRole = 'admin' | 'PM' | 'TECH';
 
 export type OpsUser = { id: string; username: string; role: string };
@@ -61,6 +63,9 @@ export type TechField = (typeof TECH_FIELDS)[number];
 export type TechPermissions = Record<TechField, TechFieldMode>;
 /** As before the setting existed: everything by request. */
 export const DEFAULT_TECH_PERMISSIONS: TechPermissions = { move: 'request', label: 'request', cables: 'request', idf: 'request' };
+/** Installation statuses (same ids as the client's STATUSES). */
+const STATUS_IDS = ['PLANNED', 'CABLE_PULLED', 'TERMINATED', 'TESTED', 'APPROVED', 'ISSUE'];
+
 const MODES: TechFieldMode[] = ['off', 'request', 'direct'];
 
 /** A project's setting with the defaults filled in (and anything unknown ignored). */
@@ -110,6 +115,8 @@ export type RequestResult = {
 
 export type TechOp =
   | { type: 'status'; objectId: string; status: string; issueDescription?: string }
+  /** Status of one jumper stored on `objectId` (its "from" object). */
+  | { type: 'jumperStatus'; objectId: string; jumperId: string; status: string; issueDescription?: string }
   | { type: 'label'; objectId: string; labelPosition: 'bottom' | 'top' | 'left' | 'right' }
   | { type: 'request'; objectId: string; changes: RequestChanges; note?: string }
   | { type: 'edit'; objectId: string; changes: RequestChanges }
@@ -220,6 +227,19 @@ export const applyOps = (
           ...(op.issueDescription !== undefined ? { issueDescription: op.issueDescription } : {}),
         };
         break;
+      case 'jumperStatus': {
+        if (!(JUMPER_STATUSES as readonly string[]).includes(op.status)) throw new OpError('Invalid status');
+        const jumpers = (o.jumpers ?? []) as Jumper[];
+        if (!jumpers.some(j => j.id === op.jumperId)) throw new OpError('Jumper not found — it may have been deleted', 409);
+        next = {
+          ...o,
+          jumpers: jumpers.map(j => j.id !== op.jumperId ? j : {
+            ...j, status: op.status, statusUpdatedAt: now, statusUpdatedBy: user.username,
+            ...(op.issueDescription !== undefined ? { issueDescription: op.issueDescription } : {}),
+          }),
+        };
+        break;
+      }
       case 'label': {
         const { labelOffset, ...rest } = o;
         next = { ...rest, labelPosition: op.labelPosition, labelUpdatedAt: now };
@@ -358,6 +378,8 @@ export const mergeManagerSave = (stored: Obj[] | undefined, incoming: Obj[]): Ob
         if (s[key] === undefined) delete next[key]; else next[key] = s[key];
       }
     }
+    const jumpers = withNewerJumperStatuses(o.jumpers, s.jumpers);
+    if (jumpers !== o.jumpers) next.jumpers = jumpers;
     return next;
   });
 };

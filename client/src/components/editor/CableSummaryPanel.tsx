@@ -2,6 +2,7 @@ import React, {useMemo, useState} from 'react';
 import {AlertTriangle} from 'lucide-react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {CableType, EditorObject} from '@/lib/types';
+import {withShownStatuses} from '@/core/jumpers';
 import {buildCableSummary, isCableDevice, lengthNote, ProgressBucket, rackColorMap, RackSummary} from '@/core/cable-routing';
 import {CABLE_LABEL, CABLE_TYPES, DEFAULT_RACK_HEIGHT_FT, deviceKey, objectTypeName} from '@/core/lv-icons';
 import {PLAN_CHANGES} from '@/core/plan-change';
@@ -87,7 +88,7 @@ export const CableSummaryPanel = () => {
 
   const summary = useMemo(
     () => open
-      ? buildCableSummary(docState.objects, docState.cableRoutes, docState.measureCalibration, s,
+      ? buildCableSummary(withShownStatuses(docState.objects), docState.cableRoutes, docState.measureCalibration, s,
         filter === ALL ? undefined : (o) => typeKey(o) === filter)
       : null,
     [open, docState.objects, docState.cableRoutes, docState.measureCalibration, s, filter],

@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {ChevronLeft, Download, Layers, LogOut, Menu, Spline, Palette, User, Video} from 'lucide-react';
+import {Cable, ChevronLeft, Download, Layers, LogOut, Menu, Spline, Palette, User, Video} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Switch} from '@/components/ui/switch';
 import {Separator} from '@/components/ui/separator';
@@ -119,6 +119,13 @@ export const MobileMenu = () => {
               checked={uiState.showCableRoutes}
               onChange={() => dispatch({ type: 'TOGGLE_CABLE_ROUTES' })}
               testId="mobile-menu-cable-routes"
+            />
+            <Row
+              icon={Cable}
+              label="All jumpers"
+              checked={uiState.showJumpers}
+              onChange={() => dispatch({ type: 'TOGGLE_JUMPERS' })}
+              testId="mobile-menu-jumpers"
             />
 
             {docState.layers.length > 0 && (

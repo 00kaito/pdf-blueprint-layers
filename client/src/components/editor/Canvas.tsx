@@ -32,6 +32,9 @@ import {CropLayer} from './Canvas/CropLayer';
 import {useRouteDrawing} from '@/hooks/useRouteDrawing';
 import {useWallDrawing} from '@/hooks/useWallDrawing';
 import {usePathMeasure} from '@/hooks/usePathMeasure';
+import {useJumperDrawing} from '@/hooks/useJumperDrawing';
+import {JumperLayer} from './Canvas/JumperLayer';
+import {allJumpers, jumperColor, jumperCounts, jumperFeet, objectsWaitingForJumpers} from '@/core/jumpers';
 import {WallPreview} from './Canvas/WallPreview';
 import {
   computeCableRuns, getRacks, hasCables, isCableDevice, rackColorMap, rackLabel, runFeet, SHARED_ROUTE_COLOR,
@@ -52,6 +55,7 @@ export const TOOL_SHORTCUTS: Record<string, UIState['tool']> = {
   m: 'measure',
   k: 'calibrate',
   r: 'route',
+  j: 'jumper',
   w: 'wall',
 };
 
@@ -90,6 +94,11 @@ export const Canvas = () => {
   const route = useRouteDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const wall = useWallDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const pathMeasure = usePathMeasure(containerRef as React.RefObject<HTMLDivElement>);
+  const jumperTool = useJumperDrawing(containerRef as React.RefObject<HTMLDivElement>);
+  const jumperLinks = useMemo(() => allJumpers(docState.objects), [docState.objects]);
+  const jumperCountById = useMemo(() => jumperCounts(jumperLinks), [jumperLinks]);
+  const waitingForJumpers = useMemo(() => objectsWaitingForJumpers(jumperLinks), [jumperLinks]);
+  const jumperDraftFrom = jumperTool.draft ? docState.objects.find(o => o.id === jumperTool.draft!.fromId) : undefined;
   // Auto-placement proposal: drawn instead of the plan's own cameras until applied / cancelled.
   const placementProposal = usePlacementProposal();
   const placementPreview = placementProposal.preview;
@@ -224,6 +233,8 @@ export const Canvas = () => {
     };
   }, []);
   const mousePosRef = useRef({ x: 0, y: 0 });
+  const jumperLinksRef = useRef(jumperLinks);
+  jumperLinksRef.current = jumperLinks;
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -328,7 +339,10 @@ export const Canvas = () => {
       // back its last point (usePathMeasure). The tool comes from the ref: this handler is not
       // re-created when the tool changes.
       const deleteKey = (e.key === 'Delete' || e.key === 'Backspace') && shortcutStateRef.current.tool !== 'path-measure';
-      if (deleteKey && state.selectedObjectIds.length > 0) {
+      if (deleteKey && state.selectedJumperId) {
+        const link = jumperLinksRef.current.find(l => l.jumper.id === state.selectedJumperId);
+        if (link) dispatch({ type: 'DELETE_JUMPER', payload: { fromId: link.from.id, id: link.jumper.id } });
+      } else if (deleteKey && state.selectedObjectIds.length > 0) {
         dispatch({ type: 'DELETE_OBJECTS', payload: state.selectedObjectIds });
       } else if (deleteKey && state.selectedRouteId) {
         dispatch({ type: 'DELETE_CABLE_ROUTE', payload: state.selectedRouteId });
@@ -352,7 +366,7 @@ export const Canvas = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.selectedObjectIds, state.selectedRouteId, dispatch, isTech]);
+  }, [state.selectedObjectIds, state.selectedRouteId, state.selectedJumperId, dispatch, isTech]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (state.tool === 'path-measure') { pathMeasure.onPointerDown(e); return; }
@@ -373,6 +387,7 @@ export const Canvas = () => {
     // Stylus only: a finger tap does not fill or stamp (it may still deselect).
     if (state.stylusOnly && isTapTool(state.tool) && lastPointerTypeRef.current === 'touch') return;
     if (state.tool === 'route') { route.onClick(e); }
+    else if (state.tool === 'jumper') { jumperTool.onClick(e); }
     else if (state.tool === 'wall' || state.tool === 'area') { wall.onClick(e); }
     else if (state.tool === 'fill') { handleFill(e); }
     else if (state.tool === 'stamp' && state.activeLayerId && state.autoNumbering.enabled && state.autoNumbering.template) {
@@ -489,7 +504,7 @@ export const Canvas = () => {
 
   return (
     <div ref={scrollRef} data-canvas-scroller className={`flex-1 bg-muted/30 overflow-auto relative select-none${
-      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || state.tool === 'wall' || state.tool === 'area' || state.tool === 'path-measure' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
+      spacePan.panning || fingerPan.panning ? ' cursor-grabbing' : spacePan.spaceDown ? ' cursor-grab' : state.tool === 'fill' || state.tool === 'wall' || state.tool === 'area' || state.tool === 'path-measure' || state.tool === 'jumper' || isStrokeTool(state.tool) ? ' cursor-crosshair' : ''
     }`} 
       // Stroke tools suppress native Safari gestures for pen and touch. In stylus-only mode,
       // useFingerPan restores one-finger panning and usePinchZoom handles two fingers.
@@ -603,6 +618,32 @@ export const Canvas = () => {
             hover={route.hover}
             run={state.showCableRoutes || state.tool === 'route' ? selectedRun : null}
           />
+          <JumperLayer
+            links={jumperLinks}
+            scale={state.scale}
+            focusIds={state.selectedObjectIds}
+            showAll={state.showJumpers || state.tool === 'jumper'}
+            filter={state.jumperFilter}
+            statusColors={state.showStatusColors}
+            selectedJumperId={state.selectedJumperId}
+            lengthOf={(link) => jumperFeet(link, docState.measureCalibration, docState.lvSettings)}
+            editable={!isTech}
+            // Not in the jumper tool: there a click on an object (where lines start) picks the object.
+            interactive={state.tool === 'select'}
+            draft={jumperTool.draft && jumperDraftFrom
+              ? { from: jumperDraftFrom, points: jumperTool.draft.points, hover: jumperTool.hover, color: jumperColor({ id: '', toId: '', cables: state.jumperCables }) }
+              : null}
+            target={jumperTool.targetId ? docState.objects.find(o => o.id === jumperTool.targetId) ?? null : null}
+            targetIsEnd={!!jumperTool.draft}
+            targetColor={jumperColor({ id: '', toId: '', cables: state.jumperCables })}
+            onSelect={(link) => {
+              dispatch({ type: 'SELECT_OBJECT', payload: link.from.id });
+              dispatch({ type: 'SELECT_JUMPER', payload: link.jumper.id });
+            }}
+            onGoTo={(id) => dispatch({ type: 'SELECT_OBJECT', payload: id })}
+            onUpdate={(link, updates) => dispatch({ type: 'UPDATE_JUMPER', payload: { fromId: link.from.id, id: link.jumper.id, updates } })}
+            onDelete={(link) => dispatch({ type: 'DELETE_JUMPER', payload: { fromId: link.from.id, id: link.jumper.id } })}
+          />
           <WallPreview points={wall.points} hover={wall.hover} scale={state.scale} closed={state.tool === 'area'} />
           <GuidesLayer scale={state.scale} tape={state.measureTape} ftPerUnit={feetPerUnit(state.measureCalibration)} />
 
@@ -632,6 +673,8 @@ export const Canvas = () => {
                 labelFontSize={docState.exportSettings.labelFontSize}
                 localLabelOffset={uiState.localLabelOffsets[obj.id]}
                 techPermissions={docState.lvSettings.techPermissions}
+                jumperCount={jumperCountById.get(obj.id)}
+                jumperPending={waitingForJumpers.has(obj.id)}
                 noCables={uiState.showCableRoutes && isCableDevice(obj) && obj.change !== 'REMOVE' && !hasCables(obj)}
               />
             );

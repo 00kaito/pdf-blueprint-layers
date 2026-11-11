@@ -32,6 +32,17 @@ export const useFieldActions = () => {
     if (isTech) send(ids.map(objectId => ({ type: 'status' as const, objectId, status, issueDescription })));
   }, [dispatch, isTech, send, user?.username]);
 
+  /** Status of one jumper (stored on its "from" object); a technician's also goes to the server. */
+  const setJumpersStatus = useCallback((jumpers: { fromId: string; jumperId: string }[], status: Status) => {
+    if (!jumpers.length) return;
+    const updates = statusUpdate(status, user?.username);
+    for (const { fromId, jumperId } of jumpers) dispatch({ type: 'UPDATE_JUMPER', payload: { fromId, id: jumperId, updates } });
+    // One request for all of them (a technician's "Mark all pulled").
+    if (isTech) send(jumpers.map(({ fromId, jumperId }) => ({ type: 'jumperStatus' as const, objectId: fromId, jumperId, status })));
+  }, [dispatch, isTech, send, user?.username]);
+  const setJumperStatus = useCallback((fromId: string, jumperId: string, status: Status) =>
+    setJumpersStatus([{ fromId, jumperId }], status), [setJumpersStatus]);
+
   /** Issue text while typing (shown at once); a technician's goes to the server in `commitIssue`. */
   const setIssue = useCallback((ids: string[], issueDescription: string) => {
     dispatch({ type: 'UPDATE_OBJECTS', payload: { ids, updates: { issueDescription } } });
@@ -79,5 +90,5 @@ export const useFieldActions = () => {
     uiDispatch({ type: 'SET_TECH_REQUEST_DRAFT', payload: { objectId, changes } });
   }, [uiDispatch]);
 
-  return { isTech, setStatus, setIssue, commitIssue, setLabelPosition, requestChange, techMode, sendTechChanges, permissions, send };
+  return { isTech, setStatus, setJumperStatus, setJumpersStatus, setIssue, commitIssue, setLabelPosition, requestChange, techMode, sendTechChanges, permissions, send };
 };

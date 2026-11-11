@@ -9,6 +9,7 @@ import {feetPerUnit, formatFeet, formatFeetInches, segmentLength} from '@/core/m
 import {cn} from '@/lib/utils';
 import {effectiveRouteRack, getRacks, rackColorMap, rackLabel, SHARED_ROUTE_COLOR} from '@/core/cable-routing';
 import {ObjectPropertyEditor} from './ObjectPropertyEditor';
+import {JumperCablesPicker} from '../JumperCablesPicker';
 import {ProjectName} from './ProjectName';
 import {BRUSH_SIZE_STEP, MAX_BRUSH_SIZE, MIN_BRUSH_SIZE} from './ToolSelector';
 
@@ -19,6 +20,7 @@ const TOOL_NAMES: Record<string, string> = {
   calibrate: 'Scale probe',
   'pan-overlay': 'Overlay alignment',
   route: 'Cable route',
+  jumper: 'Jumper',
   wall: 'Blindspot wall',
 };
 
@@ -280,6 +282,29 @@ export const ContextBar = () => {
         </div>
         <span className="text-muted-foreground whitespace-nowrap">· cables of this IDF follow only its routes (and shared ones)</span>
         <InputModeSwitch />
+      </div>
+    );
+  } else if (uiState.tool === 'jumper') {
+    const draft = uiState.jumperDraft;
+    const from = draft && docState.objects.find(o => o.id === draft.fromId);
+    content = (
+      <div className="flex items-center gap-2 text-xs" data-testid="jumper-inline-settings">
+        <span className="text-muted-foreground whitespace-nowrap">New jumper carries</span>
+        <JumperCablesPicker
+          cables={uiState.jumperCables}
+          onChange={(cables) => dispatch({ type: 'SET_JUMPER_CABLES', payload: cables })}
+          className="flex-nowrap"
+        />
+        <span className="text-muted-foreground whitespace-nowrap">
+          {from && draft
+            ? `· from ${from.name || 'object'} — now the other end${draft.points.length ? ` (${draft.points.length} points)` : ''}`
+            : '· pick the first object'}
+        </span>
+        {from && (
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => dispatch({ type: 'SET_JUMPER_DRAFT', payload: null })}>
+            Cancel
+          </Button>
+        )}
       </div>
     );
   } else if (uiState.tool === 'wall' || uiState.tool === 'area') {

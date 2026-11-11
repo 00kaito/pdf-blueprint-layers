@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { ObjectPhotoGallery } from './ObjectPhotoGallery';
 import { PlanChangeSection } from './PlanChangeSection';
 import { CableEditor } from './CableEditor';
+import { JumperEditor } from './JumperEditor';
+import { canHaveJumpers } from '@/core/jumpers';
 import { CameraCoverageEditor } from './CameraCoverageEditor';
 import { MountHeightEditor } from './MountHeightEditor';
 import { isCamera } from '@/core/camera-coverage';
@@ -113,6 +115,7 @@ export const PMObjectDetailsPanel: React.FC = () => {
         {isCableDevice(selectedObject) && (
           <CableEditor objects={[selectedObject]} readOnly={user?.role === 'TECH'} large />
         )}
+        {canHaveJumpers(selectedObject) && <JumperEditor object={selectedObject} large />}
         {isCamera(selectedObject) && (
           <CameraCoverageEditor objects={[selectedObject]} readOnly={user?.role === 'TECH'} large />
         )}

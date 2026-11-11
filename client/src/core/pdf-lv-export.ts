@@ -10,6 +10,9 @@ import {PLAN_CHANGE_BY_ID, PLAN_CHANGES} from './plan-change';
 import {statusOf} from './status';
 import {blindAreas, COVERAGE_BLIND, COVERAGE_FAR, COVERAGE_NEAR, COVERAGE_OPACITY, coverageCameras, coverageAreas, coverageObstacles, coverageOf, coverageZones, limitToAreas, type ShownZones} from './camera-coverage';
 import type {Point} from './measure';
+import {gatedStatus, isJumperPulled, objectsWaitingForJumpers, withShownStatuses} from './jumpers';
+import {allJumpers, formatJumperFeet, jumperColor, jumperFeet, jumperGeometry, jumperHasType, JUMPER_TYPES, JumperLink, jumperTitle} from './jumpers';
+import type {JumperType} from '@/lib/types';
 
 /** Mount height for the device schedule: "60\"", "Ceiling", or "-" when unknown. */
 const mountCell = (o: EditorObject) => {
@@ -112,6 +115,36 @@ export const drawCableRoutes = (pp: PlanPainter, routes: CableRoute[], objects: 
   }
 };
 
+/**
+ * Jumpers as dashed arcs in their type's colour, as on screen with "Show all jumpers" on (only the
+ * types of `filter`, empty = all; both ends on visible layers).
+ */
+export const drawJumpers = (pp: PlanPainter, objects: EditorObject[], visibleLayerIds: Set<string>, filter: JumperType[]) => {
+  const links = allJumpers(objects).filter(l =>
+    visibleLayerIds.has(l.from.layerId) && visibleLayerIds.has(l.to.layerId) && jumperHasType(l.jumper, filter));
+  const pairIndex = new Map<string, number>();
+  for (const { from, to, jumper } of links) {
+    const pair = [from.id, to.id].sort().join('|');
+    const bend = pairIndex.get(pair) ?? 0;
+    pairIndex.set(pair, bend + 1);
+    const [a, b] = from.id < to.id ? [from, to] : [to, from];
+    const points = from.id < to.id ? jumper.points : jumper.points && [...jumper.points].reverse();
+    const g = jumperGeometry(a, b, points, bend);
+    // The arc as short straight pieces (pdf-lib lines), the dash pattern carried across them.
+    const pts = g.control
+      ? Array.from({ length: 17 }, (_, i) => {
+        const t = i / 16, u = 1 - t;
+        return {
+          x: u * u * g.points[0].x + 2 * u * t * g.control!.x + t * t * g.points[1].x,
+          y: u * u * g.points[0].y + 2 * u * t * g.control!.y + t * t * g.points[1].y,
+        };
+      })
+      : g.points;
+    const color = jumperColor(jumper);
+    for (let i = 1; i < pts.length; i++) line(pp, pts[i - 1], pts[i], color, 1.5, [5, 3], 0.9);
+  }
+};
+
 /** Opacity of a device's icon in the export: faded when it is to be removed. */
 export const lvIconOpacity = (o: EditorObject) => (o.change === 'REMOVE' ? 0.45 : 1);
 
@@ -210,9 +243,12 @@ export const appendLvPages = (
   },
 ) => {
   const { objects, routes, calibration, settings } = data;
-  if (!objects.some(isCableDevice) && getRacks(objects).length === 0) return;
+  const jumpers = allJumpers(objects);
+  if (!objects.some(isCableDevice) && getRacks(objects).length === 0 && jumpers.length === 0) return;
 
-  const summary = buildCableSummary(objects, routes, calibration, settings);
+  // Progress with the shown statuses: an object waits for its jumpers before it counts as pulled.
+  const summary = buildCableSummary(withShownStatuses(objects), routes, calibration, settings);
+  const waiting = objectsWaitingForJumpers(jumpers);
   const racks = getRacks(objects);
   const colors = rackColorMap(objects);
   const names = defaultObjectNames(objects, data.customIcons);
@@ -377,9 +413,56 @@ export const appendLvPages = (
         name, objectTypeName(o, data.customIcons), mountCell(o), run ? rackLabel(racks, run.rackId) : '-',
         formatCables(o.cables).replace(/×/g, 'x'),
         feet !== null ? ft(feet) + (run && !run.routed ? ' est.' : '') : '-', '',
-        statusOf(o.status ?? 'PLANNED')?.label ?? o.status ?? '', o.change ? PLAN_CHANGE_BY_ID[o.change].label : '',
+        (statusOf(o.status ?? 'PLANNED')?.label ?? o.status ?? '') + (gatedStatus(o.status, waiting.has(o.id)) !== o.status ? ' (jumper not pulled)' : ''), o.change ? PLAN_CHANGE_BY_ID[o.change].label : '',
       ],
       dot: run ? colors.get(run.rackId) : undefined,
     })),
   );
+
+  // Jumpers: cables between two objects, not home-runs (not counted in the IDF totals above).
+  if (jumpers.length) appendJumperTables(jumpers, { heading, table, text, ft, names, customIcons: data.customIcons, calibration, settings, lineY: () => y, setY: (v: number) => { y = v; } });
+};
+
+const appendJumperTables = (
+  jumpers: JumperLink[],
+  h: {
+    heading: (t: string) => void;
+    table: (cols: Col[], rows: { cells: string[]; bold?: boolean; dot?: string }[]) => void;
+    text: (t: string, x: number, opts?: { size?: number; color?: ReturnType<typeof rgb>; maxW?: number }) => void;
+    ft: (n: number) => string;
+    names: Map<string, string>;
+    customIcons: { url: string; name: string }[];
+    calibration: MeasureCalibration | null;
+    settings: LvSettings;
+    lineY: () => number;
+    setY: (v: number) => void;
+  },
+) => {
+  const nameOf = (o: EditorObject) => o.name || h.names.get(o.id) || objectTypeName(o, h.customIcons);
+  const rows = jumpers.map(link => ({ link, feet: jumperFeet(link, h.calibration, h.settings) }))
+    .sort((a, b) => nameOf(a.link.from).localeCompare(nameOf(b.link.from), undefined, { numeric: true }));
+
+  h.heading('Jumpers (object to object)');
+  h.table(
+    [{ title: 'Cables', w: 150 }, { title: 'From', w: 115 }, { title: 'To', w: 115 }, { title: 'Label', w: 70 },
+      { title: 'Per cable', w: 60, align: 'right' }, { title: 'Total', w: 60, align: 'right' }, { title: '', w: 15 }, { title: 'Status', w: PAGE[0] - 2 * M - 615 }],
+    rows.map(({ link, feet }) => ({
+      cells: [
+        jumperTitle(link.jumper).replace(/×/g, 'x'), nameOf(link.from), nameOf(link.to), link.jumper.label ?? '',
+        feet !== null ? formatJumperFeet(feet) : '-', feet !== null ? h.ft(Math.ceil(feet) * link.jumper.cables.reduce((n, c) => n + c.count, 0)) : '-', '',
+        isJumperPulled(link.jumper) ? 'Pulled' : 'Not pulled',
+      ],
+      dot: jumperColor(link.jumper),
+    })),
+  );
+  const totals = JUMPER_TYPES.map(t => {
+    const of = rows.flatMap(r => r.link.jumper.cables.filter(c => c.type === t.id).map(c => ({ count: c.count, feet: r.feet })));
+    const count = of.reduce((n, r) => n + r.count, 0);
+    const feet = of.every(r => r.feet !== null) ? of.reduce((n, r) => n + Math.ceil(r.feet!) * r.count, 0) : null;
+    return { t, count, feet };
+  }).filter(x => x.count > 0);
+  h.text('Total: ' + totals.map(x => x.count + 'x ' + x.t.label + (x.feet !== null ? ' (' + h.ft(x.feet) + ')' : '')).join(', ')
+    + ' · lengths include ' + h.settings.deviceSlackFt + ' ft slack at each end unless entered by hand',
+    M, { size: 8, color: MUTED, maxW: PAGE[0] - 2 * M });
+  h.setY(h.lineY() - 12);
 };

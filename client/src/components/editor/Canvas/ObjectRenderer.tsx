@@ -19,6 +19,7 @@ import {PLAN_CHANGE_BY_ID} from '@/core/plan-change';
 import {v4 as uuidv4} from 'uuid';
 import {DEFAULT_TECH_PERMISSIONS, type TechPermissions} from '@shared/tech-ops';
 import {isCableDevice} from '@/core/cable-routing';
+import {gatedStatus} from '@shared/jumpers';
 
 /** Label placement around the object box; the label never moves the object itself. */
 const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {
@@ -92,6 +93,10 @@ interface ObjectRendererProps {
   localLabelOffset?: { x: number; y: number };
   /** What the project lets technicians change (moving, label / cables on long press). */
   techPermissions?: TechPermissions;
+  /** Jumper cables at this object (either end, all types): a small ⇄n badge, so they are findable without drawing them all. */
+  jumperCount?: { cables: number; jumpers: number };
+  /** A jumper at this object is not pulled: it cannot show "pulled" or later yet (see gatedStatus). */
+  jumperPending?: boolean;
 }
 
 /** Client coordinates of a mouse or touch event. */
@@ -142,6 +147,8 @@ export const ObjectRenderer = memo(({
   labelFontSize = 1,
   localLabelOffset,
   techPermissions = DEFAULT_TECH_PERMISSIONS,
+  jumperCount,
+  jumperPending = false,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
@@ -239,11 +246,14 @@ export const ObjectRenderer = memo(({
     },
   });
 
+  // Shown status: "pulled" or later waits for every jumper at the object to be pulled.
+  const shownStatus = gatedStatus(obj.status, jumperPending);
+  const heldBack = shownStatus !== obj.status;
   const displayColor = showStatusColors && obj.type !== 'text'
-    ? (getStatusCategoryColor(obj.status) || obj.color || '#000000')
+    ? (getStatusCategoryColor(shownStatus) || obj.color || '#000000')
     : (obj.color || '#000000');
-  
-  const indicatorColor = obj.type !== 'text' ? (statusOf(obj.status)?.hex ?? null) : null;
+
+  const indicatorColor = obj.type !== 'text' ? (statusOf(shownStatus)?.hex ?? null) : null;
 
   // --- Label: optional manual placement + dashed leader line back to the object ---
   const labelRef = useRef<HTMLDivElement>(null);
@@ -563,7 +573,7 @@ export const ObjectRenderer = memo(({
         isSelected ? "ring-1 ring-primary ring-offset-1" : "",
         // While the bucket is active, clicks go through a fill to the blueprint (re-fill = recolour).
         // Route tool: clicks reach the plan, so a route can end on a device or rack.
-        layer.locked || tool === 'route' || tool === 'wall' || tool === 'area' || tool === 'path-measure' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
+        layer.locked || tool === 'route' || tool === 'wall' || tool === 'area' || tool === 'path-measure' || tool === 'jumper' || (isFill && tool === 'fill') ? "pointer-events-none" : isFill ? "cursor-pointer" : "cursor-move"
       )}
       // Fills sit below regular objects and drawn paths. With its action bar, the object goes above the
       // cable-run preview and its length label (z 45–46) so they never cover the bar.
@@ -708,6 +718,18 @@ export const ObjectRenderer = memo(({
           style={{ backgroundColor: idfColor }}
           data-testid="idf-dot"
         />
+      )}
+      {!!jumperCount?.cables && !isFill && (
+        <div
+          className={cn(
+            "absolute top-1/2 -right-2 -translate-y-1/2 h-3.5 px-0.5 rounded-full border border-white text-white text-[8px] font-bold leading-3 shadow-sm z-50 flex items-center pointer-events-none",
+            jumperPending ? "bg-amber-500" : "bg-slate-700",
+          )}
+          title={`${jumperCount.cables} jumper cable${jumperCount.cables > 1 ? 's' : ''} in ${jumperCount.jumpers} jumper${jumperCount.jumpers > 1 ? 's' : ''}${
+            heldBack ? ` — set to ${statusOf(obj.status)?.label}, shown as Planned until every jumper here is pulled`
+              : jumperPending ? ' — not all pulled yet' : ''}`}
+          data-testid="jumper-badge"
+        >⇄{jumperCount.cables}</div>
       )}
       {planChange && (
         <div

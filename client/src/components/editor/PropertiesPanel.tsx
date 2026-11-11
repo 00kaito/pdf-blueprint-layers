@@ -14,7 +14,9 @@ import {ObjectComments} from './ObjectComments';
 import {LabelPositionPicker} from './LabelPositionPicker';
 import {BulkLabelInput} from './BulkLabelInput';
 import {PlanChangeSection} from './PlanChangeSection';
+import {canHaveJumpers} from '@/core/jumpers';
 import {CableEditor} from './CableEditor';
+import {JumperEditor} from './JumperEditor';
 import {RackSelect} from './RackSelect';
 import {CameraCoverageEditor} from './CameraCoverageEditor';
 import {MountHeightEditor} from './MountHeightEditor';
@@ -263,6 +265,7 @@ export const PropertiesPanel = () => {
                   <RackSelect objects={selectedObjects} readOnly={isTech && isMultiSelect} asRequest={isTech} />
                 </>
               )}
+              {!isMultiSelect && canHaveJumpers(firstObject) && <JumperEditor object={firstObject} />}
               {selectedObjects.every(isCamera) && (
                 <CameraCoverageEditor objects={selectedObjects} readOnly={isTech} />
               )}

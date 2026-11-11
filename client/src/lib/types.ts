@@ -1,6 +1,8 @@
 import type {SyncedDoc} from './merge-state';
 import type {CropRect, PaperId, PaperOrientation} from '@/core/paper';
 import type {CameraType, PlacementResult} from '@/core/camera-placement';
+import type {Jumper, JumperCable, JumperType} from '@shared/jumpers';
+export type {Jumper, JumperCable, JumperType} from '@shared/jumpers';
 import type {ObjectComment, RequestChanges, RequestResult, TechPermissions, TechRequest} from '@shared/tech-ops';
 
 /** Automatic camera placement in progress: the settings dialog, then the proposal shown on the plan. */
@@ -124,6 +126,8 @@ export type EditorObject = {
   changeUpdatedBy?: string;
   /** Cables home-run from this point to its rack. */
   cables?: CableSpec[];
+  /** Cables from this object to other objects (TV → floor box…), see @shared/jumpers. */
+  jumpers?: Jumper[];
   /** Comment threads (plain strings in older projects, see `normalizeComments`). */
   comments?: ObjectComment[];
   /** A technician's change request waiting for the PM (move / rename / IDF). */
@@ -203,7 +207,7 @@ export type UIState = {
    */
   /** 'route' = draw cable routes (click control points). */
   /** 'wall' = draw a camera blindspot wall (click its corner points); 'area' = draw a coverage area (closed outline). */
-  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'path-measure' | 'route' | 'wall' | 'area';
+  tool: 'select' | 'text' | 'image' | 'icon' | 'draw' | 'stamp' | 'fill' | 'pan-overlay' | 'calibrate' | 'measure' | 'path-measure' | 'route' | 'wall' | 'area' | 'jumper';
   /** Wall tool: runs at multiples of 45° only. */
   wallStraight: boolean;
   /** Wall tool: points stick to existing walls and blindspots. */
@@ -240,6 +244,16 @@ export type UIState = {
   coverageSolid: boolean;
   /** Mount heights next to device labels, on the plan and in the exported PDF. Remembered per device. */
   showMountHeights: boolean;
+  /** Every jumper drawn on the plan (otherwise only the selected object's). */
+  showJumpers: boolean;
+  /** Jumper types shown with `showJumpers`; empty = all. */
+  jumperFilter: JumperType[];
+  /** Jumper being drawn: its first end and the waypoints clicked so far (unscaled canvas units). */
+  jumperDraft: { fromId: string; points: { x: number; y: number }[] } | null;
+  /** Jumper picked on the plan (its label clicked): highlighted, edited in the panel. */
+  selectedJumperId: string | null;
+  /** Cables a new jumper gets (set in the jumper tool; the last ones used). */
+  jumperCables: JumperCable[];
   /** Cable route selected for deleting / extending. */
   selectedRouteId: string | null;
   /** IDF the route tool draws for: a rack id, 'shared', or null = the first rack. */
@@ -316,6 +330,14 @@ export type EditorAction =
   | { type: 'SET_ROUTE_RACK'; payload: UIState['routeRackId'] }
   | { type: 'SELECT_CABLE_ROUTE'; payload: string | null }
   | { type: 'TOGGLE_CABLE_ROUTES' }
+  | { type: 'ADD_JUMPER'; payload: { fromId: string; jumper: Jumper } }
+  | { type: 'UPDATE_JUMPER'; payload: { fromId: string; id: string; updates: Partial<Jumper> } }
+  | { type: 'DELETE_JUMPER'; payload: { fromId: string; id: string } }
+  | { type: 'TOGGLE_JUMPERS' }
+  | { type: 'SET_JUMPER_FILTER'; payload: JumperType[] }
+  | { type: 'SET_JUMPER_DRAFT'; payload: UIState['jumperDraft'] }
+  | { type: 'SELECT_JUMPER'; payload: string | null }
+  | { type: 'SET_JUMPER_CABLES'; payload: JumperCable[] }
   | { type: 'TOGGLE_CAMERA_COVERAGE' }
   /** A technician's starting view: coloured by status, no camera coverage, no cable routes. */
   | { type: 'APPLY_TECH_VIEW_DEFAULTS' }

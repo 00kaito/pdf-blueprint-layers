@@ -8,7 +8,7 @@ import { useObjectCreation } from '@/hooks/useObjectCreation';
 import { compressImageToFile } from '@/core/image-compress';
 import { STATUSES, type ObjectStatus } from '@/core/status';
 import { CANVAS_BASE_WIDTH } from '@/core/constants';
-import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames, formatCables } from '@/core/lv-icons';
+import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames, formatCables, objectTypeName } from '@/core/lv-icons';
 import { hasCables } from '@/core/cable-routing';
 import { AlertCircle, Cable, Camera, Circle, CopyPlus, Images, Info, Loader2, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,8 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer';
 import { PMObjectDetailsPanel } from './PMObjectDetailsPanel';
+import { MobileJumperChip, useObjectJumpers } from './MobileJumpers';
+import { gatedStatus, jumperTitle } from '@/core/jumpers';
 import { cn } from '@/lib/utils';
 
 /** Shapes from the desktop toolbar offered on the phone (same icon types). */
@@ -83,6 +85,8 @@ export const MobileBottomBar: React.FC = () => {
   const [moving, setMoving] = useState(false);
   /** Issue comment being written in the popup; null = popup closed. */
   const [issueDraft, setIssueDraft] = useState<string | null>(null);
+  /** Status picked while jumpers here are not pulled: "mark them pulled too?"; null = not asking. */
+  const [jumperAsk, setJumperAsk] = useState<ObjectStatus | null>(null);
 
   const selectedObjectId = uiState.selectedObjectIds[0];
   const selectedObject = docState.objects.find(o => o.id === selectedObjectId);
@@ -99,7 +103,8 @@ export const MobileBottomBar: React.FC = () => {
     : '';
 
   // Move ends when the object is deselected or another one is selected.
-  useEffect(() => { setMoving(false); setIssueDraft(null); }, [selectedObjectId]);
+  useEffect(() => { setMoving(false); setIssueDraft(null); setJumperAsk(null); }, [selectedObjectId]);
+  const { notPulled } = useObjectJumpers(selectedObjectId);
 
   // The status row scrolls sideways: bring the object's current status into view when it is selected.
   const statusRowRef = useRef<HTMLDivElement>(null);
@@ -160,7 +165,19 @@ export const MobileBottomBar: React.FC = () => {
       setIssueDraft(selectedObject.issueDescription ?? '');
       return;
     }
+    // Pulled or later while a jumper here is not: the object would still show Planned — ask about the jumpers.
+    if (notPulled.length && gatedStatus(status, true) !== status) {
+      setJumperAsk(status);
+      return;
+    }
     field.setStatus([selectedObject.id], status);
+  };
+
+  const answerJumperAsk = (withJumpers: boolean) => {
+    if (!selectedObject || !jumperAsk) return;
+    field.setStatus([selectedObject.id], jumperAsk);
+    if (withJumpers) field.setJumpersStatus(notPulled.map(l => ({ fromId: l.from.id, jumperId: l.jumper.id })), 'CABLE_PULLED');
+    setJumperAsk(null);
   };
 
   const saveIssue = () => {
@@ -216,6 +233,7 @@ export const MobileBottomBar: React.FC = () => {
                   </span>
                 )}
               </button>
+              <MobileJumperChip object={selectedObject} name={name} />
               {canDelete && (
                 <Button
                   variant="ghost"
@@ -397,6 +415,32 @@ export const MobileBottomBar: React.FC = () => {
             </Button>
             <Button variant="destructive" className="h-11 flex-1 sm:flex-none" onClick={saveIssue} data-testid="mobile-issue-save">
               Set Issue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pulled (or later) while jumpers here are not: mark them too, or only the object (it then shows Planned). */}
+      <Dialog open={jumperAsk !== null} onOpenChange={open => !open && setJumperAsk(null)}>
+        <DialogContent className="max-w-sm" data-testid="mobile-jumper-ask">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-1.5">
+              <Cable className="h-5 w-5" /> Jumpers at {name}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm">
+            {notPulled.length === 1 ? 'A jumper here is' : `${notPulled.length} jumpers here are`} not pulled yet
+            ({notPulled.map(l => {
+              const other = l.from.id === selectedObject?.id ? l.to : l.from;
+              return `${jumperTitle(l.jumper)} → ${other.name || objectTypeName(other)}`;
+            }).join('; ')}). Until {notPulled.length === 1 ? 'it is' : 'they are'}, {name} shows as Planned.
+          </p>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button className="h-12 w-full" onClick={() => answerJumperAsk(true)} data-testid="mobile-jumper-ask-all">
+              Jumpers pulled too
+            </Button>
+            <Button variant="outline" className="h-12 w-full" onClick={() => answerJumperAsk(false)} data-testid="mobile-jumper-ask-object">
+              Only {name}
             </Button>
           </DialogFooter>
         </DialogContent>

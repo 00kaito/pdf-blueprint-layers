@@ -7,6 +7,8 @@ import {DEFAULT_LV_SETTINGS, deviceKey, normalizeLvSettings} from '@/core/lv-ico
 import {assignDroppedCameras, isCamera, isCoverageArea} from '@/core/camera-coverage';
 import {withServerOwned} from './server-owned';
 import {replaceObjects} from '@/core/replace-object';
+import {remapJumpers, withoutJumpersTo} from '@/core/jumpers';
+import {normalizeJumper, withNewerJumperStatuses} from '@shared/jumpers';
 
 /** Every paint-bucket fill lands in this layer. */
 export const FILL_LAYER_NAME = 'Colors';
@@ -186,6 +188,11 @@ const initialUIState: UIState = {
   showStatusColors: false,
   localLabelOffsets: {},
   showCableRoutes: true,
+  showJumpers: false,
+  jumperFilter: [],
+  jumperDraft: null,
+  selectedJumperId: null,
+  jumperCables: [{ type: 'HDMI', count: 1 }],
   selectedRouteId: null,
   routeRackId: null,
   cableSummaryOpen: false,
@@ -241,6 +248,8 @@ const applyRemote = (state: EditorState, { mode, objects, doc }: Extract<EditorA
     if ((r.labelUpdatedAt ?? '') > (o.labelUpdatedAt ?? '')) {
       merged = { ...merged, labelPosition: r.labelPosition, labelOffset: r.labelOffset, labelUpdatedAt: r.labelUpdatedAt };
     }
+    const jumpers = withNewerJumperStatuses(merged.jumpers, r.jumpers);
+    if (jumpers !== merged.jumpers) merged = { ...merged, jumpers };
     return merged;
   });
   return changed ? { ...state, objects: next } : state;
@@ -385,7 +394,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       const {
         photos, photoBy, comments, notes, issueDescription, statusUpdatedAt, statusUpdatedBy,
         techRequest, requestResult, labelUpdatedAt, editedBy, editedAt,
-        change, changeOrigin, changeNote, changeUpdatedAt, changeUpdatedBy, ...rest
+        change, changeOrigin, changeNote, changeUpdatedAt, changeUpdatedBy, jumpers, ...rest
       } = source;
       // Right of the original; to its left / below when that runs off the page.
       let x = source.x + source.width + DUPLICATE_GAP;
@@ -487,6 +496,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
         ...state, 
         selectedObjectIds: action.payload ? [action.payload] : [],
         selectedRouteId: null,
+        selectedJumperId: null,
         objectDetailsOpen: action.payload ? state.objectDetailsOpen : false
       };
     case 'TOGGLE_OBJECT_SELECTION':
@@ -499,7 +509,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
     case 'SET_SELECTION':
       return { ...state, selectedObjectIds: action.payload };
     case 'SET_TOOL':
-      return { ...state, tool: action.payload, selectedObjectIds: [], selectedRouteId: null };
+      return { ...state, tool: action.payload, selectedObjectIds: [], selectedRouteId: null, selectedJumperId: null, jumperDraft: null };
     case 'OPEN_OBJECT_DETAILS':
       return { ...state, objectDetailsOpen: true };
     case 'CLOSE_OBJECT_DETAILS':
@@ -542,6 +552,50 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       return { ...state, routeRackId: action.payload };
     case 'SELECT_CABLE_ROUTE':
       return { ...state, selectedRouteId: action.payload, selectedObjectIds: action.payload ? [] : state.selectedObjectIds };
+    case 'ADD_JUMPER': {
+      const { fromId, jumper } = action.payload;
+      if (fromId === jumper.toId) return state;
+      return {
+        ...state,
+        objects: state.objects.map(o => o.id === fromId ? { ...o, jumpers: [...(o.jumpers ?? []), jumper] } : o),
+        jumperCables: jumper.cables,
+        selectedJumperId: jumper.id,
+      };
+    }
+    case 'UPDATE_JUMPER': {
+      const { fromId, id, updates } = action.payload;
+      return {
+        ...state,
+        objects: state.objects.map(o => o.id !== fromId ? o : {
+          ...o, jumpers: (o.jumpers ?? []).map(j => j.id === id ? { ...normalizeJumper(j), ...updates } : j),
+        }),
+        jumperCables: updates.cables ?? state.jumperCables,
+      };
+    }
+    case 'DELETE_JUMPER': {
+      const { fromId, id } = action.payload;
+      return {
+        ...state,
+        objects: state.objects.map(o => {
+          if (o.id !== fromId) return o;
+          const jumpers = (o.jumpers ?? []).filter(j => j.id !== id);
+          if (jumpers.length) return { ...o, jumpers };
+          const { jumpers: _, ...rest } = o;
+          return rest;
+        }),
+        selectedJumperId: state.selectedJumperId === id ? null : state.selectedJumperId,
+      };
+    }
+    case 'TOGGLE_JUMPERS':
+      return { ...state, showJumpers: !state.showJumpers };
+    case 'SET_JUMPER_FILTER':
+      return { ...state, jumperFilter: action.payload };
+    case 'SET_JUMPER_DRAFT':
+      return { ...state, jumperDraft: action.payload };
+    case 'SELECT_JUMPER':
+      return { ...state, selectedJumperId: action.payload };
+    case 'SET_JUMPER_CABLES':
+      return { ...state, jumperCables: action.payload };
     case 'TOGGLE_CABLE_ROUTES':
       return { ...state, showCableRoutes: !state.showCableRoutes };
     case 'TOGGLE_CAMERA_COVERAGE':
@@ -617,6 +671,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
         status: o.status,
         metadata: o.metadata ? { ...o.metadata } : undefined,
         cables: o.cables,
+        jumpers: o.jumpers,
         strokeWidth: o.strokeWidth,
         fontSize: o.fontSize,
         fontWeight: o.fontWeight,
@@ -703,6 +758,14 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
           name,
           photos: []
         };
+      });
+
+      // Jumpers between pasted objects are copied with them (new ids, waypoints moved along).
+      const idMap = new Map(state.clipboardObjects.map((o, i) => [o.id, newObjects[i].id]));
+      state.clipboardObjects.forEach((o, i) => {
+        const shift = { x: newObjects[i].x - o.x, y: newObjects[i].y - o.y };
+        const jumpers = remapJumpers(o.jumpers, idMap, uuidv4, shift);
+        if (jumpers) newObjects[i].jumpers = jumpers; else delete newObjects[i].jumpers;
       });
 
       // Pasted coverage areas go to their own layer too.
@@ -854,8 +917,18 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
 /** Actions that place or move objects: a camera dropped into a coverage area gets assigned to it. */
 const PLACING_ACTIONS = new Set<EditorAction['type']>(['ADD_OBJECT', 'DUPLICATE_OBJECT', 'PASTE_OBJECT', 'UPDATE_OBJECT', 'UPDATE_OBJECTS', 'NUDGE_OBJECTS']);
 
+/** Jumpers to objects that are gone (deleted, layer removed, auto-placement…) go with them. */
+const withoutOrphanJumpers = (prev: EditorState, next: EditorState): EditorState => {
+  if (next.objects === prev.objects || !next.objects.some(o => o.jumpers?.length)) return next;
+  const ids = new Set(next.objects.map(o => o.id));
+  const gone = new Set(prev.objects.filter(o => !ids.has(o.id)).map(o => o.id));
+  if (!gone.size) return next;
+  const objects = withoutJumpersTo(next.objects, gone);
+  return objects === next.objects ? next : { ...next, objects };
+};
+
 const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
-  const next = baseReducer(state, action);
+  const next = withoutOrphanJumpers(state, baseReducer(state, action));
   if (next.objects === state.objects || !PLACING_ACTIONS.has(action.type)) return next;
   const before = new Map(state.objects.map(o => [o.id, o]));
   const placed = next.objects
@@ -939,6 +1012,11 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     showStatusColors: state.showStatusColors,
     localLabelOffsets: state.localLabelOffsets,
     showCableRoutes: state.showCableRoutes,
+    showJumpers: state.showJumpers,
+    jumperFilter: state.jumperFilter,
+    jumperDraft: state.jumperDraft,
+    selectedJumperId: state.selectedJumperId,
+    jumperCables: state.jumperCables,
     showCameraCoverage: state.showCameraCoverage,
     coverageSolid: state.coverageSolid,
     showMountHeights: state.showMountHeights,
@@ -963,7 +1041,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     measureTape: state.measureTape,
     pathMeasure: state.pathMeasure,
     snapEnabled: state.snapEnabled,
-  }), [state.measureTape, state.pathMeasure, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.localLabelOffsets, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.showMountHeights, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.techRequestDraft, state.techEditId, state.wallStraight, state.wallSnap]);
+  }), [state.measureTape, state.pathMeasure, state.snapEnabled, state.fillColor, state.fillOpacity, state.drawColor, state.drawStrokeWidth, state.drawStraight, state.ipadMode, state.stylusOnly, state.selectedObjectIds, state.activeLayerId, state.currentPage, state.scale, state.scrollPos, state.tool, state.showStatusColors, state.localLabelOffsets, state.showCableRoutes, state.showCameraCoverage, state.coverageSolid, state.showMountHeights, state.selectedRouteId, state.routeRackId, state.cableSummaryOpen, state.objectDetailsOpen, state.isImporting, state.exportStep, state.placement, state.techRequestDraft, state.techEditId, state.wallStraight, state.wallSnap, state.showJumpers, state.jumperFilter, state.jumperDraft, state.selectedJumperId, state.jumperCables]);
 
   return (
     <DocumentStateContext.Provider value={documentState}>

@@ -32,6 +32,7 @@ import {Label} from "@/components/ui/label";
 import {cn} from '@/lib/utils';
 import {defaultObjectNames} from '@/core/lv-icons';
 import {STATUSES} from '@/core/status';
+import {withShownStatuses} from '@/core/jumpers';
 import {useCurrentUser} from '@/hooks/useAuth';
 
 const PROGRESS_OPEN_STORAGE_KEY = 'editor.progressOpen';
@@ -155,7 +156,8 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
     }
   };
 
-  const trackableObjects = state.objects.filter(obj => obj.type !== 'path' && obj.type !== 'text' && !obj.isFill);
+  // Shown statuses: an object waits for its jumpers before it counts as pulled or later.
+  const trackableObjects = withShownStatuses(state.objects).filter(obj => obj.type !== 'path' && obj.type !== 'text' && !obj.isFill);
   const counts = {
     total: trackableObjects.length,
     completed: trackableObjects.filter(o => o.status === 'TESTED' || o.status === 'APPROVED').length,

@@ -25,7 +25,7 @@ import {DEFAULT_LABEL_POSITION, getLabelAnchor, getLeaderLine} from '@/core/labe
 import {CANVAS_BASE_WIDTH} from '@/core/constants';
 import {useProjectList} from '@/hooks/useProjects';
 import {
-  appendLvPages, drawCableRoutes, drawCameraCoverage, drawObjectLvMarks, idfColorResolver, lvIconOpacity, makePlanPainter, pdfSafeText,
+  appendLvPages, drawCableRoutes, drawJumpers, drawCameraCoverage, drawObjectLvMarks, idfColorResolver, lvIconOpacity, makePlanPainter, pdfSafeText,
 } from '@/core/pdf-lv-export';
 import {feetPerUnit} from '@/core/measure';
 import {BLINDSPOT_COLOR, BLINDSPOT_ICON, isCoverageArea} from '@/core/camera-coverage';
@@ -308,6 +308,9 @@ export const useExport = () => {
       drawCameraCoverage(planPainter, docState.objects, shown, feetPerUnit(docState.measureCalibration), uiState.coverageSolid);
     }
     if (uiState.showCableRoutes) drawCableRoutes(planPainter, docState.cableRoutes, docState.objects);
+    if (uiState.showJumpers) {
+      drawJumpers(planPainter, docState.objects, new Set(docState.layers.filter(l => l.visible).map(l => l.id)), uiState.jumperFilter);
+    }
     const idfColorOf = idfColorResolver(docState.objects, docState.cableRoutes);
 
     // Pass 1: Draw non-text objects (images, icons, paths)
@@ -534,7 +537,7 @@ export const useExport = () => {
     const pdfBytes = await pdfDoc.save();
     const name = toSafeFileName(fileName ?? '') || projectName || 'edited-document';
     saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), `${name}.pdf`);
-  }, [docState, uiState.currentPage, uiState.showCableRoutes, uiState.showCameraCoverage, uiState.coverageSolid, uiState.showMountHeights, projectName]);
+  }, [docState, uiState.currentPage, uiState.showCableRoutes, uiState.showJumpers, uiState.jumperFilter, uiState.showCameraCoverage, uiState.coverageSolid, uiState.showMountHeights, projectName]);
 
   return { handleExportProject, handleFlattenAndDownload, projectName };
 };
