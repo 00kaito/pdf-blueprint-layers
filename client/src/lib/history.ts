@@ -155,6 +155,7 @@ const describe = (action: EditorAction, prev: EditorState): string => {
     case 'DELETE_CABLE_ROUTE': return 'Delete cable route';
     case 'ADD_JUMPER': return `Add jumper from ${objName(action.payload.fromId)} to ${objName(action.payload.jumper.toId)}`;
     case 'UPDATE_JUMPER': return `Edit jumper of ${objName(action.payload.fromId)}`;
+    case 'UPDATE_JUMPERS': return `Edit ${plural(action.payload.jumpers.length, 'jumper')}`;
     case 'DELETE_JUMPER': return `Delete jumper of ${objName(action.payload.fromId)}`;
     case 'SET_CABLE_ROUTE_RACK': return 'Change IDF of cable route';
     case 'APPLY_CAMERA_PLACEMENT': return `Auto-place ${plural(action.payload.cameras.length, 'camera')}`;

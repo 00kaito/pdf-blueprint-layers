@@ -572,6 +572,17 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
         jumperCables: updates.cables ?? state.jumperCables,
       };
     }
+    case 'UPDATE_JUMPERS': {
+      const { jumpers, updates } = action.payload;
+      const ids = new Set(jumpers.map(j => j.id));
+      const owners = new Set(jumpers.map(j => j.fromId));
+      return {
+        ...state,
+        objects: state.objects.map(o => !owners.has(o.id) ? o : {
+          ...o, jumpers: (o.jumpers ?? []).map(j => ids.has(j.id) ? { ...normalizeJumper(j), ...updates } : j),
+        }),
+      };
+    }
     case 'DELETE_JUMPER': {
       const { fromId, id } = action.payload;
       return {

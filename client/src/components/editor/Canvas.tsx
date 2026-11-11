@@ -34,7 +34,7 @@ import {useWallDrawing} from '@/hooks/useWallDrawing';
 import {usePathMeasure} from '@/hooks/usePathMeasure';
 import {useJumperDrawing} from '@/hooks/useJumperDrawing';
 import {JumperLayer} from './Canvas/JumperLayer';
-import {allJumpers, jumperColor, jumperCounts, jumperFeet, objectsWaitingForJumpers} from '@/core/jumpers';
+import {allJumpers, cablesColor, jumperCounts, jumperFeet, objectsWaitingForJumpers} from '@/core/jumpers';
 import {WallPreview} from './Canvas/WallPreview';
 import {
   computeCableRuns, getRacks, hasCables, isCableDevice, rackColorMap, rackLabel, runFeet, SHARED_ROUTE_COLOR,
@@ -631,11 +631,11 @@ export const Canvas = () => {
             // Not in the jumper tool: there a click on an object (where lines start) picks the object.
             interactive={state.tool === 'select'}
             draft={jumperTool.draft && jumperDraftFrom
-              ? { from: jumperDraftFrom, points: jumperTool.draft.points, hover: jumperTool.hover, color: jumperColor({ id: '', toId: '', cables: state.jumperCables }) }
+              ? { from: jumperDraftFrom, points: jumperTool.draft.points, hover: jumperTool.hover, color: cablesColor(state.jumperCables) }
               : null}
             target={jumperTool.targetId ? docState.objects.find(o => o.id === jumperTool.targetId) ?? null : null}
             targetIsEnd={!!jumperTool.draft}
-            targetColor={jumperColor({ id: '', toId: '', cables: state.jumperCables })}
+            targetColor={cablesColor(state.jumperCables)}
             onSelect={(link) => {
               dispatch({ type: 'SELECT_OBJECT', payload: link.from.id });
               dispatch({ type: 'SELECT_JUMPER', payload: link.jumper.id });
@@ -673,7 +673,8 @@ export const Canvas = () => {
                 labelFontSize={docState.exportSettings.labelFontSize}
                 localLabelOffset={uiState.localLabelOffsets[obj.id]}
                 techPermissions={docState.lvSettings.techPermissions}
-                jumperCount={jumperCountById.get(obj.id)}
+                jumperCables={jumperCountById.get(obj.id)?.cables}
+                jumperLines={jumperCountById.get(obj.id)?.jumpers}
                 jumperPending={waitingForJumpers.has(obj.id)}
                 noCables={uiState.showCableRoutes && isCableDevice(obj) && obj.change !== 'REMOVE' && !hasCables(obj)}
               />

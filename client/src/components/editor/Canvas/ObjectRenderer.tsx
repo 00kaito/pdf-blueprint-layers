@@ -94,7 +94,9 @@ interface ObjectRendererProps {
   /** What the project lets technicians change (moving, label / cables on long press). */
   techPermissions?: TechPermissions;
   /** Jumper cables at this object (either end, all types): a small ⇄n badge, so they are findable without drawing them all. */
-  jumperCount?: { cables: number; jumpers: number };
+  jumperCables?: number;
+  /** …in this many jumper lines (for the badge's tooltip). Plain numbers: this component is memoised. */
+  jumperLines?: number;
   /** A jumper at this object is not pulled: it cannot show "pulled" or later yet (see gatedStatus). */
   jumperPending?: boolean;
 }
@@ -147,7 +149,8 @@ export const ObjectRenderer = memo(({
   labelFontSize = 1,
   localLabelOffset,
   techPermissions = DEFAULT_TECH_PERMISSIONS,
-  jumperCount,
+  jumperCables = 0,
+  jumperLines = 0,
   jumperPending = false,
 }: ObjectRendererProps) => {
   const { data: user } = useCurrentUser();
@@ -719,17 +722,17 @@ export const ObjectRenderer = memo(({
           data-testid="idf-dot"
         />
       )}
-      {!!jumperCount?.cables && !isFill && (
+      {jumperCables > 0 && !isFill && (
         <div
           className={cn(
             "absolute top-1/2 -right-2 -translate-y-1/2 h-3.5 px-0.5 rounded-full border border-white text-white text-[8px] font-bold leading-3 shadow-sm z-50 flex items-center pointer-events-none",
             jumperPending ? "bg-amber-500" : "bg-slate-700",
           )}
-          title={`${jumperCount.cables} jumper cable${jumperCount.cables > 1 ? 's' : ''} in ${jumperCount.jumpers} jumper${jumperCount.jumpers > 1 ? 's' : ''}${
+          title={`${jumperCables} jumper cable${jumperCables > 1 ? 's' : ''} in ${jumperLines} jumper${jumperLines > 1 ? 's' : ''}${
             heldBack ? ` — set to ${statusOf(obj.status)?.label}, shown as Planned until every jumper here is pulled`
               : jumperPending ? ' — not all pulled yet' : ''}`}
           data-testid="jumper-badge"
-        >⇄{jumperCount.cables}</div>
+        >⇄{jumperCables}</div>
       )}
       {planChange && (
         <div

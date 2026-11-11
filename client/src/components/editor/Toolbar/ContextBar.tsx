@@ -120,7 +120,8 @@ export const ContextBar = () => {
   let content: React.ReactNode = null;
   if (isTech) {
     content = null;
-  } else if (selectedObjects.length > 0) {
+    // The jumper tool keeps its cable picker while it has an object selected (its first end / the last jumper).
+  } else if (selectedObjects.length > 0 && uiState.tool !== 'jumper') {
     content = (
       <ObjectPropertyEditor
         selectedObjects={selectedObjects}

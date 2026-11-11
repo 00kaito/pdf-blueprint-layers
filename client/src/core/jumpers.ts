@@ -24,8 +24,10 @@ export const jumperTypeOf = (id: JumperType) => JUMPER_TYPES.find(t => t.id === 
 export const BUNDLE_COLOR = '#334155';
 
 /** One type: its colour; a bundle of types: one neutral colour (the label names them). */
-export const jumperColor = (j: Jumper) =>
-  new Set(j.cables.map(c => c.type)).size === 1 ? jumperTypeOf(j.cables[0].type).color : BUNDLE_COLOR;
+export const cablesColor = (cables: JumperCable[]) =>
+  new Set(cables.map(c => c.type)).size === 1 ? jumperTypeOf(cables[0].type).color : BUNDLE_COLOR;
+
+export const jumperColor = (j: Jumper) => cablesColor(j.cables);
 
 /** The jumper carries at least one of `types` (empty = any). */
 export const jumperHasType = (j: Jumper, types: JumperType[]) => !types.length || j.cables.some(c => types.includes(c.type));
@@ -149,6 +151,36 @@ export const jumperGeometry = (from: EditorObject, to: EditorObject, points: Poi
     control,
     mid: { x: (a.x + 2 * control.x + b.x) / 4, y: (a.y + 2 * control.y + b.y) / 4 },
   };
+};
+
+/**
+ * The line of every jumper, by jumper id: several between the same two objects bend apart, always to
+ * the same side whichever object holds the jumper. Laid out over all of them, so filtering what is
+ * shown never moves a line.
+ */
+export const layoutJumpers = (links: JumperLink[]): Map<string, JumperGeometry> => {
+  const pairIndex = new Map<string, number>();
+  const out = new Map<string, JumperGeometry>();
+  for (const { from, to, jumper } of links) {
+    const pair = [from.id, to.id].sort().join('|');
+    const bend = pairIndex.get(pair) ?? 0;
+    pairIndex.set(pair, bend + 1);
+    const forward = from.id < to.id;
+    const points = forward ? jumper.points : jumper.points && [...jumper.points].reverse();
+    out.set(jumper.id, forward ? jumperGeometry(from, to, points, bend) : jumperGeometry(to, from, points, bend));
+  }
+  return out;
+};
+
+/** The line as points: an arc as `steps` straight pieces (for drawing without curves, e.g. the PDF). */
+export const jumperPolyline = (g: JumperGeometry, steps = 16): Point[] => {
+  const c = g.control;
+  if (!c) return g.points;
+  const [a, b] = g.points;
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps, u = 1 - t;
+    return { x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y };
+  });
 };
 
 /** SVG `d` of a jumper at `scale`. */

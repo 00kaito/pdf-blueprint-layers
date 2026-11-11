@@ -3,7 +3,7 @@ import {Trash2} from 'lucide-react';
 import type {EditorObject, Jumper, JumperType} from '@/lib/types';
 import type {Point} from '@/core/measure';
 import {
-  centerOf, formatJumperFeet, isJumperPulled, jumperColor, jumperGeometry, jumperHasType, JumperLink, jumperPathD, jumperTitle,
+  centerOf, formatJumperFeet, isJumperPulled, jumperColor, jumperHasType, JumperLink, jumperPathD, jumperTitle, layoutJumpers,
 } from '@/core/jumpers';
 import {JumperCablesPicker} from '../JumperCablesPicker';
 import {statusOf} from '@/core/status';
@@ -58,28 +58,19 @@ export const JumperLayer = ({
 }: JumperLayerProps) => {
   const [hoverId, setHoverId] = useState<string | null>(null);
 
-  const shown = useMemo(() => {
-    const focus = new Set(focusIds);
-    // Several jumpers between the same two objects bend apart.
-    const pairIndex = new Map<string, number>();
-    return links
-      .map(link => {
-        const focused = focus.has(link.from.id) || focus.has(link.to.id) || link.jumper.id === selectedJumperId;
-        if (!focused && !(showAll && jumperHasType(link.jumper, filter))) return null;
-        const pair = [link.from.id, link.to.id].sort().join('|');
-        const bend = pairIndex.get(pair) ?? 0;
-        pairIndex.set(pair, bend + 1);
-        // The same side for both directions of a pair, whichever object holds the jumper.
-        const [a, b] = link.from.id < link.to.id ? [link.from, link.to] : [link.to, link.from];
-        const points = link.from.id < link.to.id ? link.jumper.points : link.jumper.points && [...link.jumper.points].reverse();
-        return { link, focused, geometry: jumperGeometry(a, b, points, bend) };
-      })
-      .filter((x): x is NonNullable<typeof x> => !!x)
-      // Focused ones on top.
-      .sort((x, y) => Number(x.focused) - Number(y.focused));
-  }, [links, focusIds, showAll, filter, selectedJumperId]);
+  const layout = useMemo(() => layoutJumpers(links), [links]);
+  const focus = useMemo(() => new Set(focusIds), [focusIds]);
+  const shown = useMemo(() => links
+    .map(link => {
+      const focused = focus.has(link.from.id) || focus.has(link.to.id) || link.jumper.id === selectedJumperId;
+      if (!focused && !(showAll && jumperHasType(link.jumper, filter))) return null;
+      return { link, focused, geometry: layout.get(link.jumper.id)! };
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x)
+    // Focused ones on top.
+    .sort((x, y) => Number(x.focused) - Number(y.focused)),
+  [links, layout, focus, showAll, filter, selectedJumperId]);
 
-  const focus = new Set(focusIds);
   // Over the object it would end at, the preview snaps to its centre.
   const draftEnd = draft && target && targetIsEnd ? centerOf(target) : draft?.hover;
   const draftPts = draft ? [centerOf(draft.from), ...draft.points, ...(draftEnd ? [draftEnd] : [])] : [];

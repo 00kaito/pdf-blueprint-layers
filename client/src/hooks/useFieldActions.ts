@@ -36,7 +36,7 @@ export const useFieldActions = () => {
   const setJumpersStatus = useCallback((jumpers: { fromId: string; jumperId: string }[], status: Status) => {
     if (!jumpers.length) return;
     const updates = statusUpdate(status, user?.username);
-    for (const { fromId, jumperId } of jumpers) dispatch({ type: 'UPDATE_JUMPER', payload: { fromId, id: jumperId, updates } });
+    dispatch({ type: 'UPDATE_JUMPERS', payload: { jumpers: jumpers.map(({ fromId, jumperId }) => ({ fromId, id: jumperId })), updates } });
     // One request for all of them (a technician's "Mark all pulled").
     if (isTech) send(jumpers.map(({ fromId, jumperId }) => ({ type: 'jumperStatus' as const, objectId: fromId, jumperId, status })));
   }, [dispatch, isTech, send, user?.username]);

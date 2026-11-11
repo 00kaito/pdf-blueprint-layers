@@ -333,6 +333,8 @@ export type EditorAction =
   | { type: 'ADD_JUMPER'; payload: { fromId: string; jumper: Jumper } }
   | { type: 'UPDATE_JUMPER'; payload: { fromId: string; id: string; updates: Partial<Jumper> } }
   | { type: 'DELETE_JUMPER'; payload: { fromId: string; id: string } }
+  /** The same change on several jumpers ("Mark all pulled") — one undo step. */
+  | { type: 'UPDATE_JUMPERS'; payload: { jumpers: { fromId: string; id: string }[]; updates: Partial<Jumper> } }
   | { type: 'TOGGLE_JUMPERS' }
   | { type: 'SET_JUMPER_FILTER'; payload: JumperType[] }
   | { type: 'SET_JUMPER_DRAFT'; payload: UIState['jumperDraft'] }

@@ -157,7 +157,8 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
   };
 
   // Shown statuses: an object waits for its jumpers before it counts as pulled or later.
-  const trackableObjects = withShownStatuses(state.objects).filter(obj => obj.type !== 'path' && obj.type !== 'text' && !obj.isFill);
+  const shownObjects = useMemo(() => withShownStatuses(state.objects), [state.objects]);
+  const trackableObjects = shownObjects.filter(obj => obj.type !== 'path' && obj.type !== 'text' && !obj.isFill);
   const counts = {
     total: trackableObjects.length,
     completed: trackableObjects.filter(o => o.status === 'TESTED' || o.status === 'APPROVED').length,
