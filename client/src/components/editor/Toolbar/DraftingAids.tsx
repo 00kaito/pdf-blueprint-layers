@@ -25,6 +25,7 @@ export const DraftingAids = () => {
               pressed={uiState.snapEnabled}
               onPressedChange={(p) => dispatch({ type: 'SET_SNAP_ENABLED', payload: p })}
               size="sm"
+              variant="switch"
               className="h-8 w-8"
               data-testid="snap-toggle"
             >
@@ -43,7 +44,7 @@ export const DraftingAids = () => {
                 onPressedChange={(p) => {
                    dispatch({ type: 'SET_AUTO_NUMBERING', payload: { enabled: p } });
                    if (!p && uiState.tool === 'stamp') dispatch({ type: 'SET_TOOL', payload: 'select' });
-                }} size="sm" className="h-8 w-8 rounded-none border-none">
+                }} size="sm" variant="switch" className="h-8 w-8 rounded-none border-none">
                 <Hash className="w-4 h-4" />
               </Toggle>
             </TooltipTrigger>

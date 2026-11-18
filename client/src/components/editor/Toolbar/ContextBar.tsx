@@ -316,6 +316,7 @@ export const ContextBar = () => {
           pressed={uiState.wallStraight}
           onPressedChange={(wallStraight) => setWall({ wallStraight })}
           size="sm"
+          variant="switch"
           className="h-6 min-w-0 px-2 gap-1 text-xs border border-input"
           title="Runs only at 0° / 45° / 90° (hold Shift for any angle)"
           data-testid="wall-straight"
@@ -327,6 +328,7 @@ export const ContextBar = () => {
           pressed={uiState.wallSnap}
           onPressedChange={(wallSnap) => setWall({ wallSnap })}
           size="sm"
+          variant="switch"
           className="h-6 min-w-0 px-2 gap-1 text-xs border border-input"
           title={uiState.tool === 'area'
             ? 'Points stick to the corners and edges of walls, blindspots and other coverage areas'

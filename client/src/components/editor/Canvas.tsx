@@ -161,7 +161,7 @@ export const Canvas = () => {
     return c && c.x !== undefined && c.y !== undefined ? { x: c.x, y: c.y } : undefined;
   };
   const idfColorOf = (objId: string) => {
-    if (racks.length < 2) return undefined;
+    if (racks.length < 2 || !uiState.showCableRoutes) return undefined;
     const rackId = rackColors.has(objId) ? objId : cableRuns.get(objId)?.rackId;
     return rackId ? rackColors.get(rackId) : undefined;
   };

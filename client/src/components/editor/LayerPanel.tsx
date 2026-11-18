@@ -31,7 +31,7 @@ import {Checkbox} from "@/components/ui/checkbox";
 import {Label} from "@/components/ui/label";
 import {cn} from '@/lib/utils';
 import {defaultObjectNames} from '@/core/lv-icons';
-import {STATUSES} from '@/core/status';
+import {STATUSES, statusOf} from '@/core/status';
 import {withShownStatuses} from '@/core/jumpers';
 import {useCurrentUser} from '@/hooks/useAuth';
 
@@ -54,6 +54,12 @@ const ObjectIcon = ({ type, content }: { type: string, content?: string }) => {
     }
   }
   return <Square className="w-3 h-3" />;
+};
+
+/** Object's status as a dot, like on the plan; nothing without a status. */
+const StatusDot = ({ status }: { status?: string }) => {
+  const s = statusOf(status);
+  return s ? <span className={cn("h-2 w-2 shrink-0 rounded-full", s.dot)} title={s.label} data-testid="layer-object-status" /> : null;
 };
 
 export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
@@ -259,7 +265,8 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
           {state.layers.slice().reverse().map((layer) => {
-            const layerObjects = state.objects.filter(obj => obj.layerId === layer.id);
+            // With shown statuses, so each row's dot matches the plan.
+            const layerObjects = shownObjects.filter(obj => obj.layerId === layer.id);
             const isExpanded = expandedLayers[layer.id] ?? true;
 
             return (
@@ -416,6 +423,8 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
                               </span>
                           )}
                         </div>
+
+                        {obj.type !== 'text' && <StatusDot status={obj.status} />}
 
                         {!!obj.photos?.length && (
                           <span className="flex items-center gap-0.5 text-sky-600 shrink-0" title={`${obj.photos.length} photo(s)`}>

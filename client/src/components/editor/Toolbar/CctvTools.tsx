@@ -108,6 +108,7 @@ export const CctvTools = ({ isTech }: { isTech: boolean }) => {
               pressed={uiState.showCameraCoverage}
               onPressedChange={toggleCoverage}
               size="sm"
+              variant="switch"
               className="h-7 w-8 rounded-none border-none"
               aria-label="Show camera coverage"
               data-testid="cctv-coverage-toggle"

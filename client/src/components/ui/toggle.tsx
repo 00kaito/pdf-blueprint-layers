@@ -14,6 +14,9 @@ const toggleVariants = cva(
     variants: {
       variant: {
         default: "bg-transparent",
+        // On/off setting (snap, show routes…), not a tool: a light tint when on, so the one solid
+        // button in the toolbar is always the tool in use.
+        switch: "bg-transparent aria-pressed:bg-primary/15 aria-pressed:text-primary aria-pressed:shadow-none aria-pressed:ring-1 aria-pressed:ring-inset aria-pressed:ring-primary/40 [@media(hover:hover)]:aria-pressed:hover:bg-primary/25 [@media(hover:hover)]:aria-pressed:hover:text-primary",
         outline:
           "border border-input bg-transparent shadow-sm [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-accent-foreground",
       },

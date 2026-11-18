@@ -374,7 +374,7 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
             >
               <PopoverTrigger asChild>
                 <Toggle
-                  pressed={objectsMenuOpen || (uiState.tool === 'select' && uiState.selectedObjectIds.length > 0)}
+                  pressed={objectsMenuOpen}
                   size="sm"
                   className="h-8 w-8"
                   title="Objects — shapes and your icon library"

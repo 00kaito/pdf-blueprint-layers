@@ -29,9 +29,6 @@ const LABEL_POSITION_CLASSES: Record<LabelPosition, string> = {
   right: 'left-full ml-1 top-1/2 -translate-y-1/2',
 };
 
-/** Corner resize handle: transparent 20 px grab area with an 8 px dot centred in it. */
-const RESIZE_HANDLE_CLASS = "after:absolute after:inset-[6px] after:rounded-full after:bg-primary after:ring-1 after:ring-white";
-
 /**
  * Touch: the action bar (and a stylus on the rotate handle) ignores taps this long after the object
  * was selected — the second tap of a double tap must not hit an action that just appeared.
@@ -527,21 +524,6 @@ export const ObjectRenderer = memo(({
         }
         dispatch({ type: 'UPDATE_OBJECT', payload: { id: obj.id, updates: { x: pos.x, y: pos.y } } });
       }}
-      onResizeStop={(e: any, dir, ref, delta, pos) => {
-        if (isTech || disableMovement) return;
-        dispatch({ 
-          type: 'UPDATE_OBJECT', 
-          payload: { 
-            id: obj.id, 
-            updates: { 
-              width: parseFloat(ref.style.width) / scale, 
-              height: parseFloat(ref.style.height) / scale, 
-              x: pos.x / scale, 
-              y: pos.y / scale 
-            }
-          } 
-        });
-      }}
       onClick={(e: any) => {
         e.stopPropagation();
         const dragged = draggedRef.current;
@@ -558,16 +540,9 @@ export const ObjectRenderer = memo(({
       cancel=".object-label, .object-action"
       bounds="parent"
       disableDragging={lockGeometry || (isTech && (obj.type === 'path' || techPermissions.move === 'off')) || layer.locked || tool !== 'select' || isRotating || (touchLayout && !isSelected)}
-      // Touch: no resize handles — they took most of a small icon and turned moves into resizes.
-      enableResizing={isTech || lockGeometry || touchLayout ? {} : (!layer.locked && isSelected)}
-      // re-resizable sizes the corner handles inline (20 px) — keep that as the grab area and draw a
-      // small 8 px dot in its middle.
-      resizeHandleClasses={{
-        bottomRight: RESIZE_HANDLE_CLASS,
-        bottomLeft:  RESIZE_HANDLE_CLASS,
-        topRight:    RESIZE_HANDLE_CLASS,
-        topLeft:     RESIZE_HANDLE_CLASS,
-      }}
+      // No resizing by mouse: a drag on a selected object always moves it. Size changes via +/- in
+      // the properties panel.
+      enableResizing={false}
       className={cn(
         "group z-20",
         isFill && "is-fill", // a selection rectangle may start on a fill (see useMarquee)
@@ -717,7 +692,7 @@ export const ObjectRenderer = memo(({
 
       {idfColor && !isFill && (
         <div
-          className="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm z-50 pointer-events-none"
+          className="absolute top-0 left-0 w-2 h-2 rounded-full border border-white shadow-sm z-50 pointer-events-none"
           style={{ backgroundColor: idfColor }}
           data-testid="idf-dot"
         />

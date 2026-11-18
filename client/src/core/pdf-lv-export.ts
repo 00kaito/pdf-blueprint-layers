@@ -140,8 +140,8 @@ export const lvIconOpacity = (o: EditorObject) => (o.change === 'REMOVE' ? 0.45 
  * Marks around one object: relocation ghost + arrow, strike-through when removed, plan-change
  * badge (top right) and the dot of the IDF it home-runs to (top left, with several IDFs).
  */
-/** IDF colour dot radius, unscaled canvas units: the editor's 12 px dot at the default zoom (4.1). */
-const IDF_DOT_RADIUS = 1.4;
+/** IDF colour dot radius, unscaled canvas units: the editor's 8 px dot (as big as the status dot) at the default zoom (4.1). */
+const IDF_DOT_RADIUS = 1;
 
 export const drawObjectLvMarks = (
   pp: PlanPainter, o: EditorObject, bold: PDFFont, idfColor: string | undefined, pageRotation: number,

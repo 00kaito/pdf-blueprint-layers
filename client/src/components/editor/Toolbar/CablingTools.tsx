@@ -62,6 +62,7 @@ export const CablingTools = ({ isTech }: { isTech: boolean }) => {
             pressed={uiState.showCableRoutes}
             onPressedChange={() => dispatch({ type: 'TOGGLE_CABLE_ROUTES' })}
             size="sm"
+            variant="switch"
             className="h-8 w-8"
             aria-label="Show cable routes"
             data-testid="cables-routes-toggle"
@@ -79,7 +80,8 @@ export const CablingTools = ({ isTech }: { isTech: boolean }) => {
                 type="button"
                 className={cn(
                   'flex h-8 items-center gap-0.5 rounded-md px-1.5 text-xs font-medium hover:bg-muted',
-                  uiState.showJumpers && 'bg-accent text-accent-foreground',
+                  // On: the same tint as Toggle's "switch" variant (a setting, not the tool in use).
+                  uiState.showJumpers && 'bg-primary/15 text-primary ring-1 ring-inset ring-primary/40',
                 )}
                 aria-label="Show jumpers"
                 data-testid="jumpers-toggle"
