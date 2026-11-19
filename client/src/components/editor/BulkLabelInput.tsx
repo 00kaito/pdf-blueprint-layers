@@ -18,7 +18,7 @@ interface BulkLabelInputProps {
 
 const PATTERN_HINT = 'With several objects selected, %1 numbers them in selection order: "CAM %1" → CAM 1, CAM 2… (%01 → 01, 02…; %10 starts at 10). Enter applies.';
 const DISTANCE_HINT = 'Number by cable run to the assigned IDF: nearest device first, IDF by IDF.';
-const CHAIN_HINT = 'Number as a chain: the first selected object gets the first number, each next one is the nearest unnumbered object to the previous one.';
+const CHAIN_HINT = 'Number as a chain: the first selected object gets the first number, each next one is the nearest unnumbered object to the previous one, preferring the same row (horizontal neighbours).';
 
 /**
  * Label field for one or many objects. Plain text is applied as you type (to all selected objects);

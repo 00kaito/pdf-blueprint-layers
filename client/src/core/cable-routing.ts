@@ -442,9 +442,15 @@ export const buildCableSummary = (
 };
 
 /**
+ * Chain numbering prefers horizontal neighbours: a vertical gap counts this many times its length,
+ * so the chain runs along a row before stepping to the next one.
+ */
+const CHAIN_VERTICAL_WEIGHT = 3;
+
+/**
  * Objects ordered for numbering as a chain: starting with the first one (the first selected), each
- * next one is the nearest of those not numbered yet to the previous one (straight line between
- * centres). Ties keep the selection order.
+ * next one is the nearest of those not numbered yet to the previous one (between centres, vertical
+ * distance weighted by CHAIN_VERTICAL_WEIGHT). Ties keep the selection order.
  */
 export const orderByNearestChain = (selected: EditorObject[]): EditorObject[] => {
   if (selected.length === 0) return [];
@@ -456,7 +462,7 @@ export const orderByNearestChain = (selected: EditorObject[]): EditorObject[] =>
     let bestDist = Infinity;
     left.forEach((o, i) => {
       const c = centerOf(o);
-      const d = (c.x - at.x) ** 2 + (c.y - at.y) ** 2;
+      const d = (c.x - at.x) ** 2 + ((c.y - at.y) * CHAIN_VERTICAL_WEIGHT) ** 2;
       if (d < bestDist) { bestDist = d; best = i; }
     });
     const [next] = left.splice(best, 1);
