@@ -147,7 +147,7 @@ The schema is in `shared/schema.ts`. Docker applies it on every container start 
 
 ### How it works
 
-1. **Opening a plan.** The user uploads a PDF. It is rendered with `react-pdf` (pdf.js); objects are drawn on top in page-independent coordinates (`core/pdf-math.ts` handles scale and page rotation).
+1. **Opening a plan.** The user uploads a PDF. `react-pdf` loads it and pdf.js draws the page on the app's own canvas (`PdfPageCanvas`, plus a sharp tile of the visible part at high zoom: `PdfDetailLayer`); objects are drawn on top in page-independent coordinates (`core/pdf-math.ts` handles scale and page rotation).
 2. **Editing.** All editor state lives in a React reducer (`lib/editor-context.tsx`), split into the saved document (`DocumentState`) and screen-only state (`UIState`: zoom, tool, selection, measuring tape / path measure, a technician's own label positions…). Undo / redo keeps 100 steps (`lib/history.ts`).
 3. **Saving (PM / admin).** The first save creates the project and uploads the PDF(s) to `/api/files`. After that `useAutoSave` sends the plan to `PUT /api/projects/:id?base=<revision>` about 2 s after the last change, with retries for flaky connections. If someone else saved in between, the server answers `409` with its plan; the client merges field by field (`lib/merge-state.ts`) and saves again, so nobody's changes are overwritten.
 4. **Field work (technicians; comments, photos and request decisions for everyone).** Technicians never save the whole plan: each action is a small *op* sent to `POST /api/projects/:id/ops`, checked and applied by the server (`shared/tech-ops.ts`): status (with issue text), label position, photos, comments, change requests (move / label / cables / IDF) and, where the project allows it, direct edits. Comments, photos and requests are *server-owned*: a PM's full save keeps the stored ones.
@@ -192,16 +192,21 @@ Files are served with `X-Content-Type-Options: nosniff`; SVG images additionally
 ### Plan editing
 - Load a PDF plan and an optional **overlay PDF** (e.g. another installation's drawing) with adjustable opacity and position; **replace the blueprint PDF** with a new revision while objects stay in place.
 - **Layers**: create, rename, hide, lock, reorder, set opacity.
+- **Layers & Objects list** (left panel): every layer with its objects and each object's status dot. **Drag objects in the list** to change their order (a line shows where they land: above / below a row, or on a layer header = to the end of that layer) or to move them to another layer; dragging a selected object moves the whole selection. The list order is also the drawing order — an object lower in the list is drawn over the ones above it. One undo step per drop.
 - **Objects**: text, images, low-voltage device icons (floor box, data, TV, AV bar, face panel / access control, speakers, microphone, WAP, CCTV and 360° cameras, scheduler, control panel, copier / printer, rack / IDF), shapes, the team **icon library**, freehand drawing, paint-bucket fills.
-- Move, resize, rotate, multi-select (drag a selection area), copy / paste (`Ctrl+C` / `Ctrl+V`), duplicate with the next label number, snapping and guides, undo / redo.
+- Move, rotate, multi-select (drag a selection area), copy / paste (`Ctrl+C` / `Ctrl+V`), duplicate with the next label number, snapping and guides, undo / redo. A drag on an object always moves it (no resize handles); **resize** in the properties panel: −10% / +10% or any percentage, each object around its own centre.
 - **Auto-numbering**: prefix + counter (e.g. `IDF1-P1-001`) with click-to-place stamping.
+- **Numbering patterns** (Label field with several objects selected): `%1` is a running number — `CAM %1` → CAM 1, CAM 2…; `P-%01` → P-01, P-02… (leading zeros set the width); `CAM %10` starts at 10; `%%` is a literal `%`. Enter numbers them in **selection order**; the buttons next to the field number them in another order:
+  - **Chain** / *Number by nearest neighbour*: the first selected object gets the first number, each next one the nearest unnumbered object to the previous one — preferring the same row (a vertical gap counts 3× its length), so the numbers run along a row and then snake back along the next one.
+  - **By IDF** / *Number by distance to IDF* (only with an IDF on the plan): IDF by IDF, the shortest cable run first.
 - **Measuring**: set the scale once with the probe (saved with the project), then use the **measuring tape** (one distance) or the **path measure** (see below); mount heights per device.
-- Zoom up to 1000%, pan, touch layout for tablets (bigger buttons, gestures, stylus-only mode).
+- Zoom up to 1300% (pinch, `Ctrl` + wheel, toolbar); the plan stays visible and sharp at any zoom, also on phones (see *Rendering the plan* in `DEVELOPER.md`). Pan, touch layout for tablets (bigger buttons, gestures, stylus-only mode).
 - **Path measure** (every role, also on the phone; on a computer in the measuring tape's menu ▾, for technicians and on the phone its own button): click / tap point after point; each segment and the total length are shown (needs the plan's scale). On a phone a tap adds the next point, a drag still pans, and holding a finger on the plan removes the measurement; on a computer Backspace takes back a point and Esc / ✕ removes it. The measurement is only on your screen, never saved.
 
 ### Network documentation
 - Per-object metadata: socket ID, patch-panel port, switch ID, cable ID, **cables** (type × count, with defaults per device type), the **IDF** a device home-runs to, mount height, notes and threaded comments. The device type is the icon itself.
-- **Cable routes** per IDF and estimated / routed cable runs; **cable summary** (drops, patch panels, lengths per rack, boxes of cable).
+- **Cable routes** per IDF and estimated / routed cable runs; **cable summary** (drops, patch panels, lengths per rack, boxes of cable). With two or more IDFs, an object shows its IDF's colour dot while cable routes are shown.
+- **Jumpers**: cables between two objects on the plan (TV → floor box HDMI, USB-C to a wall plate…), not home-runs to an IDF. Jumper tool (`J`, Cables group): click the first object, optionally points the cable passes, then the second object (Backspace = undo point, Esc = cancel); or *+ Jumper* in the object's properties. One jumper line carries several cables (e.g. Cat6 + HDMI + USB-C), each type × count; types: HDMI, USB-C, Cat6, speaker, coax, fiber, other. A jumper has an optional label and a length (measured on the plan, or entered by hand). Drawn as a dashed arc in its type's colour (several between the same two objects bend apart); *Show all jumpers* with a type filter — the selected object's jumpers are always shown. Objects show how many jumpers / cables they have.
 - **CCTV**: camera field of view, blindspot walls, coverage areas and automatic camera placement.
 - **Plan changes** (to be relocated / removed, added in a revision, on hold), tracked apart from the install status.
 - Object names shown as labels on the plan (position per object; a technician can drag labels on their own screen only).
@@ -209,13 +214,16 @@ Files are served with `X-Content-Type-Options: nosniff`; SVG images additionally
 ### Installation progress
 - Status life cycle: `Planned → Cable Pulled → Terminated → Tested → Done`, plus `Issue` with a description (on the phone, Issue asks for the comment in a popup).
 - Each status change records who made it and when.
+- **Jumper status**: a jumper is only *pulled* or not. Everyone can switch it (a technician's goes to the server as an op); a PM also edits, adds and deletes jumpers. Until every jumper at an object is pulled, the object shows *Planned* even if its own status is further (the stored status is kept and shows as soon as the jumpers are pulled); progress counts, the list's status dots and the PDF use this shown status.
 - **Technician permissions** (main menu → *Technician permissions…*, PM / admin, per project): for location, label, cables and IDF, choose *Not allowed*, *Change request* (default: a PM or admin approves or rejects it) or *Without approval* (saved straight into the plan; the PM sees who changed it). The server enforces the setting. On the phone a technician long-presses an object to edit its label and cables.
 - **Change requests**: a technician's move / label / cables / IDF change waits for a PM or admin (*Requests* button: approve or reject one by one or all at once, with a reason that goes back to the technician).
 - **Color by status** turns the plan into a progress map; a dashboard shows completion percentage and issue count.
 - **Photos** per object (compressed in the browser before upload) with a gallery view.
 
 ### Phone
-- A simplified layout: the plan, a bottom bar for the selected object (status, planned cables, photos, move), and a ☰ menu (all projects, whole-layer visibility, colour by status, log out).
+- A simplified layout: the plan, a bottom bar for the selected object (status, planned cables, photos, move), and a ☰ menu (all projects, whole-layer visibility, colour by status, log out). The status buttons are one row with full names that scrolls sideways (the current status is scrolled into view).
+- Jumpers on the phone: a chip *⇄ 1/2 pulled* under the object's name opens a sheet with one big pulled / not pulled switch per jumper and *Mark all pulled*.
+- No save button: a project on the server saves itself (PM, with a saved / saving indicator) or sends every change at once (technician). Technicians get no project ZIP download.
 - Technicians start with colour by status on and camera coverage / cable routes off.
 - **Install as an app** (*Install app* on the login page, the project list, the ☰ menu and the desktop main menu): an icon on the home screen that opens the app full screen. Android Chrome shows its install dialog; on iPhone / iPad the app shows the steps (Safari → Share → *Add to Home Screen*). Android installing needs the server on **HTTPS** (or `localhost`); iPhone home-screen icons work on plain HTTP too. Plans still need the connection: offline, the app shows a "You are offline" page.
 
@@ -230,14 +238,14 @@ Files are served with `X-Content-Type-Options: nosniff`; SVG images additionally
 - **Export Project Files (.zip)** (main menu, or the download button on a project in the list) — exported by the server, complete and portable: the plan with every layer / object / property, the PDF and overlay, photos and images as files, the icon library and the project name. People appear only as usernames: no accounts, passwords or e-mails.
 - **Import from ZIP** — the server creates a new project (a copy, if the project already exists here) owned by the importer and stores its files; it is all or nothing (a failed import leaves nothing behind), and only PDFs and images keep their file type (anything else is stored as plain bytes). From **this** server (same server id) people and access stay as they were. From **another** server a *Who is who?* dialog asks, for each person in the ZIP, which account here they are (same-name accounts are suggested, never applied silently) and whether to share the project with them. Accounts are never created. People left without an account stay in the plan and are listed in the project's **Share** dialog, where they can be linked to an account (and given access) later. Older in-browser ZIPs (`project.json` + `document.pdf`, inlined photos) are imported too. `.json` files and unpacked folders still open in the browser as a new, unsaved project.
 - **Admin: Export / Import all projects** — the same format for the whole server (re-importing skips projects that exist). Works on any server, also a fresh install with its own admin: one full import, or each project ZIP, brings back every project.
-- **Flatten & download PDF** — draws all objects and labels into the PDF (white label backgrounds, configurable label font size, optional crop and cable summary page) for printing or sharing.
+- **Flatten & download PDF** — draws all objects and labels into the PDF (white label backgrounds, configurable label font size, optional crop and cable summary page) for printing or sharing. Jumpers are drawn as on screen (with *Show all jumpers* on: the filtered types); the cable summary adds jumper tables (not counted in the IDF totals) and marks objects still waiting for a jumper.
 
 ---
 
 ## Tech stack
 
 - **Frontend:** React 19, Vite 7, TypeScript, Tailwind CSS 4, shadcn/ui (Radix), TanStack Query, wouter, react-pdf, react-rnd
-- **PDF processing:** pdf-lib (export), pdf.js via react-pdf (rendering), JSZip
+- **PDF processing:** pdf-lib (export), pdf.js (rendering; react-pdf loads the document), JSZip
 - **Backend:** Node.js 20, Express 4, Passport (local), express-session, multer, Server-Sent Events
 - **Database:** PostgreSQL 16, Drizzle ORM / drizzle-kit
 - **Deployment:** multi-stage Dockerfile, Docker Compose
