@@ -139,6 +139,12 @@ const describe = (action: EditorAction, prev: EditorState): string => {
     case 'TOGGLE_LAYER_VISIBILITY': return `Toggle visibility of ${layerName(action.payload)}`;
     case 'DELETE_LAYER': return `Delete ${layerName(action.payload)}`;
     case 'REORDER_LAYERS': return 'Reorder layers';
+    case 'MOVE_OBJECTS_IN_LIST': {
+      const ids = action.payload.ids;
+      const what = ids.length === 1 ? objName(ids[0]) : plural(ids.length, 'object');
+      const toOther = ids.some(id => prev.objects.find(o => o.id === id)?.layerId !== action.payload.layerId);
+      return toOther ? `Move ${what} to ${layerName(action.payload.layerId)}` : `Reorder ${what}`;
+    }
     case 'SET_OVERLAY_OPACITY': return 'Change overlay opacity';
     case 'SET_OVERLAY_OFFSET': return 'Move overlay';
     case 'SET_AUTO_NUMBERING': return 'Change auto-numbering';

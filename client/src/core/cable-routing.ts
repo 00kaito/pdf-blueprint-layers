@@ -442,6 +442,31 @@ export const buildCableSummary = (
 };
 
 /**
+ * Objects ordered for numbering as a chain: starting with the first one (the first selected), each
+ * next one is the nearest of those not numbered yet to the previous one (straight line between
+ * centres). Ties keep the selection order.
+ */
+export const orderByNearestChain = (selected: EditorObject[]): EditorObject[] => {
+  if (selected.length <= 2) return [...selected];
+  const left = selected.slice(1);
+  const out = [selected[0]];
+  let at = centerOf(selected[0]);
+  while (left.length > 0) {
+    let best = 0;
+    let bestDist = Infinity;
+    left.forEach((o, i) => {
+      const c = centerOf(o);
+      const d = (c.x - at.x) ** 2 + (c.y - at.y) ** 2;
+      if (d < bestDist) { bestDist = d; best = i; }
+    });
+    const [next] = left.splice(best, 1);
+    out.push(next);
+    at = centerOf(next);
+  }
+  return out;
+};
+
+/**
  * Devices ordered for numbering by their IDF: grouped by rack (in plan order), nearest cable run
  * first. Objects without a run (no rack on the plan, not a cable device) keep their order at the end.
  */

@@ -652,6 +652,24 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
     }
     case 'SET_LV_SETTINGS':
       return { ...state, lvSettings: { ...state.lvSettings, ...action.payload } };
+    case 'MOVE_OBJECTS_IN_LIST': {
+      const { ids, layerId, beforeId } = action.payload;
+      const moving = new Set(ids.filter(id => id !== beforeId));
+      if (moving.size === 0 || !state.layers.some(l => l.id === layerId)) return state;
+      // In their current order, so a moved selection keeps its own order.
+      const moved = state.objects.filter(o => moving.has(o.id)).map(o => (o.layerId === layerId ? o : { ...o, layerId }));
+      const rest = state.objects.filter(o => !moving.has(o.id));
+      let at = beforeId ? rest.findIndex(o => o.id === beforeId) : -1;
+      if (at === -1) {
+        // End of the layer: right after its last object (or at the very end if it has none).
+        let last = -1;
+        rest.forEach((o, i) => { if (o.layerId === layerId) last = i; });
+        at = last === -1 ? rest.length : last + 1;
+      }
+      const objects = [...rest.slice(0, at), ...moved, ...rest.slice(at)];
+      if (objects.every((o, i) => o === state.objects[i])) return state;
+      return { ...state, objects };
+    }
     case 'REORDER_LAYERS': {
       const { sourceIndex, destinationIndex } = action.payload;
       const result = Array.from(state.layers);

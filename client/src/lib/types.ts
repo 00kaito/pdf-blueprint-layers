@@ -315,6 +315,8 @@ export type EditorAction =
   | { type: 'SET_SCROLL'; payload: { x: number; y: number } }
   | { type: 'IMPORT_PROJECT'; payload: Partial<EditorState> }
   | { type: 'REORDER_LAYERS'; payload: { sourceIndex: number; destinationIndex: number } }
+  /** Moves objects in the list (and so in drawing order) before `beforeId`, or to the end of `layerId`'s objects when null; they join `layerId`. */
+  | { type: 'MOVE_OBJECTS_IN_LIST'; payload: { ids: string[]; layerId: string; beforeId: string | null } }
   | { type: 'COPY_OBJECT' }
   | { type: 'PASTE_OBJECT'; payload?: { x: number; y: number; isIncremental?: boolean } }
   | { type: 'SET_AUTO_NUMBERING'; payload: Partial<DocumentState['autoNumbering']> }

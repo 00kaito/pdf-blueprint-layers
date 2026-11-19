@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo, useRef, useState} from 'react';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {
     ArrowRight,
@@ -78,7 +78,10 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
   
   const [editingObjectId, setEditingObjectId] = useState<string | null>(null);
   const [editingObjectName, setEditingObjectName] = useState("");
-  const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
+  /** Where a dragged object would land: in `layerId`, before `beforeId` (null = at the end of the layer). */
+  const [dropTarget, setDropTarget] = useState<{ layerId: string; beforeId: string | null } | null>(null);
+  /** Objects being dragged (dataTransfer data cannot be read during dragover). */
+  const draggedIdsRef = useRef<string[]>([]);
   const [progressOpen, setProgressOpen] = useState(() => {
     try { return localStorage.getItem(PROGRESS_OPEN_STORAGE_KEY) !== 'false'; } catch { return true; }
   });
@@ -132,34 +135,62 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
     dispatch({ type: 'ADD_LAYER', payload: `Layer ${state.layers.length + 1}` });
   };
 
+  const isObjectDrag = (e: React.DragEvent) => !isTech && e.dataTransfer.types.includes('application/move-object-id');
+
   const handleObjectDragStart = (e: React.DragEvent, objectId: string) => {
     if (isTech) {
       e.preventDefault();
       return;
     }
+    // Dragging a selected object moves the whole selection (keeping its order).
+    const selected = state.selectedObjectIds;
+    draggedIdsRef.current = selected.includes(objectId) && selected.length > 1 ? selected : [objectId];
     e.dataTransfer.setData('application/move-object-id', objectId);
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleLayerDragOver = (e: React.DragEvent, layerId: string) => {
-    e.preventDefault();
-    if (!isTech && e.dataTransfer.types.includes('application/move-object-id')) {
-      setDragOverLayerId(layerId);
-      e.dataTransfer.dropEffect = 'move';
-    }
+  const endDrag = () => {
+    draggedIdsRef.current = [];
+    setDropTarget(null);
   };
 
-  const handleLayerDrop = (e: React.DragEvent, layerId: string) => {
+  const setTarget = (layerId: string, beforeId: string | null) => {
+    setDropTarget(t => (t && t.layerId === layerId && t.beforeId === beforeId ? t : { layerId, beforeId }));
+  };
+
+  /** Over a layer (its header or empty space): to the end of its objects. */
+  const handleLayerDragOver = (e: React.DragEvent, layerId: string) => {
+    if (!isObjectDrag(e)) return;
     e.preventDefault();
-    setDragOverLayerId(null);
-    if (isTech) return;
-    const objectId = e.dataTransfer.getData('application/move-object-id');
-    if (objectId) {
-      dispatch({
-        type: 'UPDATE_OBJECT',
-        payload: { id: objectId, updates: { layerId } }
-      });
-    }
+    e.dataTransfer.dropEffect = 'move';
+    setTarget(layerId, null);
+  };
+
+  /** Over an object row: before it (upper half) or after it (lower half). */
+  const handleObjectDragOver = (e: React.DragEvent, layerId: string, objectId: string, nextId: string | null) => {
+    if (!isObjectDrag(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTarget(layerId, e.clientY < rect.top + rect.height / 2 ? objectId : nextId);
+  };
+
+  const handleLayerDragLeave = (e: React.DragEvent) => {
+    // Moving onto a child also fires dragleave: only leaving the layer block counts.
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropTarget(null);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!isObjectDrag(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const target = dropTarget;
+    const fallback = e.dataTransfer.getData('application/move-object-id');
+    const ids = draggedIdsRef.current.length > 0 ? draggedIdsRef.current : fallback ? [fallback] : [];
+    endDrag();
+    if (!target || ids.length === 0) return;
+    dispatch({ type: 'MOVE_OBJECTS_IN_LIST', payload: { ids, layerId: target.layerId, beforeId: target.beforeId } });
   };
 
   // Shown statuses: an object waits for its jumpers before it counts as pulled or later.
@@ -274,11 +305,11 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
                 key={layer.id} 
                 className={cn(
                   "space-y-1 rounded-md transition-colors pb-1",
-                  !isTech && dragOverLayerId === layer.id && "bg-primary/5 ring-1 ring-primary/20"
+                  dropTarget?.layerId === layer.id && "bg-primary/5 ring-1 ring-primary/20"
                 )}
                 onDragOver={(e) => handleLayerDragOver(e, layer.id)}
-                onDragLeave={() => setDragOverLayerId(null)}
-                onDrop={(e) => handleLayerDrop(e, layer.id)}
+                onDragLeave={handleLayerDragLeave}
+                onDrop={handleDrop}
               >
                 <div
                   className={cn(
@@ -356,13 +387,22 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
 
                 {isExpanded && (
                   <div className="pl-6 space-y-0.5">
-                    {layerObjects.map((obj) => (
+                    {layerObjects.map((obj, i) => (
                       <div
                         key={obj.id}
                         draggable={!isTech}
                         onDragStart={(e) => handleObjectDragStart(e, obj.id)}
+                        onDragEnd={endDrag}
+                        onDragOver={(e) => handleObjectDragOver(e, layer.id, obj.id, layerObjects[i + 1]?.id ?? null)}
+                        data-testid="layer-object-row"
                         className={cn(
-                          "flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors group",
+                          "relative flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors group",
+                          // Drop position: a line above this row, or below the last row (end of the layer).
+                          dropTarget?.layerId === layer.id && dropTarget.beforeId === obj.id &&
+                            "before:absolute before:inset-x-0 before:-top-px before:h-0.5 before:rounded-full before:bg-primary",
+                          dropTarget?.layerId === layer.id && dropTarget.beforeId === null && i === layerObjects.length - 1 &&
+                            "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
+                          dropTarget && draggedIdsRef.current.includes(obj.id) && "opacity-50",
                           isTech ? "cursor-default" : "cursor-grab active:cursor-grabbing",
                           state.selectedObjectIds.includes(obj.id)
                             ? "bg-primary/20 text-primary"

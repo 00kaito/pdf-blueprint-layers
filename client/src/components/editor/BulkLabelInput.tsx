@@ -1,11 +1,11 @@
 import React, {useEffect, useState} from 'react';
-import {Route} from 'lucide-react';
+import {Route, Waypoints} from 'lucide-react';
 import {Input} from '@/components/ui/input';
 import {Button} from '@/components/ui/button';
 import {useDocument, useUI} from '@/lib/editor-context';
 import {EditorObject} from '@/lib/types';
 import {expandLabelPattern, hasNumberPattern} from '@/core/label-pattern';
-import {getRacks, orderByIdfDistance} from '@/core/cable-routing';
+import {getRacks, orderByIdfDistance, orderByNearestChain} from '@/core/cable-routing';
 import {cn} from '@/lib/utils';
 
 interface BulkLabelInputProps {
@@ -18,6 +18,7 @@ interface BulkLabelInputProps {
 
 const PATTERN_HINT = 'With several objects selected, %1 numbers them in selection order: "CAM %1" → CAM 1, CAM 2… (%01 → 01, 02…; %10 starts at 10). Enter applies.';
 const DISTANCE_HINT = 'Number by cable run to the assigned IDF: nearest device first, IDF by IDF.';
+const CHAIN_HINT = 'Number as a chain: the first selected object gets the first number, each next one is the nearest unnumbered object to the previous one.';
 
 /**
  * Label field for one or many objects. Plain text is applied as you type (to all selected objects);
@@ -66,6 +67,22 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
     </Button>
   );
 
+  const chainButton = isMulti && (
+    <Button
+      type="button" variant="outline" size="sm"
+      className={cn("gap-1 text-[10px] shrink-0", showPreview ? "h-7 w-full" : "h-6 px-1.5")}
+      disabled={!isPattern}
+      // Keep the field's blur from applying the selection order first.
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => applyPattern(orderByNearestChain(ordered))}
+      title={isPattern ? CHAIN_HINT : `${CHAIN_HINT} Type a pattern first, e.g. CAM %1.`}
+      data-testid="bulk-label-by-chain"
+    >
+      <Waypoints className="h-3 w-3" />
+      {showPreview ? 'Number by nearest neighbour' : 'Chain'}
+    </Button>
+  );
+
   const onChange = (value: string) => {
     setDraft(value);
     if (!isMulti || !hasNumberPattern(value)) {
@@ -93,6 +110,7 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
         title={isMulti ? PATTERN_HINT : undefined}
         data-testid="bulk-label-input"
       />
+      {!showPreview && chainButton}
       {!showPreview && distanceButton}
       {showPreview && isMulti && (
         <p className="text-[10px] text-muted-foreground leading-snug" data-testid="bulk-label-preview">
@@ -101,6 +119,7 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
             : <>Tip: <span className="font-mono">CAM %1</span> numbers them 1…{ordered.length} in selection order</>}
         </p>
       )}
+      {showPreview && chainButton}
       {showPreview && distanceButton}
     </>
   );
