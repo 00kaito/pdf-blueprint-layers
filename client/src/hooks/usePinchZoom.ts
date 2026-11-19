@@ -1,9 +1,6 @@
 import {useEffect, useLayoutEffect, useRef} from 'react';
 import {useUI} from '@/lib/editor-context';
-
-/** Same limits as the toolbar zoom controls. */
-const MIN_SCALE = 0.1;
-const MAX_SCALE = 10;
+import {MAX_SCALE, MIN_SCALE} from '@/core/constants';
 
 type Pinch = {
   startDistance: number;

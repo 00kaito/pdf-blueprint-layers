@@ -9,13 +9,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {useDocument, useUIDispatch} from '@/lib/editor-context';
-import {CANVAS_BASE_WIDTH} from '@/core/constants';
+import {CANVAS_BASE_WIDTH, MAX_SCALE, MIN_SCALE} from '@/core/constants';
 
-const MIN_SCALE = 0.1;
-const MAX_SCALE = 10;
 /** Each +/- click zooms by this factor. */
 const ZOOM_STEP = 1.25;
-const PRESETS = [0.5, 1, 2, 4, 7.5, 10];
+const PRESETS = [0.5, 1, 2, 4, 7.5, 10, 13];
 /** Padding around the page inside the canvas scroller (p-8 on both sides). */
 const CANVAS_PADDING = 64;
 

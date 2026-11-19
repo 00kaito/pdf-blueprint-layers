@@ -1,14 +1,15 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {v4 as uuidv4} from 'uuid';
 import {useDocument, useUI} from '@/lib/editor-context';
-import {Document, Page, pdfjs} from 'react-pdf';
-import {debounce} from '@/lib/utils';
-import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH, DEFAULT_ICON_SIZE} from '@/core/constants';
+import {Document, pdfjs} from 'react-pdf';
+import {CANVAS_BASE_HEIGHT, CANVAS_BASE_WIDTH, cappedPixelRatio, DEFAULT_ICON_SIZE, PAGE_CANVAS_PIXELS} from '@/core/constants';
+import type {PDFDocumentProxy, PDFPageProxy} from 'pdfjs-dist';
 import {getVisualDimensions} from '@/core/pdf-math';
 import {Upload} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {useDrawing} from '@/hooks/useDrawing';
 import {usePinchZoom} from '@/hooks/usePinchZoom';
+import {pageCssHeight, usePdfPage} from '@/hooks/usePdfPage';
 import {useMeasure} from '@/hooks/useMeasure';
 import {useSpacePan} from '@/hooks/useSpacePan';
 import {useFingerPan} from '@/hooks/useFingerPan';
@@ -24,6 +25,8 @@ import {MeasureLayer} from './Canvas/MeasureLayer';
 import {PathMeasureLayer} from './Canvas/PathMeasureLayer';
 import {GuidesLayer} from './Canvas/GuidesLayer';
 import {OverlayDocument} from './Canvas/OverlayDocument';
+import {PdfDetailLayer} from './Canvas/PdfDetailLayer';
+import {PdfPageCanvas} from './Canvas/PdfPageCanvas';
 import {RouteLayer} from './Canvas/RouteLayer';
 import {CoverageLayer} from './Canvas/CoverageLayer';
 import {PlacementPreview, previewCoverageObjects, usePlacementProposal} from './Canvas/PlacementPreview';
@@ -87,6 +90,7 @@ export const Canvas = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageCanvasRef = useRef<HTMLCanvasElement>(null);
+  const detailCanvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   const { drawingPath, isDrawing, onPointerDown } = useDrawing(containerRef as React.RefObject<HTMLDivElement>);
   const measure = useMeasure(containerRef as React.RefObject<HTMLDivElement>);
@@ -138,7 +142,17 @@ export const Canvas = () => {
       .filter(o => o.id !== excludeId && o.type !== 'path' && !o.isFill && visible.has(o.layerId))
       .map(o => ({ x: o.x, y: o.y, width: o.width, height: o.height }));
   }, []);
-  const [, setNumPages] = useState<number>(0);
+  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
+  const pdfPage = usePdfPage(docState.pdfFile ? pdfDoc : null, uiState.currentPage, (page: PDFPageProxy) => {
+    const [x1, y1, x2, y2] = page.view;
+    const { vW, vH } = getVisualDimensions(x2 - x1, y2 - y1, page.rotate || 0);
+    dispatch({ type: 'SET_PDF_DIMENSIONS', payload: { width: vW, height: vH } });
+  });
+  const pageCssW = CANVAS_BASE_WIDTH * uiState.scale;
+  const pageCssH = pdfPage ? pageCssHeight(pdfPage, pageCssW) : docState.pdfCanvasHeight * uiState.scale;
+  // The whole-page canvas is capped (mobile browsers cannot draw huge canvases, and re-rendering
+  // it would be slow); PdfDetailLayer draws the visible part sharp on top when it is.
+  const pagePixelRatio = cappedPixelRatio(pageCssW, pageCssH, PAGE_CANVAS_PIXELS);
 
   /** Cable run of the one selected device, drawn on the plan with its length. */
   const selectedDevice = uiState.selectedObjectIds.length === 1
@@ -459,13 +473,6 @@ export const Canvas = () => {
     });
   };
 
-  const debouncedScroll = useMemo(() => debounce((scroll: { x: number, y: number }) => {
-    dispatch({ type: 'SET_SCROLL', payload: scroll });
-  }, 16), [dispatch]);
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    debouncedScroll({ x: e.currentTarget.scrollLeft, y: e.currentTarget.scrollTop });
-  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -509,31 +516,35 @@ export const Canvas = () => {
       // Stroke tools suppress native Safari gestures for pen and touch. In stylus-only mode,
       // useFingerPan restores one-finger panning and usePinchZoom handles two fingers.
       style={{ touchAction: isStrokeTool(state.tool) ? 'none' : 'pan-x pan-y', WebkitTouchCallout: 'none' }}
-      onPointerDown={handlePointerDown} onClick={handleClick} onScroll={handleScroll}
+      onPointerDown={handlePointerDown} onClick={handleClick}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }} onDrop={handleDrop}
     >
       <div className="min-w-full min-h-full flex p-8">
         {/* shrink-0: the page keeps its zoomed width at once — flex would squeeze it to the view until the PDF canvas re-renders, and the scroll set after a zoom would be clamped. */}
         <div ref={containerRef} data-canvas-page className="relative shrink-0 shadow-lg origin-top-left bg-white m-auto" style={{ width: CANVAS_BASE_WIDTH * state.scale, minHeight: docState.pdfCanvasHeight * state.scale }}>
           {state.pdfFile ? (
-            <Document file={state.pdfFile} onLoadSuccess={({numPages}) => setNumPages(numPages)} className="border border-border bg-white">
-              <Page 
-                canvasRef={pageCanvasRef}
-                pageNumber={state.currentPage} 
-                renderTextLayer={false} 
-                renderAnnotationLayer={false} 
-                width={CANVAS_BASE_WIDTH} 
-                scale={state.scale} 
-                onLoadSuccess={(page) => {
-                  const [x1, y1, x2, y2] = page.view;
-                  const pdfW = x2 - x1;
-                  const pdfH = y2 - y1;
-                  const rotation = page.rotate || 0;
-                  const { vW, vH } = getVisualDimensions(pdfW, pdfH, rotation);
-                  dispatch({ type: 'SET_PDF_DIMENSIONS', payload: { width: vW, height: vH } });
-                }}
+            // Document only loads the file; the page is drawn by PdfPageCanvas (no blank frame on zoom).
+            <Document file={state.pdfFile} onLoadSuccess={setPdfDoc} loading={null} className="border border-border bg-white">
+              <PdfPageCanvas
+                page={pdfPage}
+                cssWidth={pageCssW}
+                cssHeight={pageCssH}
+                maxPixels={PAGE_CANVAS_PIXELS}
+                canvasRef={pageCanvasRef as React.RefObject<HTMLCanvasElement>}
               />
             </Document>
+          ) : null}
+          {state.pdfFile ? (
+            <PdfDetailLayer
+              page={pdfPage}
+              scale={state.scale}
+              pageHeight={docState.pdfCanvasHeight}
+              basePixelRatio={pagePixelRatio}
+              scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
+              pageRef={containerRef as React.RefObject<HTMLDivElement>}
+              baseCanvasRef={pageCanvasRef as React.RefObject<HTMLCanvasElement>}
+              canvasRef={detailCanvasRef as React.RefObject<HTMLCanvasElement>}
+            />
           ) : (
              <div className="bg-white flex flex-col gap-4 items-center justify-center text-muted-foreground border border-dashed border-border relative" style={{ width: CANVAS_BASE_WIDTH * state.scale, height: CANVAS_BASE_HEIGHT * state.scale }}>
                <p>No PDF Loaded</p>

@@ -1,7 +1,10 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Document, Page} from 'react-pdf';
+import {Document} from 'react-pdf';
+import type {PDFDocumentProxy} from 'pdfjs-dist';
 import {useDocument, useUI} from '@/lib/editor-context';
-import {CANVAS_BASE_WIDTH} from '@/core/constants';
+import {CANVAS_BASE_WIDTH, PAGE_CANVAS_PIXELS} from '@/core/constants';
+import {pageCssHeight, usePdfPage} from '@/hooks/usePdfPage';
+import {PdfPageCanvas} from './PdfPageCanvas';
 import {cn} from '@/lib/utils';
 
 /** Pointer movement multiplier while Shift is held during a hand drag — for fine alignment. */
@@ -15,6 +18,9 @@ const round1 = (v: number) => Math.round(v * 10) / 10;
 export const OverlayDocument = () => {
   const { state: docState, dispatch } = useDocument();
   const { state: uiState } = useUI();
+
+  const [overlayPdf, setOverlayPdf] = useState<PDFDocumentProxy | null>(null);
+  const overlayPage = usePdfPage(docState.overlayPdfFile ? overlayPdf : null, uiState.currentPage);
 
   const isPanning = uiState.tool === 'pan-overlay';
   const storedOffset = docState.overlayOffset ?? { x: 0, y: 0 };
@@ -105,14 +111,13 @@ export const OverlayDocument = () => {
           transform: `translate(${translateX}px, ${translateY}px)`,
         }}
       >
-        <Document file={docState.overlayPdfFile} className="bg-transparent">
-          <Page
-            pageNumber={uiState.currentPage}
-            renderTextLayer={false}
-            renderAnnotationLayer={false}
-            width={CANVAS_BASE_WIDTH}
-            scale={uiState.scale}
-            className="bg-transparent"
+        {/* Document only loads the file; PdfPageCanvas draws it without a blank frame on zoom. */}
+        <Document file={docState.overlayPdfFile} onLoadSuccess={setOverlayPdf} loading={null} className="bg-transparent">
+          <PdfPageCanvas
+            page={overlayPage}
+            cssWidth={CANVAS_BASE_WIDTH * uiState.scale}
+            cssHeight={overlayPage ? pageCssHeight(overlayPage, CANVAS_BASE_WIDTH * uiState.scale) : 0}
+            maxPixels={PAGE_CANVAS_PIXELS}
           />
         </Document>
       </div>
