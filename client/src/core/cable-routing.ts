@@ -447,7 +447,7 @@ export const buildCableSummary = (
  * centres). Ties keep the selection order.
  */
 export const orderByNearestChain = (selected: EditorObject[]): EditorObject[] => {
-  if (selected.length <= 2) return [...selected];
+  if (selected.length === 0) return [];
   const left = selected.slice(1);
   const out = [selected[0]];
   let at = centerOf(selected[0]);

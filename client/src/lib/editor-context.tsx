@@ -662,8 +662,7 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
       let at = beforeId ? rest.findIndex(o => o.id === beforeId) : -1;
       if (at === -1) {
         // End of the layer: right after its last object (or at the very end if it has none).
-        let last = -1;
-        rest.forEach((o, i) => { if (o.layerId === layerId) last = i; });
+        const last = rest.findLastIndex(o => o.layerId === layerId);
         at = last === -1 ? rest.length : last + 1;
       }
       const objects = [...rest.slice(0, at), ...moved, ...rest.slice(at)];

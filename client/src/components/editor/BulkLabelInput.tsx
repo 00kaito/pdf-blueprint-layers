@@ -50,37 +50,29 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
     dispatch({ type: 'RENAME_OBJECTS', payload: names });
   };
   const hasIdf = getRacks(docState.objects).length > 0;
-  const applyByDistance = () => applyPattern(orderByIdfDistance(ordered, docState.objects, docState.cableRoutes));
-  const distanceButton = isMulti && hasIdf && (
+  /** A "number in this order" button; needs a pattern in the field. */
+  const orderButton = (icon: React.ReactNode, label: string, shortLabel: string, hint: string, testId: string, order: () => EditorObject[]) => (
     <Button
       type="button" variant="outline" size="sm"
       className={cn("gap-1 text-[10px] shrink-0", showPreview ? "h-7 w-full" : "h-6 px-1.5")}
       disabled={!isPattern}
       // Keep the field's blur from applying the selection order first.
       onMouseDown={(e) => e.preventDefault()}
-      onClick={applyByDistance}
-      title={isPattern ? DISTANCE_HINT : `${DISTANCE_HINT} Type a pattern first, e.g. DEVICE-%01.`}
-      data-testid="bulk-label-by-distance"
+      onClick={() => applyPattern(order())}
+      title={isPattern ? hint : `${hint} Type a pattern first, e.g. CAM %1.`}
+      data-testid={testId}
     >
-      <Route className="h-3 w-3" />
-      {showPreview ? 'Number by distance to IDF' : 'By IDF'}
+      {icon}
+      {showPreview ? label : shortLabel}
     </Button>
   );
-
-  const chainButton = isMulti && (
-    <Button
-      type="button" variant="outline" size="sm"
-      className={cn("gap-1 text-[10px] shrink-0", showPreview ? "h-7 w-full" : "h-6 px-1.5")}
-      disabled={!isPattern}
-      // Keep the field's blur from applying the selection order first.
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={() => applyPattern(orderByNearestChain(ordered))}
-      title={isPattern ? CHAIN_HINT : `${CHAIN_HINT} Type a pattern first, e.g. CAM %1.`}
-      data-testid="bulk-label-by-chain"
-    >
-      <Waypoints className="h-3 w-3" />
-      {showPreview ? 'Number by nearest neighbour' : 'Chain'}
-    </Button>
+  const orderButtons = isMulti && (
+    <>
+      {orderButton(<Waypoints className="h-3 w-3" />, 'Number by nearest neighbour', 'Chain', CHAIN_HINT, 'bulk-label-by-chain',
+        () => orderByNearestChain(ordered))}
+      {hasIdf && orderButton(<Route className="h-3 w-3" />, 'Number by distance to IDF', 'By IDF', DISTANCE_HINT, 'bulk-label-by-distance',
+        () => orderByIdfDistance(ordered, docState.objects, docState.cableRoutes))}
+    </>
   );
 
   const onChange = (value: string) => {
@@ -110,8 +102,7 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
         title={isMulti ? PATTERN_HINT : undefined}
         data-testid="bulk-label-input"
       />
-      {!showPreview && chainButton}
-      {!showPreview && distanceButton}
+      {!showPreview && orderButtons}
       {showPreview && isMulti && (
         <p className="text-[10px] text-muted-foreground leading-snug" data-testid="bulk-label-preview">
           {preview
@@ -119,8 +110,7 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
             : <>Tip: <span className="font-mono">CAM %1</span> numbers them 1…{ordered.length} in selection order</>}
         </p>
       )}
-      {showPreview && chainButton}
-      {showPreview && distanceButton}
+      {showPreview && orderButtons}
     </>
   );
 };

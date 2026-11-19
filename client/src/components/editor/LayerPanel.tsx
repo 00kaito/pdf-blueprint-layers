@@ -135,17 +135,14 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
     dispatch({ type: 'ADD_LAYER', payload: `Layer ${state.layers.length + 1}` });
   };
 
-  const isObjectDrag = (e: React.DragEvent) => !isTech && e.dataTransfer.types.includes('application/move-object-id');
-
   const handleObjectDragStart = (e: React.DragEvent, objectId: string) => {
     if (isTech) {
       e.preventDefault();
       return;
     }
     // Dragging a selected object moves the whole selection (keeping its order).
-    const selected = state.selectedObjectIds;
-    draggedIdsRef.current = selected.includes(objectId) && selected.length > 1 ? selected : [objectId];
-    e.dataTransfer.setData('application/move-object-id', objectId);
+    draggedIdsRef.current = state.selectedObjectIds.includes(objectId) ? state.selectedObjectIds : [objectId];
+    e.dataTransfer.setData('application/move-object-id', objectId); // some browsers start no drag without data
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -154,26 +151,19 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
     setDropTarget(null);
   };
 
-  const setTarget = (layerId: string, beforeId: string | null) => {
-    setDropTarget(t => (t && t.layerId === layerId && t.beforeId === beforeId ? t : { layerId, beforeId }));
-  };
-
-  /** Over a layer (its header or empty space): to the end of its objects. */
-  const handleLayerDragOver = (e: React.DragEvent, layerId: string) => {
-    if (!isObjectDrag(e)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setTarget(layerId, null);
-  };
-
-  /** Over an object row: before it (upper half) or after it (lower half). */
-  const handleObjectDragOver = (e: React.DragEvent, layerId: string, objectId: string, nextId: string | null) => {
-    if (!isObjectDrag(e)) return;
+  /** Over a layer block (`beforeId` null = to the end of its objects) or an object row. */
+  const handleDragOver = (e: React.DragEvent, layerId: string, beforeId: string | null) => {
+    if (draggedIdsRef.current.length === 0) return; // not a drag of list objects
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
+    setDropTarget(t => (t && t.layerId === layerId && t.beforeId === beforeId ? t : { layerId, beforeId }));
+  };
+
+  /** Over an object row: before it (upper half) or before the next one (lower half). */
+  const rowDropTarget = (e: React.DragEvent, objectId: string, nextId: string | null) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setTarget(layerId, e.clientY < rect.top + rect.height / 2 ? objectId : nextId);
+    return e.clientY < rect.top + rect.height / 2 ? objectId : nextId;
   };
 
   const handleLayerDragLeave = (e: React.DragEvent) => {
@@ -182,15 +172,12 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    if (!isObjectDrag(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
+    const ids = draggedIdsRef.current;
     const target = dropTarget;
-    const fallback = e.dataTransfer.getData('application/move-object-id');
-    const ids = draggedIdsRef.current.length > 0 ? draggedIdsRef.current : fallback ? [fallback] : [];
+    if (ids.length === 0) return;
+    e.preventDefault();
     endDrag();
-    if (!target || ids.length === 0) return;
-    dispatch({ type: 'MOVE_OBJECTS_IN_LIST', payload: { ids, layerId: target.layerId, beforeId: target.beforeId } });
+    if (target) dispatch({ type: 'MOVE_OBJECTS_IN_LIST', payload: { ids, ...target } });
   };
 
   // Shown statuses: an object waits for its jumpers before it counts as pulled or later.
@@ -307,7 +294,7 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
                   "space-y-1 rounded-md transition-colors pb-1",
                   dropTarget?.layerId === layer.id && "bg-primary/5 ring-1 ring-primary/20"
                 )}
-                onDragOver={(e) => handleLayerDragOver(e, layer.id)}
+                onDragOver={(e) => handleDragOver(e, layer.id, null)}
                 onDragLeave={handleLayerDragLeave}
                 onDrop={handleDrop}
               >
@@ -393,7 +380,7 @@ export const LayerPanel = ({ onCollapse }: { onCollapse?: () => void }) => {
                         draggable={!isTech}
                         onDragStart={(e) => handleObjectDragStart(e, obj.id)}
                         onDragEnd={endDrag}
-                        onDragOver={(e) => handleObjectDragOver(e, layer.id, obj.id, layerObjects[i + 1]?.id ?? null)}
+                        onDragOver={(e) => handleDragOver(e, layer.id, rowDropTarget(e, obj.id, layerObjects[i + 1]?.id ?? null))}
                         data-testid="layer-object-row"
                         className={cn(
                           "relative flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-colors group",
