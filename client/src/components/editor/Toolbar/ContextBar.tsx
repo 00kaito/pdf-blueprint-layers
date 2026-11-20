@@ -62,6 +62,36 @@ const StrokeModeSwitch = ({ freeLabel, testId }: { freeLabel: string; testId?: s
   );
 };
 
+const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
+const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
+
+/** Colour of the pencil / fill: the picker plus one-click preset swatches. */
+const ColorPicker = ({ value, presets, onChange, title, testId }: {
+  value: string; presets: string[]; onChange: (color: string) => void; title: string; testId?: string;
+}) => (
+  <div className="flex items-center gap-1" role="group" aria-label={title}>
+    <input
+      type="color"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer"
+      title={title}
+      data-testid={testId}
+    />
+    {presets.map(c => (
+      <button
+        key={c}
+        type="button"
+        className={cn("w-4 h-4 rounded-sm border", value === c ? "ring-2 ring-primary ring-offset-1" : "border-border")}
+        style={{ backgroundColor: c }}
+        onClick={() => onChange(c)}
+        title={c}
+        aria-label={`${title} ${c}`}
+      />
+    ))}
+  </div>
+);
+
 /** Input mode only matters where there can be a stylus: touch screens (or the touch layout). */
 const HAS_TOUCH = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 
@@ -133,12 +163,12 @@ export const ContextBar = () => {
   } else if (uiState.tool === 'draw') {
     content = (
         <div className="flex items-center gap-2" data-testid="draw-inline-settings">
-          <input
-            type="color"
+          <ColorPicker
             value={uiState.drawColor}
-            onChange={(e) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawColor: e.target.value } })}
-            className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer"
+            presets={DRAW_PRESETS}
+            onChange={(drawColor) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawColor } })}
             title="Brush colour"
+            testId="draw-color"
           />
           <span className="text-[10px] uppercase font-bold text-muted-foreground">Size</span>
           <Slider
@@ -167,12 +197,12 @@ export const ContextBar = () => {
   } else if (uiState.tool === 'fill') {
     content = (
         <div className="flex items-center gap-2" data-testid="fill-inline-settings">
-          <input
-            type="color"
+          <ColorPicker
             value={uiState.fillColor}
-            onChange={(e) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillColor: e.target.value } })}
-            className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer"
+            presets={FILL_PRESETS}
+            onChange={(fillColor) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillColor } })}
             title="Fill colour"
+            testId="fill-color"
           />
           <span className="text-[10px] uppercase font-bold text-muted-foreground">Opacity</span>
           <Slider
@@ -385,7 +415,7 @@ export const ContextBar = () => {
   if (!content) {
     content = (
       <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {uiState.ipadMode ? 'Tap an object to edit it' : 'Select an object to edit it'}
+        {uiState.ipadMode ? 'Tap an object to edit it' : 'Select an object to edit it · press ? for keyboard shortcuts'}
       </span>
     );
   }

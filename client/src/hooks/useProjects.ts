@@ -13,6 +13,18 @@ export function useProjectList() {
   });
 }
 
+/**
+ * Whether the user owns the project (rename / share / delete are the owner's only, on the server
+ * too). A plan not saved to the server yet is the user's own; while the list loads, assume so — the
+ * server still refuses anything not allowed.
+ */
+export function useIsProjectOwner(projectId: string | null, userId: string | undefined) {
+  const { data: projects } = useProjectList();
+  if (!projectId) return true;
+  const project = projects?.find(p => p.id === projectId);
+  return !project || project.ownerId === userId;
+}
+
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({

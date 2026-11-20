@@ -8,9 +8,9 @@ import { useObjectCreation } from '@/hooks/useObjectCreation';
 import { compressImageToFile } from '@/core/image-compress';
 import { STATUSES, type ObjectStatus } from '@/core/status';
 import { CANVAS_BASE_WIDTH } from '@/core/constants';
-import { LV_ICON_TYPES, LV_ICONS, defaultObjectNames, formatCables, objectTypeName } from '@/core/lv-icons';
-import { hasCables } from '@/core/cable-routing';
-import { AlertCircle, Cable, Camera, Circle, CopyPlus, Images, Info, Loader2, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
+import { CABLE_LABEL, LV_ICON_TYPES, LV_ICONS, defaultObjectNames, formatCables, objectTypeName } from '@/core/lv-icons';
+import { hasCables, isCableDevice } from '@/core/cable-routing';
+import { AlertCircle, Cable, Camera, Circle, CopyPlus, Images, Info, Loader2, Minus, Move, Plus, Square, Trash2, Triangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { BlindspotShape, CoverageAreaShape } from './BlindspotShape';
@@ -34,6 +34,7 @@ import {
 import { PMObjectDetailsPanel } from './PMObjectDetailsPanel';
 import { MobileJumperChip, useObjectJumpers } from './MobileJumpers';
 import { gatedStatus, jumperTitle } from '@/core/jumpers';
+import type { CableSpec, EditorObject } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 /** Shapes from the desktop toolbar offered on the phone (same icon types). */
@@ -65,6 +66,39 @@ const ActionButton = ({ icon: Icon, label, onClick, disabled, active, testId }: 
 );
 
 /**
+ * Cable counts of the selected device, right in the bar: placing a device in the field starts it with its
+ * type's default cables, and the count actually needed there is set with − / + without opening the details.
+ * Only this device changes — the type's default stays (the details sheet still sets the default).
+ */
+const MobileCableCounts = ({ object, onChange }: { object: EditorObject; onChange: (cables: CableSpec[]) => void }) => {
+  const cables = object.cables ?? [];
+  const setCount = (i: number, count: number) => onChange(cables.map((c, j) => (j === i ? { ...c, count } : c)));
+  return (
+    <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-testid="mobile-cable-counts">
+      <Cable className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="Cables" />
+      {cables.length === 0 ? (
+        <Button variant="outline" className="h-9 gap-1 px-3 text-xs" onClick={() => onChange([{ type: 'CAT6', count: 1 }])} data-testid="mobile-cable-add">
+          <Plus className="h-4 w-4" /> Cat6 cable
+        </Button>
+      ) : cables.map((c, i) => (
+        <div key={c.type + i} className="flex shrink-0 items-center rounded-full border border-border">
+          <span className="pl-3 pr-1 text-xs font-medium">{CABLE_LABEL[c.type]}</span>
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={c.count <= 1}
+            onClick={() => setCount(i, c.count - 1)} aria-label={`Fewer ${CABLE_LABEL[c.type]}`} data-testid={`mobile-cable-minus-${c.type}`}>
+            <Minus className="h-4 w-4" />
+          </Button>
+          <span className="min-w-[1.5rem] text-center text-sm font-bold tabular-nums" data-testid={`mobile-cable-count-${c.type}`}>{c.count}</span>
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={c.count >= 999}
+            onClick={() => setCount(i, c.count + 1)} aria-label={`More ${CABLE_LABEL[c.type]}`} data-testid={`mobile-cable-plus-${c.type}`}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
  * Phone layout: a simplified editor in one bottom bar — status, photos, duplicate, add, move.
  * Moving is "Move, then tap the new place" (dragging a small icon fights with scrolling on a phone).
  */
@@ -74,7 +108,8 @@ export const MobileBottomBar: React.FC = () => {
   const { data: user } = useCurrentUser();
   const { handleAddIcon } = useObjectCreation();
   const isTech = user?.role === 'TECH';
-  const isPM = user?.role === 'PM';
+  /** The object's full details sheet: PMs and admins (an admin has at least a PM's rights everywhere). */
+  const canOpenDetails = user?.role === 'PM' || user?.role === 'admin';
 
   const uploadFileMutation = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +130,8 @@ export const MobileBottomBar: React.FC = () => {
   const layerLocked = !!docState.layers.find(l => l.id === selectedObject?.layerId)?.locked;
   const canEdit = !isTech && !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path';
   const canDelete = !isTech && !!selectedObject && !layerLocked;
+  /** Cable counts are edited in the bar by those who may edit cables in the details (PMs, admins). */
+  const canEditCables = canOpenDetails && !!selectedObject && !layerLocked && isCableDevice(selectedObject);
   /** Technicians move too — as a change request for the PM. */
   const field = useFieldActions();
   const canMove = !!selectedObject && !layerLocked && !selectedObject.isFill && selectedObject.type !== 'path' && field.techMode('move') !== 'off';
@@ -219,14 +256,14 @@ export const MobileBottomBar: React.FC = () => {
               <button
                 type="button"
                 className="flex min-w-0 flex-1 flex-col text-left"
-                onClick={() => isPM && setIsDetailsOpen(true)}
-                disabled={!isPM}
+                onClick={() => canOpenDetails && setIsDetailsOpen(true)}
+                disabled={!canOpenDetails}
               >
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span className="truncate text-sm font-bold" data-testid="mobile-object-name">{name}</span>
-                  {isPM && <Info className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                  {canOpenDetails && <Info className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 </span>
-                {hasCables(selectedObject) && (
+                {!canEditCables && hasCables(selectedObject) && (
                   <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground" data-testid="mobile-object-cables">
                     <Cable className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{formatCables(selectedObject.cables)}</span>
@@ -250,6 +287,13 @@ export const MobileBottomBar: React.FC = () => {
                 <X className="h-5 w-5" />
               </Button>
             </div>
+
+            {canEditCables && (
+              <MobileCableCounts
+                object={selectedObject}
+                onChange={cables => docDispatch({ type: 'SET_OBJECT_CABLES', payload: { ids: [selectedObject.id], cables, keepDefaults: true } })}
+              />
+            )}
 
             {/* Status: one row, scrolled sideways (full names, no wrapping into several rows). */}
             {selectedObject.type !== 'text' && (
@@ -382,7 +426,7 @@ export const MobileBottomBar: React.FC = () => {
         </DrawerContent>
       </Drawer>
 
-      {isPM && selectedObject && (
+      {canOpenDetails && selectedObject && (
         <Drawer open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DrawerContent>
             <DrawerHeader>

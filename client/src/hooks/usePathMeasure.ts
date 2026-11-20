@@ -89,7 +89,9 @@ export const usePathMeasure = (containerRef: React.RefObject<HTMLDivElement>) =>
       if (e.key === 'Backspace' && latest.current.points.length) {
         e.preventDefault();
         setPoints(latest.current.points.slice(0, -1));
-      } else if (e.key === 'Escape') {
+      } else if (e.key === 'Escape' && latest.current.points.length) {
+        // Esc ends what is in progress, marked handled (one press = one step: see the Canvas' Esc).
+        e.preventDefault();
         clear();
       }
     };
@@ -101,7 +103,7 @@ export const usePathMeasure = (containerRef: React.RefObject<HTMLDivElement>) =>
     window.addEventListener('pointerup', onEnd);
     window.addEventListener('pointercancel', onEnd);
     window.addEventListener('pointerdown', onOtherDown, true);
-    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('contextmenu', onContextMenu);
     window.addEventListener('blur', onEnd);
     return () => {
@@ -110,7 +112,7 @@ export const usePathMeasure = (containerRef: React.RefObject<HTMLDivElement>) =>
       window.removeEventListener('pointerup', onEnd);
       window.removeEventListener('pointercancel', onEnd);
       window.removeEventListener('pointerdown', onOtherDown, true);
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('contextmenu', onContextMenu);
       window.removeEventListener('blur', onEnd);
     };

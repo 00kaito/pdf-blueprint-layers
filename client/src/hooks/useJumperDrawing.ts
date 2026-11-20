@@ -94,8 +94,8 @@ export const useJumperDrawing = (containerRef: React.RefObject<HTMLDivElement>) 
         e.stopImmediatePropagation();
         setDraft(d.points.length ? { ...d, points: d.points.slice(0, -1) } : null);
       } else if (e.key === 'Escape') {
-        // Stop the Canvas' Esc (back to select): the first Esc only drops the jumper being drawn.
-        e.stopImmediatePropagation();
+        // Handled: the first Esc only drops the jumper being drawn (the Canvas leaves the tool on the next).
+        e.preventDefault();
         setDraft(null);
       }
     };

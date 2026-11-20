@@ -275,6 +275,17 @@ Dziś telefon to okrojony edytor (*Inw. §10*). Dla technika potrzebne są inne 
 | **4. Telefon dla technika** (≈ 2–3 tygodnie) | wyszukiwanie, lista zadań, duże statusy, offline (§7) | realna poprawa pracy w terenie |
 | **5. Przestrzenie robocze** (≈ 3 tygodnie) | zakładki Plan / Kable / CCTV / Postęp, menu Widok (§3.1–3.2), lista kontrolna projektu (§2.4) | prostszy interfejs przy rosnącej liczbie funkcji |
 
+### Stan realizacji
+
+**Faza 1: zrobiona (2026-11-19), z zawężeniami:**
+- ✅ Pasek stanu: warstwa (wybór), skala (*Set scale* / *Re-probe*), przyciąganie i auto-numeracja (przeniesione z górnego paska) z następnym numerem, stan zapisu słowami. **Zoom został w górnym pasku.**
+- ✅ Grupa CCTV zawsze widoczna dla PM; przełącznik pokrycia wyszarzony bez kamer, z powodem. *By IDF* widoczne zawsze, bez IDF wyszarzone z powodem.
+- ✅ Lista projektów: *Rename / Share / Delete* tylko dla właściciela; w edytorze *Share project* wyszarzone z powodem. Szczegóły obiektu na telefonie także dla admina.
+- ✅ „Zarządzaj użytkownikami” → *Manage users*.
+- ✅ Usunięte popovery ⚙ przy Draw i Fill (opcje są w pasku kontekstowym).
+- ✅ Skróty narzędzi działają zawsze; etykietę edytuje się od **Enter / F2**; ściągawka pod `?` i w menu.
+- ✅ (dokończone) *Measure* rozdzielone na *Measuring tape* (`M`) i *Path measure* (`L`); taśma bez skali wyszarzona z powodem (klawisz `M` mówi, jak ustawić skalę); jedno znaczenie `Esc`: kończy to, co w toku (trasa / ściana / obszar zapisane, zworka / pomiar / taśma porzucone), a gdy nic nie jest w toku, wraca do Select (w Select odznacza).
+
 Każdą fazę warto zamknąć krótkim testem z 3–5 użytkownikami (osobno PM i technik) na realnym planie.
 Mierzyć: czas typowych zadań (postawić i ponumerować 20 urządzeń, zmienić status 10 obiektów w terenie,
 znaleźć konkretny obiekt) i liczbę pomyłek.

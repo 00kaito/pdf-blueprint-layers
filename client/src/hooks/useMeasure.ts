@@ -46,7 +46,8 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
     setPendingCalibration(null);
   }, [uiState.tool]);
 
-  // Esc removes the tape (in any tool — it stays on the blueprint after measuring). Not while typing,
+  // Esc removes the tape (in any tool — it stays on the blueprint after measuring), marked handled so
+  // the same press does not also leave the tool (capture phase: before the Canvas). Not while typing,
   // and not in the overlay hand tool, where Esc means "done".
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -54,11 +55,12 @@ export const useMeasure = (containerRef: React.RefObject<HTMLDivElement>) => {
       const target = e.target as HTMLElement | null;
       const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || !!target?.isContentEditable;
       if (e.key === 'Escape' && hasTape && !typing && tool !== 'pan-overlay' && !pointerRef.current) {
+        e.preventDefault();
         dispatch({ type: 'SET_MEASURE_TAPE', payload: null });
       }
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
   }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {

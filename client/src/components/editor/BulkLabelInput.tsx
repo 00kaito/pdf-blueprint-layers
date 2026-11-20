@@ -50,28 +50,46 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
     dispatch({ type: 'RENAME_OBJECTS', payload: names });
   };
   const hasIdf = getRacks(docState.objects).length > 0;
-  /** A "number in this order" button; needs a pattern in the field. */
-  const orderButton = (icon: React.ReactNode, label: string, shortLabel: string, hint: string, testId: string, order: () => EditorObject[]) => (
-    <Button
-      type="button" variant="outline" size="sm"
-      className={cn("gap-1 text-[10px] shrink-0", showPreview ? "h-7 w-full" : "h-6 px-1.5")}
-      disabled={!isPattern}
-      // Keep the field's blur from applying the selection order first.
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={() => applyPattern(order())}
-      title={isPattern ? hint : `${hint} Type a pattern first, e.g. CAM %1.`}
-      data-testid={testId}
+  /**
+   * A "number in this order" button; needs a pattern in the field, and nothing `missing` (what else
+   * it needs). Disabled buttons stay visible and say why — the hint is on a wrapper, since a disabled
+   * button shows no tooltip.
+   */
+  const orderButton = ({ icon, label, shortLabel, hint, testId, order, missing }: {
+    icon: React.ReactNode; label: string; shortLabel: string; hint: string; testId: string;
+    order: () => EditorObject[]; missing?: string;
+  }) => (
+    <span
+      className={cn("inline-flex shrink-0", showPreview && "w-full")}
+      title={missing ? `${hint} ${missing}` : isPattern ? hint : `${hint} Type a pattern first, e.g. CAM %1.`}
     >
-      {icon}
-      {showPreview ? label : shortLabel}
-    </Button>
+      <Button
+        type="button" variant="outline" size="sm"
+        className={cn("gap-1 text-[10px]", showPreview ? "h-7 w-full" : "h-6 px-1.5")}
+        disabled={!isPattern || !!missing}
+        // Keep the field's blur from applying the selection order first.
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => applyPattern(order())}
+        data-testid={testId}
+      >
+        {icon}
+        {showPreview ? label : shortLabel}
+      </Button>
+    </span>
   );
   const orderButtons = isMulti && (
     <>
-      {orderButton(<Waypoints className="h-3 w-3" />, 'Number by nearest neighbour', 'Chain', CHAIN_HINT, 'bulk-label-by-chain',
-        () => orderByNearestChain(ordered))}
-      {hasIdf && orderButton(<Route className="h-3 w-3" />, 'Number by distance to IDF', 'By IDF', DISTANCE_HINT, 'bulk-label-by-distance',
-        () => orderByIdfDistance(ordered, docState.objects, docState.cableRoutes))}
+      {orderButton({
+        icon: <Waypoints className="h-3 w-3" />, label: 'Number by nearest neighbour', shortLabel: 'Chain',
+        hint: CHAIN_HINT, testId: 'bulk-label-by-chain',
+        order: () => orderByNearestChain(ordered),
+      })}
+      {orderButton({
+        icon: <Route className="h-3 w-3" />, label: 'Number by distance to IDF', shortLabel: 'By IDF',
+        hint: DISTANCE_HINT, testId: 'bulk-label-by-distance',
+        order: () => orderByIdfDistance(ordered, docState.objects, docState.cableRoutes),
+        missing: hasIdf ? undefined : 'Place a Rack / IDF first (Objects → Low Voltage).',
+      })}
     </>
   );
 
@@ -101,6 +119,7 @@ export const BulkLabelInput = ({ objects, className, id, showPreview }: BulkLabe
         placeholder={isMulti ? 'Mixed… (CAM %1 = numbering)' : 'No label'}
         title={isMulti ? PATTERN_HINT : undefined}
         data-testid="bulk-label-input"
+        data-label-field
       />
       {!showPreview && orderButtons}
       {showPreview && isMulti && (

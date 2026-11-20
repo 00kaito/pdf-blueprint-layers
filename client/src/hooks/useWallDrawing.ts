@@ -145,17 +145,19 @@ export const useWallDrawing = (containerRef: React.RefObject<HTMLDivElement>) =>
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable) return;
-      if (e.key === 'Enter' || e.key === 'Escape') finish();
+      if (e.key === 'Enter') finish();
+      // Esc ends what is in progress, marked handled (one press = one step: see the Canvas' Esc).
+      else if (e.key === 'Escape' && pointsRef.current.length > 0) { e.preventDefault(); finish(); }
       else if (e.key === 'Backspace' && pointsRef.current.length > 0) {
         e.preventDefault();
         setPoints(pointsRef.current.slice(0, -1));
       }
     };
     window.addEventListener('pointermove', onMove);
-    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
     return () => {
       window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyDown, true);
     };
   }, [active, toCanvasPoint, resolve, finish]);
 

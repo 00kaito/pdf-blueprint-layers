@@ -4,7 +4,6 @@ import {v4 as uuidv4} from 'uuid';
 import {
     ArrowRight,
     Camera,
-    ChevronDown,
     Circle,
     Heart,
     Hexagon,
@@ -16,8 +15,6 @@ import {
     Pencil,
     Plus,
     Ruler,
-    RulerDimensionLine,
-    Settings2,
     Square,
     Star,
     Triangle,
@@ -29,9 +26,7 @@ import {Separator} from '@/components/ui/separator';
 import {Toggle} from '@/components/ui/toggle';
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip';
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
-import {Label} from "@/components/ui/label";
-import {PATH_MEASURE_HELP, PathMeasureButton, usePathMeasureToggle} from './PathMeasureButton';
-import {Slider} from "@/components/ui/slider";
+import {PathMeasureButton, TAPE_NEEDS_SCALE} from './PathMeasureButton';
 import {useObjectCreation} from '@/hooks/useObjectCreation';
 import {useIconLibrary} from '@/hooks/useIconLibrary';
 import {FILL_LAYER_NAME} from '@/lib/editor-context';
@@ -41,9 +36,7 @@ import {LvIconTile} from '@/components/editor/LvIcon';
 import {DEFAULT_ICON_SIZE} from '@/core/constants';
 import {CablingTools} from './CablingTools';
 import {CctvTools} from './CctvTools';
-
-const FILL_PRESETS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#14b8a6', '#6b7280'];
-const DRAW_PRESETS = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#6b7280'];
+import {HintTooltip} from './HintTooltip';
 
 /** Brush size range, in unscaled canvas units (same units as EditorObject.strokeWidth). */
 export const MIN_BRUSH_SIZE = 0.5;
@@ -92,26 +85,6 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
   const { toast } = useToast();
   const calibration = docState.measureCalibration;
 
-  /** Which measuring tool the measure button stands for (the one picked last from its menu). */
-  const [measureKind, setMeasureKind] = React.useState<'tape' | 'path'>('tape');
-  const [measureMenuOpen, setMeasureMenuOpen] = React.useState(false);
-  const selectPathMeasure = usePathMeasureToggle();
-  // The M key (tape) makes the button the tape again.
-  React.useEffect(() => {
-    if (uiState.tool === 'measure' || uiState.tool === 'calibrate') setMeasureKind('tape');
-    else if (uiState.tool === 'path-measure') setMeasureKind('path');
-  }, [uiState.tool]);
-
-  const selectMeasure = (pressed: boolean) => {
-    if (pressed && !calibration) {
-      // The tape needs a scale: start with the calibration probe.
-      dispatch({ type: 'SET_TOOL', payload: 'calibrate' });
-      toast({ title: 'Set the scale first', description: 'Draw a line over a known dimension, then enter its length in feet.' });
-      return;
-    }
-    dispatch({ type: 'SET_TOOL', payload: pressed ? 'measure' : 'select' });
-  };
-
   const handleDragStart = (e: React.DragEvent, type: string, content?: string) => {
       e.dataTransfer.setData('application/editor-object', type);
       if (content) e.dataTransfer.setData('application/editor-content', content);
@@ -140,204 +113,68 @@ export const ToolSelector = ({ isTech }: ToolSelectorProps) => {
           <>
             <Separator orientation="vertical" className="h-6 mx-1" />
 
-            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Toggle 
-                    pressed={uiState.tool === 'draw'} 
-                    onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'draw' : 'select' })}
-                    size="sm"
-                    className="h-8 w-8 rounded-none border-none relative"
-                    data-testid="tool-draw"
-                  >
-                    <Pencil className="w-4 h-4" />
-                    <StraightBadge show={uiState.drawStraight} />
-                    <span
-                      className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full ring-1 ring-white/70"
-                      style={{ backgroundColor: uiState.drawColor }}
-                    />
-                  </Toggle>
-                </TooltipTrigger>
-                <TooltipContent>Draw (hold Shift for a straight line) <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">P</kbd></TooltipContent>
-              </Tooltip>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-6 rounded-none px-0 border-l border-input hover:bg-muted" data-testid="draw-settings">
-                    <Settings2 className="w-3 h-3" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-60" side="bottom" align="center">
-                  <div className="space-y-3">
-                    <h4 className="font-medium leading-none">Brush</h4>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={uiState.drawColor}
-                        onChange={(e) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawColor: e.target.value } })}
-                        className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer"
-                        data-testid="draw-color"
-                      />
-                      <div className="flex flex-wrap gap-1">
-                        {DRAW_PRESETS.map(c => (
-                          <button
-                            key={c}
-                            type="button"
-                            className={`w-5 h-5 rounded border ${uiState.drawColor === c ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
-                            style={{ backgroundColor: c }}
-                            onClick={() => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawColor: c } })}
-                            title={c}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs">Brush size</Label>
-                        <span className="text-[10px] font-mono bg-muted px-1 rounded">{uiState.drawStrokeWidth}</span>
-                      </div>
-                      <Slider
-                        value={[uiState.drawStrokeWidth]}
-                        min={MIN_BRUSH_SIZE}
-                        max={MAX_BRUSH_SIZE}
-                        step={BRUSH_SIZE_STEP}
-                        onValueChange={([v]) => dispatch({ type: 'SET_DRAW_SETTINGS', payload: { drawStrokeWidth: v } })}
-                        data-testid="draw-size"
-                      />
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+            {/* Brush and fill options (colour, size, opacity) are in the options row while the tool is on. */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Toggle 
+                  pressed={uiState.tool === 'draw'} 
+                  onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'draw' : 'select' })}
+                  size="sm"
+                  className="h-8 w-8 relative"
+                  data-testid="tool-draw"
+                >
+                  <Pencil className="w-4 h-4" />
+                  <StraightBadge show={uiState.drawStraight} />
+                  <span
+                    className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full ring-1 ring-white/70"
+                    style={{ backgroundColor: uiState.drawColor }}
+                  />
+                </Toggle>
+              </TooltipTrigger>
+              <TooltipContent>Draw (hold Shift for a straight line) <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">P</kbd></TooltipContent>
+            </Tooltip>
 
-            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Toggle
-                    pressed={uiState.tool === 'fill'}
-                    onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'fill' : 'select' })}
-                    size="sm"
-                    className="h-8 w-8 rounded-none border-none relative"
-                    data-testid="tool-fill"
-                  >
-                    <PaintBucket className="w-4 h-4" />
-                    <span
-                      className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full ring-1 ring-white/70"
-                      style={{ backgroundColor: uiState.fillColor, opacity: Math.max(uiState.fillOpacity, 0.3) }}
-                    />
-                  </Toggle>
-                </TooltipTrigger>
-                <TooltipContent>Fill area with colour (goes to layer "{FILL_LAYER_NAME}") <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">B</kbd></TooltipContent>
-              </Tooltip>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-6 rounded-none px-0 border-l border-input hover:bg-muted" data-testid="fill-settings">
-                    <Settings2 className="w-3 h-3" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-60" side="bottom" align="center">
-                  <div className="space-y-3">
-                    <h4 className="font-medium leading-none">Fill</h4>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={uiState.fillColor}
-                        onChange={(e) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillColor: e.target.value } })}
-                        className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer"
-                        data-testid="fill-color"
-                      />
-                      <div className="flex flex-wrap gap-1">
-                        {FILL_PRESETS.map(c => (
-                          <button
-                            key={c}
-                            type="button"
-                            className={`w-5 h-5 rounded border ${uiState.fillColor === c ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
-                            style={{ backgroundColor: c }}
-                            onClick={() => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillColor: c } })}
-                            title={c}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs">Opacity</Label>
-                        <span className="text-[10px] font-mono bg-muted px-1 rounded">{Math.round(uiState.fillOpacity * 100)}%</span>
-                      </div>
-                      <Slider
-                        value={[uiState.fillOpacity]}
-                        min={0.05}
-                        max={1}
-                        step={0.05}
-                        onValueChange={([v]) => dispatch({ type: 'SET_FILL_SETTINGS', payload: { fillOpacity: v } })}
-                        data-testid="fill-opacity"
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground leading-snug">
-                      Click inside an area enclosed by lines. Clicking an already filled area again replaces its colour.
-                    </p>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Toggle
+                  pressed={uiState.tool === 'fill'}
+                  onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'fill' : 'select' })}
+                  size="sm"
+                  className="h-8 w-8 relative"
+                  data-testid="tool-fill"
+                >
+                  <PaintBucket className="w-4 h-4" />
+                  <span
+                    className="absolute bottom-1 left-2 right-2 h-0.5 rounded-full ring-1 ring-white/70"
+                    style={{ backgroundColor: uiState.fillColor, opacity: Math.max(uiState.fillOpacity, 0.3) }}
+                  />
+                </Toggle>
+              </TooltipTrigger>
+              <TooltipContent>Fill area with colour (goes to layer "{FILL_LAYER_NAME}") <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">B</kbd></TooltipContent>
+            </Tooltip>
 
-            {/* Measuring: the tape (one A–B measurement) and, in its menu, the path measure (point after
-                point). The button shows the one picked last; the scale probe lives in the options row (ContextBar). */}
-            <div className="flex items-center rounded-md border border-input bg-background overflow-hidden">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Toggle
-                    pressed={uiState.tool === 'measure' || uiState.tool === 'calibrate' || uiState.tool === 'path-measure'}
-                    onPressedChange={(p) => (measureKind === 'path' ? selectPathMeasure(p) : selectMeasure(p))}
-                    size="sm"
-                    className="h-8 w-8 rounded-none border-none relative"
-                    data-testid="tool-measure"
-                  >
-                    {measureKind === 'path' ? <RulerDimensionLine className="w-4 h-4" /> : <Ruler className="w-4 h-4" />}
-                    <StraightBadge show={uiState.drawStraight} />
-                  </Toggle>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {measureKind === 'path'
-                    ? PATH_MEASURE_HELP
-                    : <>Measuring tape {calibration ? '— one measurement, then the tape is put down (Shift = straight line)' : '(set the scale with the probe first)'} <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">M</kbd></>}
-                </TooltipContent>
-              </Tooltip>
-              <Popover open={measureMenuOpen} onOpenChange={setMeasureMenuOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-5 rounded-none px-0 border-l border-input hover:bg-muted" title="Measuring tools" data-testid="measure-menu">
-                    <ChevronDown className="w-3 h-3" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-1" side="bottom" align="start">
-                  {([
-                    { kind: 'tape' as const, icon: Ruler, label: 'Measuring tape', hint: 'One distance, A to B', key: 'M', testId: 'menu-measure-tape' },
-                    { kind: 'path' as const, icon: RulerDimensionLine, label: 'Path measure', hint: 'Point after point, with the total', key: null, testId: 'tool-path-measure' },
-                  ]).map(item => {
-                    const on = item.kind === 'path' ? uiState.tool === 'path-measure' : uiState.tool === 'measure' || uiState.tool === 'calibrate';
-                    return (
-                      <button
-                        key={item.kind}
-                        type="button"
-                        className={`w-full flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted ${on ? 'bg-muted font-medium' : ''}`}
-                        onClick={() => {
-                          setMeasureKind(item.kind);
-                          setMeasureMenuOpen(false);
-                          if (item.kind === 'path') selectPathMeasure(true); else selectMeasure(true);
-                        }}
-                        data-testid={item.testId}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="flex flex-col">
-                          <span>{item.label}</span>
-                          <span className="text-[10px] text-muted-foreground">{item.hint}</span>
-                        </span>
-                        {item.key && <kbd className="ml-auto rounded border px-1 font-mono text-[10px]">{item.key}</kbd>}
-                      </button>
-                    );
-                  })}
-                </PopoverContent>
-              </Popover>
-            </div>
+            {/* Measuring: two tools. The tape needs the plan's scale — disabled without one, saying why
+                (the scale probe is in the status bar and the tape's options row). */}
+            <HintTooltip
+              hint={calibration
+                ? <>Measuring tape — one distance A to B; it stays on the plan until removed (Shift = straight line) <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">M</kbd></>
+                : TAPE_NEEDS_SCALE}
+            >
+              <Toggle
+                pressed={uiState.tool === 'measure' || uiState.tool === 'calibrate'}
+                onPressedChange={(p) => dispatch({ type: 'SET_TOOL', payload: p ? 'measure' : 'select' })}
+                // Probing without a scale yet: the button stays usable, to leave the probe.
+                disabled={!calibration && uiState.tool !== 'calibrate'}
+                size="sm"
+                className="h-8 w-8 relative"
+                aria-label="Measuring tape"
+                data-testid="tool-measure"
+              >
+                <Ruler className="w-4 h-4" />
+                <StraightBadge show={uiState.drawStraight} />
+              </Toggle>
+            </HintTooltip>
+            <PathMeasureButton touch={uiState.ipadMode} />
 
             <Separator orientation="vertical" className="h-6 mx-1" />
 

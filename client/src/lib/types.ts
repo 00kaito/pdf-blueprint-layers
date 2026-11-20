@@ -323,8 +323,11 @@ export type EditorAction =
   | { type: 'INCREMENT_COUNTER' }
   | { type: 'SET_EXPORT_SETTINGS'; payload: Partial<DocumentState['exportSettings']> }
   | { type: 'SET_MEASURE_CALIBRATION'; payload: MeasureCalibration | null }
-  /** Sets the cables of objects and makes them the default for each object's device type. */
-  | { type: 'SET_OBJECT_CABLES'; payload: { ids: string[]; cables: CableSpec[] } }
+  /**
+   * Sets the cables of objects and makes them the default for each object's device type —
+   * unless `keepDefaults` (a one-off count on one device, e.g. set in the field on the phone).
+   */
+  | { type: 'SET_OBJECT_CABLES'; payload: { ids: string[]; cables: CableSpec[]; keepDefaults?: boolean } }
   | { type: 'SET_LV_SETTINGS'; payload: Partial<Omit<LvSettings, 'cableDefaults'>> }
   | { type: 'ADD_CABLE_ROUTE'; payload: CableRoute }
   | { type: 'DELETE_CABLE_ROUTE'; payload: string }

@@ -19,6 +19,8 @@ the feature overview see `README.md`.
 | `components/editor/BulkLabelInput.tsx` | Label field for one or many objects: numbering patterns, *Chain* / *By IDF* numbering |
 | `components/editor/JumperEditor.tsx`, `JumperCablesPicker.tsx`, `MobileJumpers.tsx` | Jumpers of the selected object (desktop / tablet), the cables picker, the phone's chip + sheet |
 | `components/editor/ResizeByPercent.tsx` | Resize the selection by a percentage (the only way to resize: objects have no resize handles) |
+| `components/editor/StatusBar.tsx`, `ShortcutsDialog.tsx` | Bottom status bar (active layer, scale, snap / auto-numbering, save state); the `?` shortcuts list (also opened by the `OPEN_SHORTCUTS_EVENT` window event) — keep it in step with the keyboard handler in `Canvas` |
+| `lib/tool-shortcuts.ts` | The one-letter tool shortcuts — used by the Canvas' key handler and listed by the `?` dialog (add a shortcut here only) |
 | `components/editor/Toolbar/*` | Desktop toolbar (`ToolSelector`, `ContextBar` with the active tool's options, `MainMenu`, cabling / CCTV tools) and the phone's `MobileMenu` |
 | `components/editor/MobileBottomBar.tsx` | Phone: status, cables, photos, move for the selected object |
 | `components/editor/PropertiesPanel.tsx`, `PMObjectDetailsPanel.tsx` | Object properties (desktop side panel / touch details) |
@@ -205,6 +207,7 @@ accounts never travel.
   `ToolHint` line). If clicks must reach the plan through objects, add the tool to the
   `pointer-events-none` condition in `ObjectRenderer`. Technicians are forced back to `select`
   unless the tool is allowed in the `isTech` effect in `Canvas`.
+  **Esc:** if the tool has something in progress, handle Esc in a `keydown` listener in the **capture** phase, end it and call `e.preventDefault()`; the Canvas then leaves the tool only on an Esc nobody handled (one press = one step).
 - **A field op:** a `TechOp` variant and its case in `applyOps` (validate input there, it comes from
   the client), then send it with `useProjectOps`.
 - **A database column / table:** `shared/schema.ts`, then `npm run db:push` locally (Docker does

@@ -6,7 +6,10 @@ import {useToast} from '@/hooks/use-toast';
 import {cn} from '@/lib/utils';
 
 /** What the path measure does, for its button and menu tooltips. */
-export const PATH_MEASURE_HELP = 'Path measure — click point after point; each segment and the total length (Backspace = undo point, Esc = remove)';
+export const PATH_MEASURE_HELP = 'Path measure — click point after point; each segment and the total length (Backspace = undo point, Esc = remove) · L';
+
+/** Why the measuring tape is disabled without a scale (its button, and the M key). */
+export const TAPE_NEEDS_SCALE = 'The measuring tape needs the plan’s scale — set it with the scale probe (K, or Set scale in the status bar).';
 
 /** Turns the path measure on / off, with a tip (gestures on touch, or that there is no scale yet). */
 export const usePathMeasureToggle = (touch = false) => {

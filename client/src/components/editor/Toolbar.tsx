@@ -9,7 +9,7 @@ import {ToolSelector} from './Toolbar/ToolSelector';
 import {MainMenu} from './Toolbar/MainMenu';
 import {MobileMenu} from './Toolbar/MobileMenu';
 import {ContextBar} from './Toolbar/ContextBar';
-import {DraftingAids} from './Toolbar/DraftingAids';
+import {ShortcutsDialog} from './ShortcutsDialog';
 import {RequestsButton} from './TechRequests';
 import {PathMeasureButton} from './Toolbar/PathMeasureButton';
 import {useIsMobile} from '@/hooks/use-mobile';
@@ -75,21 +75,15 @@ export const Toolbar = ({ isSaving }: { isSaving?: boolean }) => {
           <RequestsButton />
           {!isTech && (
             <>
-              <DraftingAids />
-              <Separator orientation="vertical" className="h-6" />
-            </>
-          )}
-          {!isTech && (
-            <>
               <HistoryControls />
               <Separator orientation="vertical" className="h-6" />
             </>
           )}
           <ZoomControls scale={uiState.scale} />
-          {isSaving !== undefined && docState.projectId && !isTech && <SaveStatus isSaving={isSaving} />}
         </div>
       </div>
       <ContextBar />
+      {!isTech && <ShortcutsDialog />}
     </div>
   );
 };

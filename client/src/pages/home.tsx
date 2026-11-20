@@ -18,6 +18,7 @@ const ToolHint = lazy(() => import('@/components/editor/Canvas/ToolHint').then(m
 const TechRequestDialog = lazy(() => import('@/components/editor/TechRequests').then(module => ({ default: module.TechRequestDialog })));
 const TechEditDialog = lazy(() => import('@/components/editor/TechRequests').then(module => ({ default: module.TechEditDialog })));
 const MobileBottomBar = lazy(() => import('@/components/editor/MobileBottomBar').then(module => ({ default: module.MobileBottomBar })));
+const StatusBar = lazy(() => import('@/components/editor/StatusBar').then(module => ({ default: module.StatusBar })));
 
 const SHOW_LAYERS_STORAGE_KEY = 'editor.showLayers';
 
@@ -139,6 +140,7 @@ const Home = () => {
             </div>
           )}
         </div>
+        <StatusBar isSaving={isSaving} isTech={isTech} />
       </div>
     </Suspense>
   );

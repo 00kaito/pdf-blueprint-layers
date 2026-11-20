@@ -15,7 +15,7 @@ import {useSpacePan} from '@/hooks/useSpacePan';
 import {useFingerPan} from '@/hooks/useFingerPan';
 import {useStylusGuidance} from '@/hooks/useStylusGuidance';
 import {MARQUEE_IGNORE, useMarquee} from '@/hooks/useMarquee';
-import type {UIState} from '@/lib/types';
+import {toolForKey} from '@/lib/tool-shortcuts';
 import {isStrokeTool, isTapTool} from '@/core/pointer-input';
 import {feetPerUnit, formatFeet} from '@/core/measure';
 import type {Box} from '@/core/snapping';
@@ -45,30 +45,23 @@ import {
 import {useCurrentUser} from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {useToast} from '@/hooks/use-toast';
+import {TAPE_NEEDS_SCALE} from './Toolbar/PathMeasureButton';
 import {floodFillRegion} from '@/core/flood-fill';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Set worker URL to local Vite asset using the standard URL constructor
-/** Single-key tool shortcuts (shown in the toolbar tooltips). */
-export const TOOL_SHORTCUTS: Record<string, UIState['tool']> = {
-  v: 'select',
-  p: 'draw',
-  b: 'fill',
-  m: 'measure',
-  k: 'calibrate',
-  r: 'route',
-  j: 'jumper',
-  w: 'wall',
-};
-
 /** Shift-drag moves objects in steps of this many feet. */
 const DRAG_STEP_FEET = 0.5;
 
+// Set worker URL to local Vite asset using the standard URL constructor
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url
 ).toString();
+
+/** Widgets that use keys themselves: Esc, letters and arrows pressed there are theirs, not the plan's. */
+const MENU_OR_DIALOG = '[role="menu"], [role="listbox"], [role="dialog"]';
+const KEY_WIDGETS = `${MENU_OR_DIALOG}, [role="slider"], [role="tablist"], [role="radiogroup"]`;
 
 /** Arrow keys: move direction, and the turn with Ctrl (right / up = clockwise). */
 const ARROW_KEYS: Record<string, { dx: number; dy: number; turn: number }> = {
@@ -290,6 +283,21 @@ export const Canvas = () => {
         }
       }
 
+      // Esc, one press = one step: the tool hooks end what is in progress first (capture phase, and
+      // they mark the key handled); otherwise Esc leaves the tool, and in Select drops the selection.
+      // The overlay hand tool, menus and dialogs handle their own Esc.
+      if (
+        e.key === 'Escape' && !e.defaultPrevented &&
+        !(e.target as HTMLElement).closest?.(MENU_OR_DIALOG)
+      ) {
+        const { tool } = shortcutStateRef.current;
+        if (tool !== 'select' && tool !== 'pan-overlay') dispatch({ type: 'SET_TOOL', payload: 'select' });
+        else if (tool === 'select' && (state.selectedObjectIds.length > 0 || state.selectedRouteId || state.selectedJumperId)) {
+          dispatch({ type: 'SELECT_OBJECT', payload: null });
+        }
+        return;
+      }
+
       if (isTech) return;
 
       // Selected objects, keyboard editing (the label field is not focused, so these do not type):
@@ -297,7 +305,7 @@ export const Canvas = () => {
       // Not while a menu, list, slider or dialog has the keys (they use the arrows themselves).
       const { ids, scale } = keyEditRef.current;
       const widgetKeys = e.defaultPrevented
-        || !!(e.target as HTMLElement).closest?.('[role="menu"], [role="listbox"], [role="slider"], [role="dialog"], [role="tablist"], [role="radiogroup"]');
+        || !!(e.target as HTMLElement).closest?.(KEY_WIDGETS);
       if (ids.length > 0 && !widgetKeys && !e.altKey && shortcutStateRef.current.tool === 'select') {
         const ctrl = e.ctrlKey || e.metaKey;
         if (!ctrl && (e.key === '+' || e.key === '=' || e.key === '-')) {
@@ -318,16 +326,18 @@ export const Canvas = () => {
         }
       }
 
-      // Typing with objects selected edits their label: the key moves into the label field (text
-      // selected, so it is replaced) and the browser types the character there. Takes over the
-      // one-letter tool shortcuts while something is selected; Space stays for panning.
+      // Enter / F2 with objects selected: edit their label (the field gets the focus, its text
+      // selected). Not any letter — the one-letter tool shortcuts must work whatever is selected.
       if (
-        state.selectedObjectIds.length > 0 && e.key.length === 1 && e.key !== ' ' &&
-        !e.ctrlKey && !e.metaKey && !e.altKey
+        state.selectedObjectIds.length > 0 && (e.key === 'Enter' || e.key === 'F2') &&
+        !e.ctrlKey && !e.metaKey && !e.altKey && !widgetKeys &&
+        // Enter on a focused button / link presses it — not ours.
+        !(e.target as HTMLElement).closest?.('button, a, [role="button"]')
       ) {
-        const field = document.querySelector<HTMLInputElement>('[data-testid="context-bar"] [data-testid="bulk-label-input"]')
-          ?? document.querySelector<HTMLInputElement>('[data-testid="bulk-label-input"]');
+        // The options row's field comes first in the page; the properties panel's otherwise.
+        const field = document.querySelector<HTMLInputElement>('[data-label-field]');
         if (field) {
+          e.preventDefault();
           field.focus();
           field.select();
           return;
@@ -336,16 +346,19 @@ export const Canvas = () => {
 
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const { tool, hasCalibration } = shortcutStateRef.current;
-        const shortcut = TOOL_SHORTCUTS[e.key.toLowerCase()];
-        if (shortcut && !e.repeat) {
+        const shortcut = toolForKey(e.key);
+        // Not while a menu or dialog has the keys (its typeahead, or a letter typed over the plan).
+        if (shortcut && !e.repeat && !widgetKeys) {
           e.preventDefault();
-          // The tape needs a scale first, like the toolbar button.
-          dispatch({ type: 'SET_TOOL', payload: shortcut === 'measure' && !hasCalibration ? 'calibrate' : shortcut });
+          // The tool already in use: nothing to do (SET_TOOL would also drop the selection).
+          if (shortcut === tool) return;
+          // The tape needs a scale (its button is disabled without one): say so instead of starting it.
+          if (shortcut === 'measure' && !hasCalibration) {
+            toast({ title: 'No scale set', description: TAPE_NEEDS_SCALE });
+            return;
+          }
+          dispatch({ type: 'SET_TOOL', payload: shortcut });
           return;
-        }
-        // Esc = back to selecting (the overlay hand tool handles its own Esc).
-        if (e.key === 'Escape' && tool !== 'select' && tool !== 'pan-overlay') {
-          dispatch({ type: 'SET_TOOL', payload: 'select' });
         }
       }
 

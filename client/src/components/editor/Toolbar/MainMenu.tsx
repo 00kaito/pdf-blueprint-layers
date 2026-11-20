@@ -1,8 +1,9 @@
 import React, {useRef, useState} from 'react';
 import {
   Archive, Cable, ChevronLeft, Copy, Download, FileUp, FolderOpen, Loader2, LogOut, Menu, Ruler, Save, Share2, Tablet, User,
-  ShieldCheck,
+  Keyboard, ShieldCheck,
 } from 'lucide-react';
+import {OPEN_SHORTCUTS_EVENT} from '../ShortcutsDialog';
 import {CableSummaryPanel} from '../CableSummaryPanel';
 import {TechPermissionsDialog} from '../TechPermissionsDialog';
 import {useInstallAppAction} from '@/components/InstallApp';
@@ -24,7 +25,7 @@ import {useCurrentUser, useLogout} from '@/hooks/useAuth';
 import {useExport} from '@/hooks/useExport';
 import {useImport} from '@/hooks/useImport';
 import {useManualSave} from '@/hooks/useManualSave';
-import {useUploadFile} from '@/hooks/useProjects';
+import {useIsProjectOwner, useUploadFile} from '@/hooks/useProjects';
 import {useToast} from '@/hooks/use-toast';
 import {ShareProjectDialog} from '../ShareProjectDialog';
 import {ExportPdfDialog} from '../ExportPdfDialog';
@@ -52,6 +53,7 @@ export const MainMenu = () => {
   const replacePdfInputRef = useRef<HTMLInputElement>(null);
   const [replacingPdf, setReplacingPdf] = useState(false);
   const uploadFile = useUploadFile();
+  const isOwner = useIsProjectOwner(docState.projectId, user?.id);
   const { toast } = useToast();
   const projectIdRef = useRef(docState.projectId);
   projectIdRef.current = docState.projectId;
@@ -136,9 +138,14 @@ export const MainMenu = () => {
           )}
           {!isTech && (
             <>
-              <DropdownMenuItem onClick={() => setShareOpen(true)} disabled={!docState.projectId} className="gap-2 cursor-pointer">
+              <DropdownMenuItem onClick={() => setShareOpen(true)} disabled={!docState.projectId || !isOwner} className="gap-2 cursor-pointer">
                 <Share2 className="w-4 h-4" />
-                Share project
+                <div className="flex flex-col">
+                  <span>Share project</span>
+                  {/* Disabled items say why (only the owner may share; the server refuses others). */}
+                  {!docState.projectId && <span className="text-[10px] text-muted-foreground">Save the project first</span>}
+                  {docState.projectId && !isOwner && <span className="text-[10px] text-muted-foreground">Only the project owner can share it</span>}
+                </div>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setPermissionsOpen(true)} className="gap-2 cursor-pointer" data-testid="menu-tech-permissions">
                 <ShieldCheck className="w-4 h-4" />
@@ -249,6 +256,17 @@ export const MainMenu = () => {
               <span className="text-[10px] text-muted-foreground">Bigger buttons, gesture hints</span>
             </div>
           </DropdownMenuCheckboxItem>
+          {!isTech && (
+            <DropdownMenuItem
+              onClick={() => window.dispatchEvent(new Event(OPEN_SHORTCUTS_EVENT))}
+              className="gap-2 cursor-pointer"
+              data-testid="menu-shortcuts"
+            >
+              <Keyboard className="w-4 h-4" />
+              Keyboard shortcuts
+              <kbd className="ml-auto rounded border px-1 font-mono text-[10px]">?</kbd>
+            </DropdownMenuItem>
+          )}
 
           {install.available && (
             <>

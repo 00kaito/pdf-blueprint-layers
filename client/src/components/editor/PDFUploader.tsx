@@ -46,6 +46,7 @@ export const PDFUploader = () => {
   const { state: uiState } = useUI();
   const { data: user } = useCurrentUser();
   const isTech = user?.role === 'TECH';
+  const ownsProject = (project: { ownerId: string }) => project.ownerId === user?.id;
   const { data: projects, isLoading } = useProjectList();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
@@ -207,7 +208,7 @@ export const PDFUploader = () => {
               <Link href="/admin">
                 <Button variant="outline" className="border-primary/50 hover:bg-primary/5">
                   <Settings className="h-4 w-4 mr-2 text-primary" />
-                  Zarządzaj użytkownikami
+                  Manage users
                 </Button>
               </Link>
             )}
@@ -274,50 +275,60 @@ export const PDFUploader = () => {
                 <CardContent>
                   <div className="flex items-center justify-between mt-4">
                     <div className="flex items-center gap-1">
-                       {project.ownerId !== user?.id && (
+                       {!ownsProject(project) && (
                         <span className="text-[10px] bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full font-medium">Shared with me</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       {!isTech && (
                         <>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => {
-                              setRenamingProjectId(project.id);
-                              setRenameName(project.name);
-                            }}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setSharingProjectId(project.id)}>
-                            <Share2 className="h-4 w-4" />
-                          </Button>
+                          {/* Rename / share / delete: the owner's only (the server refuses anyone else). */}
+                          {ownsProject(project) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Rename project"
+                              aria-label="Rename project"
+                              onClick={() => {
+                                setRenamingProjectId(project.id);
+                                setRenameName(project.name);
+                              }}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {ownsProject(project) && (
+                            <Button variant="ghost" size="icon" title="Share project" aria-label="Share project" onClick={() => setSharingProjectId(project.id)}>
+                              <Share2 className="h-4 w-4" />
+                            </Button>
+                          )}
                           {/* Complete project ZIP (plan, PDFs, photos, icons, shares) — restores with Import from ZIP. */}
                           <Button variant="ghost" size="icon" asChild title="Export project (.zip)">
-                            <a href={`/api/projects/${project.id}/export`} download data-testid={`export-project-${project.id}`}>
+                            <a href={`/api/projects/${project.id}/export`} download aria-label="Export project (.zip)" data-testid={`export-project-${project.id}`}>
                               <Download className="h-4 w-4" />
                             </a>
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            disabled={deleteProject.isPending && deleteProject.variables === project.id}
-                            title="Delete project"
-                            onClick={() => {
-                              if (!window.confirm(`Delete project "${project.name}" with its PDFs? This cannot be undone.`)) return;
-                              deleteProject.mutate(project.id, {
-                                onSuccess: () => toast({ title: "Project deleted", description: project.name }),
-                                onError: (e: any) => toast({ variant: "destructive", title: "Could not delete project", description: e.message }),
-                              });
-                            }}
-                          >
-                            {deleteProject.isPending && deleteProject.variables === project.id
-                              ? <Loader2 className="h-4 w-4 animate-spin" />
-                              : <Trash2 className="h-4 w-4" />}
-                          </Button>
+                          {ownsProject(project) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive"
+                              disabled={deleteProject.isPending && deleteProject.variables === project.id}
+                              title="Delete project"
+                              aria-label="Delete project"
+                              onClick={() => {
+                                if (!window.confirm(`Delete project "${project.name}" with its PDFs? This cannot be undone.`)) return;
+                                deleteProject.mutate(project.id, {
+                                  onSuccess: () => toast({ title: "Project deleted", description: project.name }),
+                                  onError: (e: any) => toast({ variant: "destructive", title: "Could not delete project", description: e.message }),
+                                });
+                              }}
+                            >
+                              {deleteProject.isPending && deleteProject.variables === project.id
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <Trash2 className="h-4 w-4" />}
+                            </Button>
+                          )}
                         </>
                       )}
                       <Button onClick={() => handleOpenProject(project.id)}>

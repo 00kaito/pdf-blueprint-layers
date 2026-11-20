@@ -640,12 +640,12 @@ const baseReducer = (state: EditorState, action: EditorAction): EditorState => {
     case 'SET_MEASURE_CALIBRATION':
       return { ...state, measureCalibration: action.payload };
     case 'SET_OBJECT_CABLES': {
-      const { ids, cables } = action.payload;
+      const { ids, cables, keepDefaults } = action.payload;
       const cableDefaults = { ...state.lvSettings.cableDefaults };
       const objects = state.objects.map(o => {
         if (!ids.includes(o.id)) return o;
         const key = deviceKey(o);
-        if (key) cableDefaults[key] = cables;
+        if (key && !keepDefaults) cableDefaults[key] = cables;
         return { ...o, cables };
       });
       return { ...state, objects, lvSettings: { ...state.lvSettings, cableDefaults } };

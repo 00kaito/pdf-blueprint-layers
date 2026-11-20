@@ -14,6 +14,7 @@ import {BlindspotShape, CoverageAreaShape} from '@/components/editor/BlindspotSh
 import {BLINDSPOT_ICON, isBlindspot, isBlindspotWall, isCamera, isCoverageArea} from '@/core/camera-coverage';
 import {EditorObject} from '@/lib/types';
 import {ToolGroup} from './ToolGroup';
+import {HintTooltip} from './HintTooltip';
 
 /** The plan has something CCTV tools work with: a camera, a blindspot (box / wall) or a coverage area. */
 export const hasCctvObjects = (objects: EditorObject[]) =>
@@ -41,8 +42,9 @@ export const useToggleCoverage = () => {
 };
 
 /**
- * CCTV tools (blindspot wall / box, coverage area) and the coverage visibility. Shown only on plans
- * with CCTV objects (or while a CCTV tool is on), always at the end of the tool row. TECH only gets the visibility.
+ * CCTV tools (blindspot wall / box, coverage area) and the coverage visibility, at the end of the tool
+ * row. Always there for a PM (hidden tools could not be found before the first camera was placed);
+ * TECH only gets the visibility, on plans with CCTV objects. Without cameras the visibility is disabled.
  */
 export const CctvTools = ({ isTech }: { isTech: boolean }) => {
   const { state: docState, dispatch } = useDocument();
@@ -50,7 +52,11 @@ export const CctvTools = ({ isTech }: { isTech: boolean }) => {
   const { handleAddIcon } = useObjectCreation();
   const toggleCoverage = useToggleCoverage();
 
-  if (uiState.tool !== 'wall' && uiState.tool !== 'area' && !hasCctvObjects(docState.objects)) return null;
+  const hasCctv = hasCctvObjects(docState.objects);
+  if (isTech && !hasCctv) return null;
+  const coverageHint = hasCctv
+    ? `Show camera coverage ${uiState.showCameraCoverage ? '(on)' : '(off)'}`
+    : 'Show camera coverage — place a camera first (Objects → Low Voltage)';
 
   return (
     <ToolGroup label="CCTV" data-testid="toolbar-cctv">
@@ -102,22 +108,20 @@ export const CctvTools = ({ isTech }: { isTech: boolean }) => {
       )}
 
       <div className="flex items-center rounded-md border border-input bg-background overflow-hidden ml-0.5">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Toggle
-              pressed={uiState.showCameraCoverage}
-              onPressedChange={toggleCoverage}
-              size="sm"
-              variant="switch"
-              className="h-7 w-8 rounded-none border-none"
-              aria-label="Show camera coverage"
-              data-testid="cctv-coverage-toggle"
-            >
-              {uiState.showCameraCoverage ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-            </Toggle>
-          </TooltipTrigger>
-          <TooltipContent>Show camera coverage {uiState.showCameraCoverage ? '(on)' : '(off)'}</TooltipContent>
-        </Tooltip>
+        <HintTooltip hint={coverageHint}>
+          <Toggle
+            pressed={uiState.showCameraCoverage}
+            onPressedChange={toggleCoverage}
+            disabled={!hasCctv}
+            size="sm"
+            variant="switch"
+            className="h-7 w-8 rounded-none border-none"
+            aria-label="Show camera coverage"
+            data-testid="cctv-coverage-toggle"
+          >
+            {uiState.showCameraCoverage ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+          </Toggle>
+        </HintTooltip>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 w-5 rounded-none px-0 border-l border-input hover:bg-muted" aria-label="Coverage display options" data-testid="cctv-coverage-settings">
